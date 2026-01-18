@@ -1,6 +1,6 @@
-// GNOME Firewall - Bar Chart Widget
+// Security Center - Bar Chart Widget
 // Copyright (C) 2026 Christos Daggas
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 //! Animated horizontal bar chart for ranked data.
 
@@ -148,7 +148,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for BarChart {
-        const NAME: &'static str = "GnomeFirewallBarChart";
+        const NAME: &'static str = "SecurityCenterBarChart";
         type Type = super::BarChart;
         type ParentType = gtk4::Widget;
     }

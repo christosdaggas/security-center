@@ -3,7 +3,7 @@
 <component type="desktop-application">
   <id>com.chrisdaggas.security-center</id>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>GPL-3.0-or-later</project_license>
+  <project_license>MIT</project_license>
   
   <name>Security Center</name>
   <summary>Manage your system security, firewall and services</summary>
@@ -30,8 +30,8 @@
   
   <launchable type="desktop-id">com.chrisdaggas.security-center.desktop</launchable>
   
-  <url type="homepage">https://github.com/chrisdaggas/security-center</url>
-  <url type="bugtracker">https://github.com/chrisdaggas/security-center/issues</url>
+  <url type="homepage">https://github.com/christosdaggas/security-center</url>
+  <url type="bugtracker">https://github.com/christosdaggas/security-center/issues</url>
   
   <developer id="com.chrisdaggas">
     <name>Christos Daggas</name>

@@ -1,6 +1,6 @@
 // Security Center - Network Activity Chart Widget
 // Copyright (C) 2026 Christos Daggas
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 //! Live network activity chart with spike visualization.
 //! Styled to match Network Manager's network activity graph.

@@ -1,6 +1,6 @@
-// GNOME Firewall - Line Chart Widget
+// Security Center - Line Chart Widget
 // Copyright (C) 2026 Christos Daggas
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 //! Animated line chart for time series data.
 
@@ -119,7 +119,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for LineChart {
-        const NAME: &'static str = "GnomeFirewallLineChart";
+        const NAME: &'static str = "SecurityCenterLineChart";
         type Type = super::LineChart;
         type ParentType = gtk4::Widget;
     }

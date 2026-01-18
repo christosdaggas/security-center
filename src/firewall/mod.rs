@@ -1,6 +1,6 @@
-// GNOME Firewall - Firewall Module
+// Security Center - Firewall Module
 // Copyright (C) 2026 Christos Daggas
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 //! Firewalld D-Bus client and related utilities.
 

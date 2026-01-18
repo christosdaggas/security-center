@@ -1,15 +1,17 @@
-# GNOME Firewall
+# Security Center
 
-A modern, GNOME-native graphical firewall manager for Linux, providing a clean interface to **firewalld**.
+A modern, GTK4/Libadwaita security management application for Linux, providing a clean interface to **firewalld**, **systemd**, and system security monitoring.
 
-![GNOME Firewall](data/icons/hicolor/scalable/apps/org.gnome.Firewall.svg)
+![Security Center](data/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg)
 
 ## Features
 
-- **Zone Management**: View and manage firewalld zones with clear status indicators
-- **Service Control**: Enable/disable predefined network services
-- **Port Management**: Open and close custom TCP/UDP ports
-- **Dashboard Overview**: Quick statistics showing firewall status, active zones, and open ports
+- **Firewall Management**: View and manage firewalld zones, services, and ports
+- **Port Control**: Open and block custom TCP/UDP ports with rich rules
+- **Network Exposure**: Monitor listening ports and correlate with firewall status
+- **System Services**: Manage systemd services with start/stop/enable/disable
+- **Quick Actions**: Common administrative tasks with one click
+- **Dashboard Overview**: Real-time statistics showing firewall status, connections, and traffic
 - **GNOME Integration**: Native look and feel with Libadwaita, dark mode support
 - **Safe by Default**: Read-only mode with Polkit authentication for changes
 
@@ -21,17 +23,32 @@ A modern, GNOME-native graphical firewall manager for Linux, providing a clean i
 
 ### Runtime Dependencies
 
-- GTK 4.0+
-- Libadwaita 1.0+
-- Python 3.10+
-- PyGObject
+- GTK4 4.14+
+- Libadwaita 1.5+
 - firewalld
 - polkit
+- systemd
 
 ### Build Dependencies
 
-- Meson 0.62+
-- Ninja
+- Rust 1.70+
+- GTK4 development libraries
+- Libadwaita development libraries
+
+**Fedora:**
+```bash
+sudo dnf install gtk4-devel libadwaita-devel glib2-devel dbus-devel
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt install libgtk-4-dev libadwaita-1-dev libglib2.0-dev libdbus-1-dev
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S gtk4 libadwaita glib2 dbus
+```
 
 ## Building
 
@@ -39,131 +56,117 @@ A modern, GNOME-native graphical firewall manager for Linux, providing a clean i
 
 ```bash
 # Clone the repository
-git clone https://gitlab.gnome.org/GNOME/gnome-firewall.git
-cd gnome-firewall
-
-# Configure build
-meson setup builddir
-meson configure builddir -Dprefix=/usr/local
+git clone https://github.com/christosdaggas/security-center.git
+cd security-center
 
 # Build
-meson compile -C builddir
+cargo build --release
 
-# Install
-sudo meson install -C builddir
+# Run
+cargo run --release
 ```
 
 ### Development
 
-For development without installing:
-
 ```bash
-# Compile GSettings schemas
-glib-compile-schemas data/
+# Install development tools
+rustup component add rustfmt clippy
 
-# Run directly
-chmod +x run.sh
-./run.sh
+# Build in debug mode
+cargo build
+
+# Run with logging
+RUST_LOG=debug cargo run
+
+# Run linter
+cargo clippy -- -D warnings
+
+# Format code
+cargo fmt
 ```
 
-Or using Python directly:
-
+**Note:** Some features require elevated privileges. For full functionality:
 ```bash
-export PYTHONPATH="$PWD/src:$PYTHONPATH"
-export GSETTINGS_SCHEMA_DIR="$PWD/data"
-python3 src/main.py
+sudo -E cargo run --release
 ```
-
-### Flatpak (Future)
-
-Flatpak packaging is planned for easy distribution.
 
 ## Architecture
 
 ```
-gnome-firewall/
+security-center/
 ├── src/
-│   ├── gnome_firewall/
-│   │   ├── application/    # GApplication lifecycle
-│   │   ├── auth/           # Polkit integration
-│   │   ├── firewall/       # firewalld D-Bus client
-│   │   ├── models/         # Data models (Zone, Service, Port)
-│   │   ├── ui/             # GTK4/Adw widgets and views
-│   │   └── utils/          # Logging, errors, helpers
-│   └── main.py             # Development entry point
-├── data/
-│   ├── icons/              # Application icons
-│   ├── *.desktop.in        # Desktop entry
-│   ├── *.metainfo.xml.in   # AppStream metadata
-│   └── *.gschema.xml       # GSettings schema
-└── meson.build             # Build configuration
+│   ├── main.rs              # Entry point, CSS loading
+│   ├── application.rs       # GTK Application lifecycle
+│   ├── config.rs            # Application settings
+│   ├── autostart.rs         # Desktop autostart management
+│   ├── storage.rs           # Port metadata persistence
+│   ├── admin/               # Administrative actions
+│   │   ├── actions.rs       # Quick action definitions
+│   │   └── network.rs       # Network exposure scanner
+│   ├── firewall/            # firewalld D-Bus client
+│   │   └── client.rs        # Zone, port, service management
+│   ├── systemd/             # systemd D-Bus client
+│   │   └── client.rs        # Service management
+│   ├── models/              # Data models
+│   │   ├── zone.rs, port.rs, service.rs, interface.rs
+│   ├── stats/               # System statistics
+│   │   ├── collectors.rs    # Traffic/connection collection
+│   │   └── cache.rs         # Stats caching
+│   └── ui/                  # GTK4/Adw widgets and pages
+│       ├── main_window.rs
+│       ├── overview_page.rs
+│       ├── zones_page.rs
+│       ├── ports_page.rs
+│       ├── services_page.rs
+│       ├── network_exposure_page.rs
+│       ├── quick_actions_page.rs
+│       └── widgets/         # Custom chart widgets
+└── data/
+    ├── icons/               # Application icons
+    ├── *.desktop            # Desktop entry
+    └── *.metainfo.xml       # AppStream metadata
 ```
 
 ### Key Design Decisions
 
-1. **D-Bus Only**: All firewalld communication uses D-Bus. No shell commands.
-2. **Read-Only by Default**: The app starts in read-only mode; write operations require Polkit authentication.
-3. **Model-View Separation**: Clean separation between UI, domain logic, and system access.
-4. **GNOME HIG Compliance**: Follows GNOME Human Interface Guidelines strictly.
+1. **D-Bus Only**: All firewalld/systemd communication uses D-Bus. No shell commands.
+2. **Pure Rust**: Network introspection via procfs without external tools.
+3. **Read-Only by Default**: Write operations require Polkit authentication.
+4. **GNOME HIG Compliance**: Follows GNOME Human Interface Guidelines.
 
-## Current Status (v0.1.0)
+## Packaging
 
-### Implemented ✓
+### DEB Package (requires cargo-deb)
+```bash
+cargo install cargo-deb
+cargo deb
+```
 
-- [x] Project structure and build system
-- [x] Application lifecycle (GApplication/AdwApplication)
-- [x] Main window with navigation sidebar
-- [x] Overview dashboard with statistics
-- [x] Zones view with expandable details
-- [x] Services view (read-only)
-- [x] Ports view (read-only)
-- [x] firewalld D-Bus client (read operations)
-- [x] Polkit integration framework
-- [x] Desktop integration files
+### RPM Package (requires cargo-generate-rpm)
+```bash
+cargo install cargo-generate-rpm
+cargo build --release
+cargo generate-rpm
+```
 
-### TODO (v1.0)
-
-- [ ] Write operations (add/remove ports, services)
-- [ ] Zone interface assignment
-- [ ] Set default zone
-- [ ] Runtime vs permanent toggle
-- [ ] "Make permanent" action
-- [ ] Firewall enable/disable
-- [ ] GNOME notifications
-- [ ] Keyboard shortcuts overlay
-- [ ] Flatpak packaging
-
-### Non-Goals (v1.x)
-
-- nftables direct editing
-- Container-specific rules
-- Remote firewall management
-- Custom zone creation
+### Flatpak
+```bash
+flatpak-builder --user --install --force-clean build-dir com.chrisdaggas.security-center.yml
+```
 
 ## Contributing
 
-Contributions are welcome! Please:
-
-1. Follow GNOME coding style
-2. Test with firewalld running
-3. Ensure no shell commands are used
-4. Keep UI consistent with GNOME HIG
-
-### Running Tests
-
-```bash
-# TODO: Add test infrastructure
-```
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-GNOME Firewall is licensed under the [GPL-3.0-or-later](COPYING).
+Security Center is licensed under the [MIT License](LICENSE).
 
 ## Credits
 
-- Inspired by GNOME Circle applications
 - Built with [GTK4](https://gtk.org/) and [Libadwaita](https://gnome.pages.gitlab.gnome.org/libadwaita/)
-- Uses [firewalld](https://firewalld.org/) D-Bus API
+- Uses [firewalld](https://firewalld.org/) and [systemd](https://systemd.io/) D-Bus APIs
+- Inspired by GNOME Circle applications
 
 ## See Also
 
@@ -171,3 +174,4 @@ GNOME Firewall is licensed under the [GPL-3.0-or-later](COPYING).
 - [GNOME Human Interface Guidelines](https://developer.gnome.org/hig/)
 - [GTK4 Documentation](https://docs.gtk.org/gtk4/)
 - [Libadwaita Documentation](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/)
+

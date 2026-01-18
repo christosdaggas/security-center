@@ -1,6 +1,6 @@
-// GNOME Firewall - Donut Chart Widget
+// Security Center - Donut Chart Widget
 // Copyright (C) 2026 Christos Daggas
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 //! Animated donut chart for displaying ratios.
 
@@ -108,7 +108,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for DonutChart {
-        const NAME: &'static str = "GnomeFirewallDonutChart";
+        const NAME: &'static str = "SecurityCenterDonutChart";
         type Type = super::DonutChart;
         type ParentType = gtk4::Widget;
     }

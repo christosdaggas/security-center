@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>org.gnome.SecurityCenterCosmic</id>
-  <!-- ...existing code... -->
   
   <provides>
     <binary>security-center-cosmic</binary>
@@ -14,5 +13,4 @@
     <control>touch</control>
   </supports>
   
-  <!-- ...existing code... -->
 </component>

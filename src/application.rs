@@ -1,6 +1,6 @@
 // Security Center - Application
 // Copyright (C) 2026 Christos Daggas
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 //! Main application struct and lifecycle management.
 
@@ -181,8 +181,8 @@ impl Application {
             .developer_name("Christos A. Daggas")
             .version(env!("CARGO_PKG_VERSION"))
             .website("https://chrisdaggas.com")
-            .issue_url("https://github.com/chrisdaggas/security-center/issues")
-            .license_type(gtk4::License::Gpl30)
+            .issue_url("https://github.com/christosdaggas/security-center/issues")
+            .license_type(gtk4::License::MitX11)
             .copyright("© 2024-2026 Christos A. Daggas")
             .developers(vec!["Christos A. Daggas".to_string()])
             .comments("Manage your system security, firewall and services")
@@ -342,7 +342,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for Application {
-        const NAME: &'static str = "GnomeFirewallApplication";
+        const NAME: &'static str = "SecurityCenterApplication";
         type Type = super::Application;
         type ParentType = adw::Application;
     }

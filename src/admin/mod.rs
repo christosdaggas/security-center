@@ -1,6 +1,6 @@
 // Security Center - Admin Module
 // Copyright (C) 2026 Christos Daggas
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 //! Admin module providing D-Bus interfaces for system administration.
 //!

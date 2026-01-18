@@ -1,6 +1,6 @@
-// GNOME Firewall - Configuration
-// Copyright (C) 2026 Christos A. Daggas
-// SPDX-License-Identifier: GPL-3.0-or-later
+// Security Center - Configuration
+// Copyright (C) 2026 Christos Daggas
+// SPDX-License-Identifier: MIT
 
 //! Application settings management using a local JSON file.
 

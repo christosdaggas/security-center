@@ -1,6 +1,6 @@
-// GNOME Firewall - Services Page
+// Security Center - Services Page
 // Copyright (C) 2026 Christos Daggas
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 //! Services management page.
 

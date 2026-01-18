@@ -3,7 +3,7 @@ Version:        1.0.0
 Release:        1%{?dist}
 Summary:        A modern GTK4 security center for Linux
 
-License:        GPL-3.0-or-later
+License:        MIT
 URL:            https://github.com/christosdaggas/security-center
 Source0:        %{name}-%{version}.tar.gz
 

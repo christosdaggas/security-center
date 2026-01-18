@@ -1,6 +1,6 @@
 // Security Center - Main Window
 // Copyright (C) 2026 Christos Daggas
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 //! Main application window with navigation.
 
@@ -729,7 +729,7 @@ mod imp {
 
     #[glib::object_subclass]
     impl ObjectSubclass for MainWindow {
-        const NAME: &'static str = "GnomeFirewallMainWindow";
+        const NAME: &'static str = "SecurityCenterMainWindow";
         type Type = super::MainWindow;
         type ParentType = adw::ApplicationWindow;
     }

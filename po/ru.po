@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: security-center 1.0.0\n"
-"Report-Msgid-Bugs-To: https://github.com/chrisdaggas/security-center/issues\n"
+"Report-Msgid-Bugs-To: https://github.com/christosdaggas/security-center/issues\n"
 "POT-Creation-Date: 2026-01-07 00:00+0000\n"
 "PO-Revision-Date: 2026-01-07 00:00+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"

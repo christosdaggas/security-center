@@ -1,6 +1,6 @@
 // Security Center - Autostart Management
 // Copyright (C) 2026 Christos A. Daggas
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 //! Manages the autostart .desktop file for starting the application on login.
 

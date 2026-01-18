@@ -1,6 +1,6 @@
 // Security Center - Network Exposure Page
 // Copyright (C) 2026 Christos Daggas
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 //! Network Exposure tab showing listening ports and their firewall status.
 //!

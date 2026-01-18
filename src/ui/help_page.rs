@@ -1,6 +1,6 @@
 // Security Center - Help Page
 // Copyright (C) 2026 Christos A. Daggas
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 
 //! Help Page - Application documentation and guidance.
 
