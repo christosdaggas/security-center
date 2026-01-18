@@ -1,0 +1,23 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+export CARGO_HOME = $(CURDIR)/debian/.cargo
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	cargo build --release
+
+override_dh_auto_install:
+	install -Dm755 target/release/security-center $(CURDIR)/debian/security-center/usr/bin/security-center
+	install -Dm644 data/com.chrisdaggas.security-center.desktop $(CURDIR)/debian/security-center/usr/share/applications/com.chrisdaggas.security-center.desktop
+	install -Dm644 data/com.chrisdaggas.security-center.metainfo.xml $(CURDIR)/debian/security-center/usr/share/metainfo/com.chrisdaggas.security-center.metainfo.xml
+	install -Dm644 data/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg $(CURDIR)/debian/security-center/usr/share/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg
+
+override_dh_auto_clean:
+	cargo clean || true
+
+override_dh_auto_test:
+	# Skip tests during package build
+	true

@@ -1,0 +1,143 @@
+/* Window background - let DE control it */
+window.background {
+    background-color: @window_bg_color;
+}
+
+/* Navigation sidebar - transparent for theme blending */
+.navigation-sidebar {
+    background-color: transparent;
+}
+
+/* Cards and containers */
+.card {
+    background-color: @card_bg_color;
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid alpha(@window_fg_color, 0.08);
+}
+
+/* Text colors */
+.title-1, .title-2, .title-3, .title-4 {
+    color: @window_fg_color;
+}
+
+.dim-label {
+    color: alpha(@window_fg_color, 0.7);
+}
+
+/* Security status indicators */
+.security-safe {
+    background-color: @success_bg_color;
+    color: @success_fg_color;
+    border-radius: 8px;
+    padding: 8px 16px;
+}
+
+.security-warning {
+    background-color: @warning_bg_color;
+    color: @warning_fg_color;
+    border-radius: 8px;
+    padding: 8px 16px;
+}
+
+.security-danger {
+    background-color: @error_bg_color;
+    color: @error_fg_color;
+    border-radius: 8px;
+    padding: 8px 16px;
+}
+
+/* Threat level indicators */
+.threat-low {
+    color: @success_color;
+}
+
+.threat-medium {
+    color: @warning_color;
+}
+
+.threat-high {
+    color: @error_color;
+}
+
+/* Scan progress */
+.scan-progress {
+    background-color: alpha(@accent_color, 0.2);
+}
+
+.scan-progress progress {
+    background-color: @accent_color;
+}
+
+/* Firewall rules */
+.rule-allow {
+    border-left: 3px solid @success_color;
+    padding-left: 12px;
+}
+
+.rule-deny {
+    border-left: 3px solid @error_color;
+    padding-left: 12px;
+}
+
+/* Dashboard cards */
+.dashboard-card {
+    background-color: @card_bg_color;
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid alpha(@window_fg_color, 0.08);
+}
+
+.dashboard-card.safe {
+    border-left: 4px solid @success_color;
+}
+
+.dashboard-card.warning {
+    border-left: 4px solid @warning_color;
+}
+
+.dashboard-card.danger {
+    border-left: 4px solid @error_color;
+}
+
+/* Action buttons */
+.suggested-action {
+    background-color: @accent_bg_color;
+    color: @accent_fg_color;
+}
+
+.destructive-action {
+    background-color: @error_bg_color;
+    color: @error_fg_color;
+}
+
+/* Popovers */
+popover.background {
+    background-color: @popover_bg_color;
+}
+
+/* Header bar */
+headerbar {
+    background-color: @headerbar_bg_color;
+}
+
+/* View backgrounds */
+.view {
+    background-color: @view_bg_color;
+    color: @view_fg_color;
+}
+
+/* List rows */
+.security-row {
+    background-color: transparent;
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.security-row:hover {
+    background-color: alpha(@window_fg_color, 0.05);
+}
+
+.security-row:selected {
+    background-color: alpha(@accent_color, 0.15);
+}

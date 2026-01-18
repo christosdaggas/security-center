@@ -1,0 +1,555 @@
+# Russian translation for security-center.
+# Copyright (C) 2026 Christos Daggas
+# This file is distributed under the same license as the security-center package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: security-center 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/chrisdaggas/security-center/issues\n"
+"POT-Creation-Date: 2026-01-07 00:00+0000\n"
+"PO-Revision-Date: 2026-01-07 00:00+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Russian <ru@li.org>\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#. Application name
+msgid "Security Center"
+msgstr "Центр безопасности"
+
+#. Application description
+msgid "Security Center and Firewall management for Linux"
+msgstr "Центр безопасности и управление брандмауэром для Linux"
+
+#. About dialog
+msgid "About Security Center"
+msgstr "О Центре безопасности"
+
+msgid "Quit"
+msgstr "Выход"
+
+#. Main window - Status
+msgid "Protected"
+msgstr "Защищено"
+
+msgid "Not Protected"
+msgstr "Не защищено"
+
+msgid "Firewall is active"
+msgstr "Брандмауэр активен"
+
+msgid "Firewall not running"
+msgstr "Брандмауэр не запущен"
+
+msgid "Firewall Active"
+msgstr "Брандмауэр активен"
+
+msgid "Firewall Paused"
+msgstr "Брандмауэр приостановлен"
+
+msgid "Your system is protected"
+msgstr "Ваша система защищена"
+
+msgid "All traffic is blocked"
+msgstr "Весь трафик заблокирован"
+
+msgid "Traffic Enabled"
+msgstr "Трафик включён"
+
+msgid "Traffic Disabled"
+msgstr "Трафик отключён"
+
+#. Overview page
+msgid "Quick Stats"
+msgstr "Быстрая статистика"
+
+msgid "Default Zone"
+msgstr "Зона по умолчанию"
+
+msgid "Network Statistics"
+msgstr "Сетевая статистика"
+
+msgid "System Statistics"
+msgstr "Системная статистика"
+
+msgid "Connections"
+msgstr "Подключения"
+
+msgid "Traffic Ratio"
+msgstr "Соотношение трафика"
+
+msgid "Disk Usage"
+msgstr "Использование диска"
+
+msgid "Allowed"
+msgstr "Разрешено"
+
+msgid "Blocked"
+msgstr "Заблокировано"
+
+msgid "Dropped"
+msgstr "Отброшено"
+
+msgid "Rejected"
+msgstr "Отклонено"
+
+msgid "Forwarding"
+msgstr "Перенаправление"
+
+#. Zones page
+msgid "Zones"
+msgstr "Зоны"
+
+msgid "Active Zones"
+msgstr "Активные зоны"
+
+msgid "Zones with assigned interfaces or sources"
+msgstr "Зоны с назначенными интерфейсами или источниками"
+
+msgid "Available Zones"
+msgstr "Доступные зоны"
+
+msgid "Click 'Set Default' to change the default zone"
+msgstr "Нажмите «Установить по умолчанию», чтобы изменить зону по умолчанию"
+
+msgid "Default"
+msgstr "По умолчанию"
+
+msgid "Set Default"
+msgstr "Установить по умолчанию"
+
+msgid "Services"
+msgstr "Службы"
+
+msgid "Ports"
+msgstr "Порты"
+
+msgid "Interfaces"
+msgstr "Интерфейсы"
+
+msgid "Sources"
+msgstr "Источники"
+
+#. Ports page
+msgid "Add Port"
+msgstr "Добавить порт"
+
+msgid "Open Ports"
+msgstr "Открытые порты"
+
+msgid "Custom ports opened in the firewall"
+msgstr "Пользовательские порты, открытые в брандмауэре"
+
+msgid "Blocked Ports"
+msgstr "Заблокированные порты"
+
+msgid "Ports explicitly blocked via rich rules"
+msgstr "Порты, явно заблокированные через расширенные правила"
+
+msgid "Summary"
+msgstr "Сводка"
+
+msgid "No port rules configured"
+msgstr "Правила портов не настроены"
+
+msgid "Click 'Add Port' to create a rule"
+msgstr "Нажмите «Добавить порт», чтобы создать правило"
+
+msgid "TCP Ports"
+msgstr "Порты TCP"
+
+msgid "UDP Ports"
+msgstr "Порты UDP"
+
+msgid "No blocked ports"
+msgstr "Нет заблокированных портов"
+
+msgid "Ports blocked via rich rules will appear here"
+msgstr "Порты, заблокированные через расширенные правила, появятся здесь"
+
+msgid "Remove block rule"
+msgstr "Удалить правило блокировки"
+
+msgid "Delete this port rule"
+msgstr "Удалить это правило порта"
+
+#. Add port dialog
+msgid "Add Port Rule"
+msgstr "Добавить правило порта"
+
+msgid "Port Details"
+msgstr "Детали порта"
+
+msgid "Name (optional)"
+msgstr "Имя (необязательно)"
+
+msgid "Port Number"
+msgstr "Номер порта"
+
+msgid "Protocol"
+msgstr "Протокол"
+
+msgid "TCP"
+msgstr "TCP"
+
+msgid "UDP"
+msgstr "UDP"
+
+msgid "Both"
+msgstr "Оба"
+
+msgid "Firewall Action"
+msgstr "Действие брандмауэра"
+
+msgid "How the firewall should handle incoming traffic on this port"
+msgstr "Как брандмауэр должен обрабатывать входящий трафик на этом порту"
+
+msgid "Action"
+msgstr "Действие"
+
+msgid "Allow (Open Port)"
+msgstr "Разрешить (открыть порт)"
+
+msgid "Block (Reject Connections)"
+msgstr "Блокировать (отклонять подключения)"
+
+msgid "Allow opens the port, Block rejects connections"
+msgstr "Разрешить открывает порт, Блокировать отклоняет подключения"
+
+msgid "Options"
+msgstr "Параметры"
+
+msgid "Zone"
+msgstr "Зона"
+
+msgid "Make Permanent"
+msgstr "Сделать постоянным"
+
+msgid "Rule persists after reboot"
+msgstr "Правило сохраняется после перезагрузки"
+
+msgid "Port must be between 1 and 65535"
+msgstr "Порт должен быть от 1 до 65535"
+
+#. Services page
+msgid "Authentication may be required to modify services"
+msgstr "Для изменения служб может потребоваться аутентификация"
+
+msgid "Enabled Services"
+msgstr "Включённые службы"
+
+msgid "Services allowing traffic through the firewall"
+msgstr "Службы, разрешающие трафик через брандмауэр"
+
+msgid "Common Services"
+msgstr "Общие службы"
+
+msgid "Frequently used network services"
+msgstr "Часто используемые сетевые службы"
+
+msgid "No services enabled"
+msgstr "Нет включённых служб"
+
+msgid "Enable services to allow specific traffic"
+msgstr "Включите службы, чтобы разрешить определённый трафик"
+
+msgid "Disable service"
+msgstr "Отключить службу"
+
+msgid "Enable service"
+msgstr "Включить службу"
+
+#. Network Exposure page
+msgid "Network Exposure"
+msgstr "Сетевая экспозиция"
+
+msgid "Monitor listening ports and their firewall status"
+msgstr "Мониторинг прослушиваемых портов и их состояния в брандмауэре"
+
+msgid "Refresh"
+msgstr "Обновить"
+
+msgid "Exposed to Network"
+msgstr "Открыто для сети"
+
+msgid "These ports are listening on all interfaces"
+msgstr "Эти порты прослушиваются на всех интерфейсах"
+
+msgid "Local Only"
+msgstr "Только локально"
+
+msgid "These ports are only accessible locally"
+msgstr "Эти порты доступны только локально"
+
+msgid "All Listening Ports"
+msgstr "Все прослушиваемые порты"
+
+msgid "Scan to see listening ports"
+msgstr "Сканируйте, чтобы увидеть прослушиваемые порты"
+
+msgid "Total Ports"
+msgstr "Всего портов"
+
+msgid "Exposed"
+msgstr "Открыто"
+
+msgid "Warning"
+msgstr "Предупреждение"
+
+msgid "Listening Address"
+msgstr "Адрес прослушивания"
+
+msgid "Process"
+msgstr "Процесс"
+
+msgid "Unknown Process"
+msgstr "Неизвестный процесс"
+
+msgid "Actions"
+msgstr "Действия"
+
+msgid "Stop Service"
+msgstr "Остановить службу"
+
+msgid "Stop the service using this port"
+msgstr "Остановить службу, использующую этот порт"
+
+msgid "Block Port"
+msgstr "Заблокировать порт"
+
+msgid "Add a firewall rule to block this port"
+msgstr "Добавить правило брандмауэра для блокировки этого порта"
+
+#. System Services page
+msgid "System Services"
+msgstr "Системные службы"
+
+msgid "Manage system services and daemons"
+msgstr "Управление системными службами и демонами"
+
+msgid "Refresh services list"
+msgstr "Обновить список служб"
+
+msgid "Running Services"
+msgstr "Запущенные службы"
+
+msgid "Services that are currently active"
+msgstr "Службы, которые в данный момент активны"
+
+msgid "Stopped Services"
+msgstr "Остановленные службы"
+
+msgid "Services that are not running"
+msgstr "Службы, которые не запущены"
+
+msgid "Failed Services"
+msgstr "Сбойные службы"
+
+msgid "Services that have failed"
+msgstr "Службы, которые дали сбой"
+
+msgid "Stop service"
+msgstr "Остановить службу"
+
+msgid "Start service"
+msgstr "Запустить службу"
+
+msgid "Restart service"
+msgstr "Перезапустить службу"
+
+msgid "Disable (won't start on boot)"
+msgstr "Отключить (не будет запускаться при загрузке)"
+
+msgid "Enable (start on boot)"
+msgstr "Включить (запускать при загрузке)"
+
+#. Quick Actions page
+msgid "Quick Actions"
+msgstr "Быстрые действия"
+
+msgid "One-click administrative operations"
+msgstr "Административные операции в один клик"
+
+msgid "These actions may affect system security and stability"
+msgstr "Эти действия могут повлиять на безопасность и стабильность системы"
+
+msgid "Dismiss"
+msgstr "Закрыть"
+
+msgid "Firewall"
+msgstr "Брандмауэр"
+
+msgid "Manage firewalld service and rules"
+msgstr "Управление службой и правилами firewalld"
+
+msgid "Network"
+msgstr "Сеть"
+
+msgid "Network service management"
+msgstr "Управление сетевыми службами"
+
+msgid "Manage system services"
+msgstr "Управление системными службами"
+
+msgid "Ready to execute actions"
+msgstr "Готово к выполнению действий"
+
+msgid "Execute"
+msgstr "Выполнить"
+
+msgid "Confirm Action"
+msgstr "Подтвердить действие"
+
+msgid "Running..."
+msgstr "Выполняется..."
+
+msgid "Executing..."
+msgstr "Выполнение..."
+
+#. Preferences
+msgid "Preferences"
+msgstr "Настройки"
+
+msgid "Appearance"
+msgstr "Внешний вид"
+
+msgid "Theme"
+msgstr "Тема"
+
+msgid "Choose the application color scheme"
+msgstr "Выберите цветовую схему приложения"
+
+msgid "Dark"
+msgstr "Тёмная"
+
+msgid "Light"
+msgstr "Светлая"
+
+msgid "System"
+msgstr "Системная"
+
+msgid "Dark theme"
+msgstr "Тёмная тема"
+
+msgid "Light theme"
+msgstr "Светлая тема"
+
+msgid "Follow system theme"
+msgstr "Следовать системной теме"
+
+#. Tooltips
+msgid "Refresh (Ctrl+R)"
+msgstr "Обновить (Ctrl+R)"
+
+#. Dialog buttons
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Add"
+msgstr "Добавить"
+
+#. Error messages
+msgid "Error"
+msgstr "Ошибка"
+
+msgid "Failed to connect to firewalld"
+msgstr "Не удалось подключиться к firewalld"
+
+msgid "Failed to add port"
+msgstr "Не удалось добавить порт"
+
+msgid "Failed to block port"
+msgstr "Не удалось заблокировать порт"
+
+msgid "Failed to delete port"
+msgstr "Не удалось удалить порт"
+
+msgid "Failed to set default zone"
+msgstr "Не удалось установить зону по умолчанию"
+
+msgid "Failed to enable service"
+msgstr "Не удалось включить службу"
+
+msgid "Failed to disable service"
+msgstr "Не удалось отключить службу"
+
+msgid "Failed to connect to systemd"
+msgstr "Не удалось подключиться к systemd"
+
+msgid "Failed to execute action"
+msgstr "Не удалось выполнить действие"
+
+msgid "Failed to scan network"
+msgstr "Не удалось просканировать сеть"
+
+msgid "Task failed"
+msgstr "Задача не выполнена"
+
+#. Success messages
+msgid "Port opened (allowed)"
+msgstr "Порт открыт (разрешён)"
+
+msgid "Port blocked (rejected)"
+msgstr "Порт заблокирован (отклонён)"
+
+msgid "Firewall configuration reloaded"
+msgstr "Конфигурация брандмауэра перезагружена"
+
+msgid "Firewall enabled"
+msgstr "Брандмауэр включён"
+
+msgid "Firewall disabled (panic mode)"
+msgstr "Брандмауэр отключён (аварийный режим)"
+
+#. Status format strings
+#, c-format
+msgid "%d services currently active"
+msgstr "%d служб активно"
+
+#, c-format
+msgid "%d services not running"
+msgstr "%d служб не запущено"
+
+#, c-format
+msgid "%d services have failed"
+msgstr "%d служб завершились с ошибкой"
+
+#, c-format
+msgid "%d allowed, %d blocked"
+msgstr "%d разрешено, %d заблокировано"
+
+#, c-format
+msgid "Zone: %s"
+msgstr "Зона: %s"
+
+#, c-format
+msgid "Default zone set to '%s'"
+msgstr "Зона по умолчанию установлена на «%s»"
+
+#, c-format
+msgid "Port %s/%s deleted"
+msgstr "Порт %s/%s удалён"
+
+#, c-format
+msgid "Port %s/%s blocked in zone '%s'"
+msgstr "Порт %s/%s заблокирован в зоне «%s»"
+
+#, c-format
+msgid "Port %s/%s unblocked"
+msgstr "Порт %s/%s разблокирован"
+
+#, c-format
+msgid "Service '%s' enabled"
+msgstr "Служба «%s» включена"
+
+#, c-format
+msgid "Service '%s' disabled"
+msgstr "Служба «%s» отключена"
+
+#. System Services search
+msgid "Search services..."
+msgstr "Поиск служб..."

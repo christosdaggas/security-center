@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.gnome.SecurityCenterCosmic</id>
+  <!-- ...existing code... -->
+  
+  <provides>
+    <binary>security-center-cosmic</binary>
+    <id>org.gnome.SecurityCenterCosmic.desktop</id>
+  </provides>
+  
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  
+  <!-- ...existing code... -->
+</component>

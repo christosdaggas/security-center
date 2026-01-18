@@ -1,0 +1,137 @@
+/* Security Center - Stylesheet */
+
+.stat-card {
+    padding: 16px;
+    border-radius: 12px;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.stat-label {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.zone-active {
+    background: alpha(@success_color, 0.1);
+    border-left: 3px solid @success_color;
+}
+
+.service-enabled {
+    color: @success_color;
+}
+
+.service-disabled {
+    color: @warning_color;
+}
+
+.risk-low {
+    color: @success_color;
+}
+
+.risk-medium {
+    color: @warning_color;
+}
+
+.risk-high {
+    color: @error_color;
+}
+
+/* ============================================================
+ * Theme Selector
+ * ============================================================ */
+
+.theme-selector {
+    border-radius: 50%;
+    border: 2px solid alpha(@window_fg_color, 0.3);
+    padding: 0;
+    margin: 0;
+}
+
+.theme-default {
+    background: conic-gradient(from 135deg, #ffffff 0deg, #ffffff 180deg, #1e1e1e 180deg, #1e1e1e 360deg);
+    background-size: 100% 100%;
+    background-origin: border-box;
+}
+
+.theme-light {
+    background-color: #ffffff;
+    border-color: alpha(@window_fg_color, 0.15);
+}
+
+.theme-dark {
+    background-color: #1e1e1e;
+}
+
+.theme-button {
+    padding: 4px;
+    min-width: 52px;
+    min-height: 52px;
+}
+
+.theme-button:checked {
+    background-color: alpha(@accent_color, 0.15);
+    border-radius: 50%;
+}
+
+.theme-button:checked .theme-selector {
+    border-color: @accent_color;
+    border-width: 3px;
+}
+
+.theme-check {
+    color: @accent_color;
+    background-color: @window_bg_color;
+    border-radius: 50%;
+    padding: 2px;
+    -gtk-icon-size: 16px;
+}
+
+/* ============================================================
+ * Menu Items
+ * ============================================================ */
+
+.menu-item {
+    border-radius: 6px;
+    margin: 1px 0;
+}
+
+.menu-item:hover {
+    background-color: alpha(@view_fg_color, 0.08);
+}
+
+popover.menu contents {
+    padding: 6px;
+}
+
+/* ============================================================
+ * Network Activity Chart
+ * ============================================================ */
+
+.live-indicator {
+    background-color: @error_color;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.legend-inbound {
+    background-color: rgba(53, 132, 228, 0.8);
+    border-radius: 2px;
+}
+
+.legend-outbound {
+    background-color: rgba(46, 194, 126, 0.8);
+    border-radius: 2px;
+}
+
+.network-graph {
+    border-radius: 8px;
+}

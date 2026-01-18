@@ -1,0 +1,555 @@
+# Hindi translation for security-center.
+# Copyright (C) 2026 Christos Daggas
+# This file is distributed under the same license as the security-center package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: security-center 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/chrisdaggas/security-center/issues\n"
+"POT-Creation-Date: 2026-01-07 00:00+0000\n"
+"PO-Revision-Date: 2026-01-07 00:00+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Hindi <hi@li.org>\n"
+"Language: hi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. Application name
+msgid "Security Center"
+msgstr "सुरक्षा केंद्र"
+
+#. Application description
+msgid "Security Center and Firewall management for Linux"
+msgstr "Linux के लिए सुरक्षा केंद्र और फ़ायरवॉल प्रबंधन"
+
+#. About dialog
+msgid "About Security Center"
+msgstr "सुरक्षा केंद्र के बारे में"
+
+msgid "Quit"
+msgstr "बंद करें"
+
+#. Main window - Status
+msgid "Protected"
+msgstr "सुरक्षित"
+
+msgid "Not Protected"
+msgstr "असुरक्षित"
+
+msgid "Firewall is active"
+msgstr "फ़ायरवॉल सक्रिय है"
+
+msgid "Firewall not running"
+msgstr "फ़ायरवॉल नहीं चल रहा"
+
+msgid "Firewall Active"
+msgstr "फ़ायरवॉल सक्रिय"
+
+msgid "Firewall Paused"
+msgstr "फ़ायरवॉल रुका हुआ"
+
+msgid "Your system is protected"
+msgstr "आपका सिस्टम सुरक्षित है"
+
+msgid "All traffic is blocked"
+msgstr "सभी ट्रैफ़िक अवरुद्ध है"
+
+msgid "Traffic Enabled"
+msgstr "ट्रैफ़िक सक्षम"
+
+msgid "Traffic Disabled"
+msgstr "ट्रैफ़िक अक्षम"
+
+#. Overview page
+msgid "Quick Stats"
+msgstr "त्वरित आँकड़े"
+
+msgid "Default Zone"
+msgstr "डिफ़ॉल्ट ज़ोन"
+
+msgid "Network Statistics"
+msgstr "नेटवर्क आँकड़े"
+
+msgid "System Statistics"
+msgstr "सिस्टम आँकड़े"
+
+msgid "Connections"
+msgstr "कनेक्शन"
+
+msgid "Traffic Ratio"
+msgstr "ट्रैफ़िक अनुपात"
+
+msgid "Disk Usage"
+msgstr "डिस्क उपयोग"
+
+msgid "Allowed"
+msgstr "अनुमत"
+
+msgid "Blocked"
+msgstr "अवरुद्ध"
+
+msgid "Dropped"
+msgstr "छोड़ा गया"
+
+msgid "Rejected"
+msgstr "अस्वीकृत"
+
+msgid "Forwarding"
+msgstr "अग्रेषण"
+
+#. Zones page
+msgid "Zones"
+msgstr "ज़ोन"
+
+msgid "Active Zones"
+msgstr "सक्रिय ज़ोन"
+
+msgid "Zones with assigned interfaces or sources"
+msgstr "असाइन किए गए इंटरफ़ेस या स्रोतों वाले ज़ोन"
+
+msgid "Available Zones"
+msgstr "उपलब्ध ज़ोन"
+
+msgid "Click 'Set Default' to change the default zone"
+msgstr "डिफ़ॉल्ट ज़ोन बदलने के लिए 'डिफ़ॉल्ट सेट करें' पर क्लिक करें"
+
+msgid "Default"
+msgstr "डिफ़ॉल्ट"
+
+msgid "Set Default"
+msgstr "डिफ़ॉल्ट सेट करें"
+
+msgid "Services"
+msgstr "सेवाएँ"
+
+msgid "Ports"
+msgstr "पोर्ट"
+
+msgid "Interfaces"
+msgstr "इंटरफ़ेस"
+
+msgid "Sources"
+msgstr "स्रोत"
+
+#. Ports page
+msgid "Add Port"
+msgstr "पोर्ट जोड़ें"
+
+msgid "Open Ports"
+msgstr "खुले पोर्ट"
+
+msgid "Custom ports opened in the firewall"
+msgstr "फ़ायरवॉल में खोले गए कस्टम पोर्ट"
+
+msgid "Blocked Ports"
+msgstr "अवरुद्ध पोर्ट"
+
+msgid "Ports explicitly blocked via rich rules"
+msgstr "रिच नियमों के माध्यम से स्पष्ट रूप से अवरुद्ध पोर्ट"
+
+msgid "Summary"
+msgstr "सारांश"
+
+msgid "No port rules configured"
+msgstr "कोई पोर्ट नियम कॉन्फ़िगर नहीं किया गया"
+
+msgid "Click 'Add Port' to create a rule"
+msgstr "नियम बनाने के लिए 'पोर्ट जोड़ें' पर क्लिक करें"
+
+msgid "TCP Ports"
+msgstr "TCP पोर्ट"
+
+msgid "UDP Ports"
+msgstr "UDP पोर्ट"
+
+msgid "No blocked ports"
+msgstr "कोई अवरुद्ध पोर्ट नहीं"
+
+msgid "Ports blocked via rich rules will appear here"
+msgstr "रिच नियमों के माध्यम से अवरुद्ध पोर्ट यहाँ दिखाई देंगे"
+
+msgid "Remove block rule"
+msgstr "अवरोध नियम हटाएँ"
+
+msgid "Delete this port rule"
+msgstr "इस पोर्ट नियम को हटाएँ"
+
+#. Add port dialog
+msgid "Add Port Rule"
+msgstr "पोर्ट नियम जोड़ें"
+
+msgid "Port Details"
+msgstr "पोर्ट विवरण"
+
+msgid "Name (optional)"
+msgstr "नाम (वैकल्पिक)"
+
+msgid "Port Number"
+msgstr "पोर्ट नंबर"
+
+msgid "Protocol"
+msgstr "प्रोटोकॉल"
+
+msgid "TCP"
+msgstr "TCP"
+
+msgid "UDP"
+msgstr "UDP"
+
+msgid "Both"
+msgstr "दोनों"
+
+msgid "Firewall Action"
+msgstr "फ़ायरवॉल कार्रवाई"
+
+msgid "How the firewall should handle incoming traffic on this port"
+msgstr "फ़ायरवॉल को इस पोर्ट पर आने वाले ट्रैफ़िक को कैसे संभालना चाहिए"
+
+msgid "Action"
+msgstr "कार्रवाई"
+
+msgid "Allow (Open Port)"
+msgstr "अनुमति दें (पोर्ट खोलें)"
+
+msgid "Block (Reject Connections)"
+msgstr "अवरुद्ध करें (कनेक्शन अस्वीकार करें)"
+
+msgid "Allow opens the port, Block rejects connections"
+msgstr "अनुमति पोर्ट खोलती है, अवरुद्ध कनेक्शन अस्वीकार करता है"
+
+msgid "Options"
+msgstr "विकल्प"
+
+msgid "Zone"
+msgstr "ज़ोन"
+
+msgid "Make Permanent"
+msgstr "स्थायी बनाएँ"
+
+msgid "Rule persists after reboot"
+msgstr "रीबूट के बाद नियम बना रहता है"
+
+msgid "Port must be between 1 and 65535"
+msgstr "पोर्ट 1 और 65535 के बीच होना चाहिए"
+
+#. Services page
+msgid "Authentication may be required to modify services"
+msgstr "सेवाओं को संशोधित करने के लिए प्रमाणीकरण आवश्यक हो सकता है"
+
+msgid "Enabled Services"
+msgstr "सक्षम सेवाएँ"
+
+msgid "Services allowing traffic through the firewall"
+msgstr "फ़ायरवॉल के माध्यम से ट्रैफ़िक की अनुमति देने वाली सेवाएँ"
+
+msgid "Common Services"
+msgstr "सामान्य सेवाएँ"
+
+msgid "Frequently used network services"
+msgstr "अक्सर उपयोग की जाने वाली नेटवर्क सेवाएँ"
+
+msgid "No services enabled"
+msgstr "कोई सेवा सक्षम नहीं"
+
+msgid "Enable services to allow specific traffic"
+msgstr "विशिष्ट ट्रैफ़िक की अनुमति देने के लिए सेवाएँ सक्षम करें"
+
+msgid "Disable service"
+msgstr "सेवा अक्षम करें"
+
+msgid "Enable service"
+msgstr "सेवा सक्षम करें"
+
+#. Network Exposure page
+msgid "Network Exposure"
+msgstr "नेटवर्क एक्सपोज़र"
+
+msgid "Monitor listening ports and their firewall status"
+msgstr "सुनने वाले पोर्ट और उनकी फ़ायरवॉल स्थिति की निगरानी करें"
+
+msgid "Refresh"
+msgstr "रीफ़्रेश"
+
+msgid "Exposed to Network"
+msgstr "नेटवर्क में उजागर"
+
+msgid "These ports are listening on all interfaces"
+msgstr "ये पोर्ट सभी इंटरफ़ेस पर सुन रहे हैं"
+
+msgid "Local Only"
+msgstr "केवल स्थानीय"
+
+msgid "These ports are only accessible locally"
+msgstr "ये पोर्ट केवल स्थानीय रूप से उपलब्ध हैं"
+
+msgid "All Listening Ports"
+msgstr "सभी सुनने वाले पोर्ट"
+
+msgid "Scan to see listening ports"
+msgstr "सुनने वाले पोर्ट देखने के लिए स्कैन करें"
+
+msgid "Total Ports"
+msgstr "कुल पोर्ट"
+
+msgid "Exposed"
+msgstr "उजागर"
+
+msgid "Warning"
+msgstr "चेतावनी"
+
+msgid "Listening Address"
+msgstr "सुनने का पता"
+
+msgid "Process"
+msgstr "प्रक्रिया"
+
+msgid "Unknown Process"
+msgstr "अज्ञात प्रक्रिया"
+
+msgid "Actions"
+msgstr "कार्रवाइयाँ"
+
+msgid "Stop Service"
+msgstr "सेवा रोकें"
+
+msgid "Stop the service using this port"
+msgstr "इस पोर्ट का उपयोग करने वाली सेवा रोकें"
+
+msgid "Block Port"
+msgstr "पोर्ट अवरुद्ध करें"
+
+msgid "Add a firewall rule to block this port"
+msgstr "इस पोर्ट को अवरुद्ध करने के लिए फ़ायरवॉल नियम जोड़ें"
+
+#. System Services page
+msgid "System Services"
+msgstr "सिस्टम सेवाएँ"
+
+msgid "Manage system services and daemons"
+msgstr "सिस्टम सेवाओं और डेमॉन को प्रबंधित करें"
+
+msgid "Refresh services list"
+msgstr "सेवाओं की सूची रीफ़्रेश करें"
+
+msgid "Running Services"
+msgstr "चल रही सेवाएँ"
+
+msgid "Services that are currently active"
+msgstr "वर्तमान में सक्रिय सेवाएँ"
+
+msgid "Stopped Services"
+msgstr "रुकी हुई सेवाएँ"
+
+msgid "Services that are not running"
+msgstr "जो सेवाएँ नहीं चल रही हैं"
+
+msgid "Failed Services"
+msgstr "विफल सेवाएँ"
+
+msgid "Services that have failed"
+msgstr "जो सेवाएँ विफल हो गई हैं"
+
+msgid "Stop service"
+msgstr "सेवा रोकें"
+
+msgid "Start service"
+msgstr "सेवा शुरू करें"
+
+msgid "Restart service"
+msgstr "सेवा पुनः आरंभ करें"
+
+msgid "Disable (won't start on boot)"
+msgstr "अक्षम करें (बूट पर शुरू नहीं होगी)"
+
+msgid "Enable (start on boot)"
+msgstr "सक्षम करें (बूट पर शुरू होगी)"
+
+#. Quick Actions page
+msgid "Quick Actions"
+msgstr "त्वरित कार्रवाइयाँ"
+
+msgid "One-click administrative operations"
+msgstr "एक-क्लिक प्रशासनिक संचालन"
+
+msgid "These actions may affect system security and stability"
+msgstr "ये कार्रवाइयाँ सिस्टम सुरक्षा और स्थिरता को प्रभावित कर सकती हैं"
+
+msgid "Dismiss"
+msgstr "खारिज करें"
+
+msgid "Firewall"
+msgstr "फ़ायरवॉल"
+
+msgid "Manage firewalld service and rules"
+msgstr "firewalld सेवा और नियमों को प्रबंधित करें"
+
+msgid "Network"
+msgstr "नेटवर्क"
+
+msgid "Network service management"
+msgstr "नेटवर्क सेवा प्रबंधन"
+
+msgid "Manage system services"
+msgstr "सिस्टम सेवाओं को प्रबंधित करें"
+
+msgid "Ready to execute actions"
+msgstr "कार्रवाइयाँ निष्पादित करने के लिए तैयार"
+
+msgid "Execute"
+msgstr "निष्पादित करें"
+
+msgid "Confirm Action"
+msgstr "कार्रवाई की पुष्टि करें"
+
+msgid "Running..."
+msgstr "चल रहा है..."
+
+msgid "Executing..."
+msgstr "निष्पादित हो रहा है..."
+
+#. Preferences
+msgid "Preferences"
+msgstr "प्राथमिकताएँ"
+
+msgid "Appearance"
+msgstr "दिखावट"
+
+msgid "Theme"
+msgstr "थीम"
+
+msgid "Choose the application color scheme"
+msgstr "एप्लिकेशन रंग योजना चुनें"
+
+msgid "Dark"
+msgstr "डार्क"
+
+msgid "Light"
+msgstr "लाइट"
+
+msgid "System"
+msgstr "सिस्टम"
+
+msgid "Dark theme"
+msgstr "डार्क थीम"
+
+msgid "Light theme"
+msgstr "लाइट थीम"
+
+msgid "Follow system theme"
+msgstr "सिस्टम थीम का पालन करें"
+
+#. Tooltips
+msgid "Refresh (Ctrl+R)"
+msgstr "रीफ़्रेश (Ctrl+R)"
+
+#. Dialog buttons
+msgid "Cancel"
+msgstr "रद्द करें"
+
+msgid "Add"
+msgstr "जोड़ें"
+
+#. Error messages
+msgid "Error"
+msgstr "त्रुटि"
+
+msgid "Failed to connect to firewalld"
+msgstr "firewalld से कनेक्ट करने में विफल"
+
+msgid "Failed to add port"
+msgstr "पोर्ट जोड़ने में विफल"
+
+msgid "Failed to block port"
+msgstr "पोर्ट अवरुद्ध करने में विफल"
+
+msgid "Failed to delete port"
+msgstr "पोर्ट हटाने में विफल"
+
+msgid "Failed to set default zone"
+msgstr "डिफ़ॉल्ट ज़ोन सेट करने में विफल"
+
+msgid "Failed to enable service"
+msgstr "सेवा सक्षम करने में विफल"
+
+msgid "Failed to disable service"
+msgstr "सेवा अक्षम करने में विफल"
+
+msgid "Failed to connect to systemd"
+msgstr "systemd से कनेक्ट करने में विफल"
+
+msgid "Failed to execute action"
+msgstr "कार्रवाई निष्पादित करने में विफल"
+
+msgid "Failed to scan network"
+msgstr "नेटवर्क स्कैन करने में विफल"
+
+msgid "Task failed"
+msgstr "कार्य विफल"
+
+#. Success messages
+msgid "Port opened (allowed)"
+msgstr "पोर्ट खुला (अनुमत)"
+
+msgid "Port blocked (rejected)"
+msgstr "पोर्ट अवरुद्ध (अस्वीकृत)"
+
+msgid "Firewall configuration reloaded"
+msgstr "फ़ायरवॉल कॉन्फ़िगरेशन पुनः लोड किया गया"
+
+msgid "Firewall enabled"
+msgstr "फ़ायरवॉल सक्षम"
+
+msgid "Firewall disabled (panic mode)"
+msgstr "फ़ायरवॉल अक्षम (पैनिक मोड)"
+
+#. Status format strings
+#, c-format
+msgid "%d services currently active"
+msgstr "%d सेवाएँ वर्तमान में सक्रिय"
+
+#, c-format
+msgid "%d services not running"
+msgstr "%d सेवाएँ नहीं चल रही"
+
+#, c-format
+msgid "%d services have failed"
+msgstr "%d सेवाएँ विफल हो गई हैं"
+
+#, c-format
+msgid "%d allowed, %d blocked"
+msgstr "%d अनुमत, %d अवरुद्ध"
+
+#, c-format
+msgid "Zone: %s"
+msgstr "ज़ोन: %s"
+
+#, c-format
+msgid "Default zone set to '%s'"
+msgstr "डिफ़ॉल्ट ज़ोन '%s' पर सेट किया गया"
+
+#, c-format
+msgid "Port %s/%s deleted"
+msgstr "पोर्ट %s/%s हटाया गया"
+
+#, c-format
+msgid "Port %s/%s blocked in zone '%s'"
+msgstr "पोर्ट %s/%s ज़ोन '%s' में अवरुद्ध"
+
+#, c-format
+msgid "Port %s/%s unblocked"
+msgstr "पोर्ट %s/%s अनवरुद्ध"
+
+#, c-format
+msgid "Service '%s' enabled"
+msgstr "सेवा '%s' सक्षम"
+
+#, c-format
+msgid "Service '%s' disabled"
+msgstr "सेवा '%s' अक्षम"
+
+#. System Services search
+msgid "Search services..."
+msgstr "सेवाएँ खोजें..."

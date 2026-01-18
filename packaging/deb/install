@@ -1,0 +1,4 @@
+target/release/security-center usr/bin
+data/com.chrisdaggas.security-center.desktop usr/share/applications
+data/com.chrisdaggas.security-center.metainfo.xml usr/share/metainfo
+data/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg usr/share/icons/hicolor/scalable/apps

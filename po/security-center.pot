@@ -1,0 +1,551 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2026 Christos Daggas
+# This file is distributed under the same license as the security-center package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: security-center 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/christosdaggas/security-center/issues\n"
+"POT-Creation-Date: 2026-01-07 00:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. Application name
+msgid "Security Center"
+msgstr ""
+
+#. Application description
+msgid "Security Center and Firewall management for Linux"
+msgstr ""
+
+#. About dialog
+msgid "About Security Center"
+msgstr ""
+
+msgid "Quit"
+msgstr ""
+
+#. Main window - Status
+msgid "Protected"
+msgstr ""
+
+msgid "Not Protected"
+msgstr ""
+
+msgid "Firewall is active"
+msgstr ""
+
+msgid "Firewall not running"
+msgstr ""
+
+msgid "Firewall Active"
+msgstr ""
+
+msgid "Firewall Paused"
+msgstr ""
+
+msgid "Your system is protected"
+msgstr ""
+
+msgid "All traffic is blocked"
+msgstr ""
+
+msgid "Traffic Enabled"
+msgstr ""
+
+msgid "Traffic Disabled"
+msgstr ""
+
+#. Overview page
+msgid "Quick Stats"
+msgstr ""
+
+msgid "Default Zone"
+msgstr ""
+
+msgid "Network Statistics"
+msgstr ""
+
+msgid "System Statistics"
+msgstr ""
+
+msgid "Connections"
+msgstr ""
+
+msgid "Traffic Ratio"
+msgstr ""
+
+msgid "Disk Usage"
+msgstr ""
+
+msgid "Allowed"
+msgstr ""
+
+msgid "Blocked"
+msgstr ""
+
+msgid "Dropped"
+msgstr ""
+
+msgid "Rejected"
+msgstr ""
+
+msgid "Forwarding"
+msgstr ""
+
+#. Zones page
+msgid "Zones"
+msgstr ""
+
+msgid "Active Zones"
+msgstr ""
+
+msgid "Zones with assigned interfaces or sources"
+msgstr ""
+
+msgid "Available Zones"
+msgstr ""
+
+msgid "Click 'Set Default' to change the default zone"
+msgstr ""
+
+msgid "Default"
+msgstr ""
+
+msgid "Set Default"
+msgstr ""
+
+msgid "Services"
+msgstr ""
+
+msgid "Ports"
+msgstr ""
+
+msgid "Interfaces"
+msgstr ""
+
+msgid "Sources"
+msgstr ""
+
+#. Ports page
+msgid "Add Port"
+msgstr ""
+
+msgid "Open Ports"
+msgstr ""
+
+msgid "Custom ports opened in the firewall"
+msgstr ""
+
+msgid "Blocked Ports"
+msgstr ""
+
+msgid "Ports explicitly blocked via rich rules"
+msgstr ""
+
+msgid "Summary"
+msgstr ""
+
+msgid "No port rules configured"
+msgstr ""
+
+msgid "Click 'Add Port' to create a rule"
+msgstr ""
+
+msgid "TCP Ports"
+msgstr ""
+
+msgid "UDP Ports"
+msgstr ""
+
+msgid "No blocked ports"
+msgstr ""
+
+msgid "Ports blocked via rich rules will appear here"
+msgstr ""
+
+msgid "Remove block rule"
+msgstr ""
+
+msgid "Delete this port rule"
+msgstr ""
+
+#. Add port dialog
+msgid "Add Port Rule"
+msgstr ""
+
+msgid "Port Details"
+msgstr ""
+
+msgid "Name (optional)"
+msgstr ""
+
+msgid "Port Number"
+msgstr ""
+
+msgid "Protocol"
+msgstr ""
+
+msgid "TCP"
+msgstr ""
+
+msgid "UDP"
+msgstr ""
+
+msgid "Both"
+msgstr ""
+
+msgid "Firewall Action"
+msgstr ""
+
+msgid "How the firewall should handle incoming traffic on this port"
+msgstr ""
+
+msgid "Action"
+msgstr ""
+
+msgid "Allow (Open Port)"
+msgstr ""
+
+msgid "Block (Reject Connections)"
+msgstr ""
+
+msgid "Allow opens the port, Block rejects connections"
+msgstr ""
+
+msgid "Options"
+msgstr ""
+
+msgid "Zone"
+msgstr ""
+
+msgid "Make Permanent"
+msgstr ""
+
+msgid "Rule persists after reboot"
+msgstr ""
+
+msgid "Port must be between 1 and 65535"
+msgstr ""
+
+#. Services page
+msgid "Authentication may be required to modify services"
+msgstr ""
+
+msgid "Enabled Services"
+msgstr ""
+
+msgid "Services allowing traffic through the firewall"
+msgstr ""
+
+msgid "Common Services"
+msgstr ""
+
+msgid "Frequently used network services"
+msgstr ""
+
+msgid "No services enabled"
+msgstr ""
+
+msgid "Enable services to allow specific traffic"
+msgstr ""
+
+msgid "Disable service"
+msgstr ""
+
+msgid "Enable service"
+msgstr ""
+
+#. Network Exposure page
+msgid "Network Exposure"
+msgstr ""
+
+msgid "Monitor listening ports and their firewall status"
+msgstr ""
+
+msgid "Refresh"
+msgstr ""
+
+msgid "Exposed to Network"
+msgstr ""
+
+msgid "These ports are listening on all interfaces"
+msgstr ""
+
+msgid "Local Only"
+msgstr ""
+
+msgid "These ports are only accessible locally"
+msgstr ""
+
+msgid "All Listening Ports"
+msgstr ""
+
+msgid "Scan to see listening ports"
+msgstr ""
+
+msgid "Total Ports"
+msgstr ""
+
+msgid "Exposed"
+msgstr ""
+
+msgid "Warning"
+msgstr ""
+
+msgid "Listening Address"
+msgstr ""
+
+msgid "Process"
+msgstr ""
+
+msgid "Unknown Process"
+msgstr ""
+
+msgid "Actions"
+msgstr ""
+
+msgid "Stop Service"
+msgstr ""
+
+msgid "Stop the service using this port"
+msgstr ""
+
+msgid "Block Port"
+msgstr ""
+
+msgid "Add a firewall rule to block this port"
+msgstr ""
+
+#. System Services page
+msgid "System Services"
+msgstr ""
+
+msgid "Manage system services and daemons"
+msgstr ""
+
+msgid "Refresh services list"
+msgstr ""
+
+msgid "Running Services"
+msgstr ""
+
+msgid "Services that are currently active"
+msgstr ""
+
+msgid "Stopped Services"
+msgstr ""
+
+msgid "Services that are not running"
+msgstr ""
+
+msgid "Failed Services"
+msgstr ""
+
+msgid "Services that have failed"
+msgstr ""
+
+msgid "Stop service"
+msgstr ""
+
+msgid "Start service"
+msgstr ""
+
+msgid "Restart service"
+msgstr ""
+
+msgid "Disable (won't start on boot)"
+msgstr ""
+
+msgid "Enable (start on boot)"
+msgstr ""
+
+#. Quick Actions page
+msgid "Quick Actions"
+msgstr ""
+
+msgid "One-click administrative operations"
+msgstr ""
+
+msgid "These actions may affect system security and stability"
+msgstr ""
+
+msgid "Dismiss"
+msgstr ""
+
+msgid "Firewall"
+msgstr ""
+
+msgid "Manage firewalld service and rules"
+msgstr ""
+
+msgid "Network"
+msgstr ""
+
+msgid "Network service management"
+msgstr ""
+
+msgid "Manage system services"
+msgstr ""
+
+msgid "Ready to execute actions"
+msgstr ""
+
+msgid "Execute"
+msgstr ""
+
+msgid "Confirm Action"
+msgstr ""
+
+msgid "Running..."
+msgstr ""
+
+msgid "Executing..."
+msgstr ""
+
+#. Preferences
+msgid "Preferences"
+msgstr ""
+
+msgid "Appearance"
+msgstr ""
+
+msgid "Theme"
+msgstr ""
+
+msgid "Choose the application color scheme"
+msgstr ""
+
+msgid "Dark"
+msgstr ""
+
+msgid "Light"
+msgstr ""
+
+msgid "System"
+msgstr ""
+
+msgid "Dark theme"
+msgstr ""
+
+msgid "Light theme"
+msgstr ""
+
+msgid "Follow system theme"
+msgstr ""
+
+#. Tooltips
+msgid "Refresh (Ctrl+R)"
+msgstr ""
+
+#. Dialog buttons
+msgid "Cancel"
+msgstr ""
+
+msgid "Add"
+msgstr ""
+
+#. Error messages
+msgid "Error"
+msgstr ""
+
+msgid "Failed to connect to firewalld"
+msgstr ""
+
+msgid "Failed to add port"
+msgstr ""
+
+msgid "Failed to block port"
+msgstr ""
+
+msgid "Failed to delete port"
+msgstr ""
+
+msgid "Failed to set default zone"
+msgstr ""
+
+msgid "Failed to enable service"
+msgstr ""
+
+msgid "Failed to disable service"
+msgstr ""
+
+msgid "Failed to connect to systemd"
+msgstr ""
+
+msgid "Failed to execute action"
+msgstr ""
+
+msgid "Failed to scan network"
+msgstr ""
+
+msgid "Task failed"
+msgstr ""
+
+#. Success messages
+msgid "Port opened (allowed)"
+msgstr ""
+
+msgid "Port blocked (rejected)"
+msgstr ""
+
+msgid "Firewall configuration reloaded"
+msgstr ""
+
+msgid "Firewall enabled"
+msgstr ""
+
+msgid "Firewall disabled (panic mode)"
+msgstr ""
+
+#. Status format strings
+#, c-format
+msgid "%d services currently active"
+msgstr ""
+
+#, c-format
+msgid "%d services not running"
+msgstr ""
+
+#, c-format
+msgid "%d services have failed"
+msgstr ""
+
+#, c-format
+msgid "%d allowed, %d blocked"
+msgstr ""
+
+#, c-format
+msgid "Zone: %s"
+msgstr ""
+
+#, c-format
+msgid "Default zone set to '%s'"
+msgstr ""
+
+#, c-format
+msgid "Port %s/%s deleted"
+msgstr ""
+
+#, c-format
+msgid "Port %s/%s blocked in zone '%s'"
+msgstr ""
+
+#, c-format
+msgid "Port %s/%s unblocked"
+msgstr ""
+
+#, c-format
+msgid "Service '%s' enabled"
+msgstr ""
+
+#, c-format
+msgid "Service '%s' disabled"
+msgstr ""

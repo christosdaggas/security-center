@@ -1,0 +1,555 @@
+# Spanish translation for security-center.
+# Copyright (C) 2026 Christos Daggas
+# This file is distributed under the same license as the security-center package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: security-center 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/christosdaggas/security-center/issues\n"
+"POT-Creation-Date: 2026-01-07 00:00+0000\n"
+"PO-Revision-Date: 2026-01-07 00:00+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Spanish <es@li.org>\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. Application name
+msgid "Security Center"
+msgstr "Centro de Seguridad"
+
+#. Application description
+msgid "Security Center and Firewall management for Linux"
+msgstr "Centro de Seguridad y gestión de cortafuegos para Linux"
+
+#. About dialog
+msgid "About Security Center"
+msgstr "Acerca del Centro de Seguridad"
+
+msgid "Quit"
+msgstr "Salir"
+
+#. Main window - Status
+msgid "Protected"
+msgstr "Protegido"
+
+msgid "Not Protected"
+msgstr "No protegido"
+
+msgid "Firewall is active"
+msgstr "El cortafuegos está activo"
+
+msgid "Firewall not running"
+msgstr "El cortafuegos no se está ejecutando"
+
+msgid "Firewall Active"
+msgstr "Cortafuegos activo"
+
+msgid "Firewall Paused"
+msgstr "Cortafuegos pausado"
+
+msgid "Your system is protected"
+msgstr "Su sistema está protegido"
+
+msgid "All traffic is blocked"
+msgstr "Todo el tráfico está bloqueado"
+
+msgid "Traffic Enabled"
+msgstr "Tráfico habilitado"
+
+msgid "Traffic Disabled"
+msgstr "Tráfico deshabilitado"
+
+#. Overview page
+msgid "Quick Stats"
+msgstr "Estadísticas rápidas"
+
+msgid "Default Zone"
+msgstr "Zona predeterminada"
+
+msgid "Network Statistics"
+msgstr "Estadísticas de red"
+
+msgid "System Statistics"
+msgstr "Estadísticas del sistema"
+
+msgid "Connections"
+msgstr "Conexiones"
+
+msgid "Traffic Ratio"
+msgstr "Relación de tráfico"
+
+msgid "Disk Usage"
+msgstr "Uso del disco"
+
+msgid "Allowed"
+msgstr "Permitido"
+
+msgid "Blocked"
+msgstr "Bloqueado"
+
+msgid "Dropped"
+msgstr "Descartado"
+
+msgid "Rejected"
+msgstr "Rechazado"
+
+msgid "Forwarding"
+msgstr "Reenvío"
+
+#. Zones page
+msgid "Zones"
+msgstr "Zonas"
+
+msgid "Active Zones"
+msgstr "Zonas activas"
+
+msgid "Zones with assigned interfaces or sources"
+msgstr "Zonas con interfaces o fuentes asignadas"
+
+msgid "Available Zones"
+msgstr "Zonas disponibles"
+
+msgid "Click 'Set Default' to change the default zone"
+msgstr "Haga clic en 'Establecer como predeterminado' para cambiar la zona predeterminada"
+
+msgid "Default"
+msgstr "Predeterminado"
+
+msgid "Set Default"
+msgstr "Establecer como predeterminado"
+
+msgid "Services"
+msgstr "Servicios"
+
+msgid "Ports"
+msgstr "Puertos"
+
+msgid "Interfaces"
+msgstr "Interfaces"
+
+msgid "Sources"
+msgstr "Fuentes"
+
+#. Ports page
+msgid "Add Port"
+msgstr "Añadir puerto"
+
+msgid "Open Ports"
+msgstr "Puertos abiertos"
+
+msgid "Custom ports opened in the firewall"
+msgstr "Puertos personalizados abiertos en el cortafuegos"
+
+msgid "Blocked Ports"
+msgstr "Puertos bloqueados"
+
+msgid "Ports explicitly blocked via rich rules"
+msgstr "Puertos bloqueados explícitamente mediante reglas enriquecidas"
+
+msgid "Summary"
+msgstr "Resumen"
+
+msgid "No port rules configured"
+msgstr "No hay reglas de puerto configuradas"
+
+msgid "Click 'Add Port' to create a rule"
+msgstr "Haga clic en 'Añadir puerto' para crear una regla"
+
+msgid "TCP Ports"
+msgstr "Puertos TCP"
+
+msgid "UDP Ports"
+msgstr "Puertos UDP"
+
+msgid "No blocked ports"
+msgstr "No hay puertos bloqueados"
+
+msgid "Ports blocked via rich rules will appear here"
+msgstr "Los puertos bloqueados mediante reglas enriquecidas aparecerán aquí"
+
+msgid "Remove block rule"
+msgstr "Eliminar regla de bloqueo"
+
+msgid "Delete this port rule"
+msgstr "Eliminar esta regla de puerto"
+
+#. Add port dialog
+msgid "Add Port Rule"
+msgstr "Añadir regla de puerto"
+
+msgid "Port Details"
+msgstr "Detalles del puerto"
+
+msgid "Name (optional)"
+msgstr "Nombre (opcional)"
+
+msgid "Port Number"
+msgstr "Número de puerto"
+
+msgid "Protocol"
+msgstr "Protocollo"
+
+msgid "TCP"
+msgstr "TCP"
+
+msgid "UDP"
+msgstr "UDP"
+
+msgid "Both"
+msgstr "Ambos"
+
+msgid "Firewall Action"
+msgstr "Acción del cortafuegos"
+
+msgid "How the firewall should handle incoming traffic on this port"
+msgstr "Cómo debe manejar el cortafuegos el tráfico entrante en este puerto"
+
+msgid "Action"
+msgstr "Acción"
+
+msgid "Allow (Open Port)"
+msgstr "Permitir (Abrir puerto)"
+
+msgid "Block (Reject Connections)"
+msgstr "Bloquear (Rechazar conexiones)"
+
+msgid "Allow opens the port, Block rejects connections"
+msgstr "'Permitir' abre el puerto, 'Bloquear' rechaza las conexiones"
+
+msgid "Options"
+msgstr "Opciones"
+
+msgid "Zone"
+msgstr "Zona"
+
+msgid "Make Permanent"
+msgstr "Hacer permanente"
+
+msgid "Rule persists after reboot"
+msgstr "La regla persiste después de reiniciar"
+
+msgid "Port must be between 1 and 65535"
+msgstr "El puerto debe estar entre 1 y 65535"
+
+#. Services page
+msgid "Authentication may be required to modify services"
+msgstr "Puede ser necesaria la autenticación para modificar los servicios"
+
+msgid "Enabled Services"
+msgstr "Servicios habilitados"
+
+msgid "Services allowing traffic through the firewall"
+msgstr "Servicios que permiten el tráfico a través del cortafuegos"
+
+msgid "Common Services"
+msgstr "Servicios comunes"
+
+msgid "Frequently used network services"
+msgstr "Servicios de red utilizados frecuentemente"
+
+msgid "No services enabled"
+msgstr "Ningún servicio habilitado"
+
+msgid "Enable services to allow specific traffic"
+msgstr "Habilite servicios para permitir tráfico específico"
+
+msgid "Disable service"
+msgstr "Deshabilitar servicio"
+
+msgid "Enable service"
+msgstr "Habilitar servicio"
+
+#. Network Exposure page
+msgid "Network Exposure"
+msgstr "Exposición de red"
+
+msgid "Monitor listening ports and their firewall status"
+msgstr "Monitorear puertos de escucha y su estado en el cortafuegos"
+
+msgid "Refresh"
+msgstr "Actualizar"
+
+msgid "Exposed to Network"
+msgstr "Expuesto a la red"
+
+msgid "These ports are listening on all interfaces"
+msgstr "Estos puertos están escuchando en todas las interfaces"
+
+msgid "Local Only"
+msgstr "Solo local"
+
+msgid "These ports are only accessible locally"
+msgstr "Estos puertos solo son accesibles localmente"
+
+msgid "All Listening Ports"
+msgstr "Todos los puertos de escucha"
+
+msgid "Scan to see listening ports"
+msgstr "Escanear para ver los puertos de escucha"
+
+msgid "Total Ports"
+msgstr "Total de puertos"
+
+msgid "Exposed"
+msgstr "Expuestos"
+
+msgid "Warning"
+msgstr "Advertencia"
+
+msgid "Listening Address"
+msgstr "Dirección de escucha"
+
+msgid "Process"
+msgstr "Proceso"
+
+msgid "Unknown Process"
+msgstr "Proceso desconocido"
+
+msgid "Actions"
+msgstr "Acciones"
+
+msgid "Stop Service"
+msgstr "Detener servicio"
+
+msgid "Stop the service using this port"
+msgstr "Detener el servicio que utiliza este puerto"
+
+msgid "Block Port"
+msgstr "Bloquear puerto"
+
+msgid "Add a firewall rule to block this port"
+msgstr "Añadir una regla de cortafuegos para bloquear este puerto"
+
+#. System Services page
+msgid "System Services"
+msgstr "Servicios del sistema"
+
+msgid "Manage system services and daemons"
+msgstr "Administrar servicios y demonios del sistema"
+
+msgid "Refresh services list"
+msgstr "Actualizar lista de servicios"
+
+msgid "Running Services"
+msgstr "Servicios en ejecución"
+
+msgid "Services that are currently active"
+msgstr "Servicios que están actualmente activos"
+
+msgid "Stopped Services"
+msgstr "Servicios detenidos"
+
+msgid "Services that are not running"
+msgstr "Servicios que no se están ejecutando"
+
+msgid "Failed Services"
+msgstr "Servicios fallidos"
+
+msgid "Services that have failed"
+msgstr "Servicios que han fallado"
+
+msgid "Stop service"
+msgstr "Detener servicio"
+
+msgid "Start service"
+msgstr "Iniciar servicio"
+
+msgid "Restart service"
+msgstr "Reiniciar servicio"
+
+msgid "Disable (won't start on boot)"
+msgstr "Deshabilitar (no iniciar al arranque)"
+
+msgid "Enable (start on boot)"
+msgstr "Habilitar (iniciar al arranque)"
+
+#. Quick Actions page
+msgid "Quick Actions"
+msgstr "Acciones rápidas"
+
+msgid "One-click administrative operations"
+msgstr "Operaciones administrativas con un clic"
+
+msgid "These actions may affect system security and stability"
+msgstr "Estas acciones pueden afectar la seguridad y estabilidad del sistema"
+
+msgid "Dismiss"
+msgstr "Descartar"
+
+msgid "Firewall"
+msgstr "Cortafuegos"
+
+msgid "Manage firewalld service and rules"
+msgstr "Administrar el servicio firewalld y las reglas"
+
+msgid "Network"
+msgstr "Red"
+
+msgid "Network service management"
+msgstr "Gestión de servicios de red"
+
+msgid "Manage system services"
+msgstr "Administrar servicios del sistema"
+
+msgid "Ready to execute actions"
+msgstr "Listo para ejecutar acciones"
+
+msgid "Execute"
+msgstr "Ejecutar"
+
+msgid "Confirm Action"
+msgstr "Confirmar acción"
+
+msgid "Running..."
+msgstr "Ejecutando..."
+
+msgid "Executing..."
+msgstr "Ejecutando..."
+
+#. Preferences
+msgid "Preferences"
+msgstr "Preferencias"
+
+msgid "Appearance"
+msgstr "Apariencia"
+
+msgid "Theme"
+msgstr "Tema"
+
+msgid "Choose the application color scheme"
+msgstr "Elegir el esquema de color de la aplicación"
+
+msgid "Dark"
+msgstr "Oscuro"
+
+msgid "Light"
+msgstr "Claro"
+
+msgid "System"
+msgstr "Sistema"
+
+msgid "Dark theme"
+msgstr "Tema oscuro"
+
+msgid "Light theme"
+msgstr "Tema claro"
+
+msgid "Follow system theme"
+msgstr "Seguir tema del sistema"
+
+#. Tooltips
+msgid "Refresh (Ctrl+R)"
+msgstr "Actualizar (Ctrl+R)"
+
+#. Dialog buttons
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Add"
+msgstr "Añadir"
+
+#. Error messages
+msgid "Error"
+msgstr "Error"
+
+msgid "Failed to connect to firewalld"
+msgstr "Fallo al conectar con firewalld"
+
+msgid "Failed to add port"
+msgstr "Fallo al añadir puerto"
+
+msgid "Failed to block port"
+msgstr "Fallo al bloquear puerto"
+
+msgid "Failed to delete port"
+msgstr "Fallo al eliminar puerto"
+
+msgid "Failed to set default zone"
+msgstr "Fallo al establecer la zona predeterminada"
+
+msgid "Failed to enable service"
+msgstr "Fallo al habilitar el servicio"
+
+msgid "Failed to disable service"
+msgstr "Fallo al deshabilitar el servicio"
+
+msgid "Failed to connect to systemd"
+msgstr "Fallo al conectar con systemd"
+
+msgid "Failed to execute action"
+msgstr "Fallo al ejecutar la acción"
+
+msgid "Failed to scan network"
+msgstr "Fallo al escanear la red"
+
+msgid "Task failed"
+msgstr "La tarea falló"
+
+#. Success messages
+msgid "Port opened (allowed)"
+msgstr "Puerto abierto (permitido)"
+
+msgid "Port blocked (rejected)"
+msgstr "Puerto bloqueado (rechazado)"
+
+msgid "Firewall configuration reloaded"
+msgstr "Configuración del cortafuegos recargada"
+
+msgid "Firewall enabled"
+msgstr "Cortafuegos habilitado"
+
+msgid "Firewall disabled (panic mode)"
+msgstr "Cortafuegos deshabilitado (modo pánico)"
+
+#. Status format strings
+#, c-format
+msgid "%d services currently active"
+msgstr "%d servicios actualmente activos"
+
+#, c-format
+msgid "%d services not running"
+msgstr "%d servicios no se están ejecutando"
+
+#, c-format
+msgid "%d services have failed"
+msgstr "%d servicios han fallado"
+
+#, c-format
+msgid "%d allowed, %d blocked"
+msgstr "%d permitidos, %d bloqueados"
+
+#, c-format
+msgid "Zone: %s"
+msgstr "Zona: %s"
+
+#, c-format
+msgid "Default zone set to '%s'"
+msgstr "Zona predeterminada establecida a '%s'"
+
+#, c-format
+msgid "Port %s/%s deleted"
+msgstr "Puerto %s/%s eliminado"
+
+#, c-format
+msgid "Port %s/%s blocked in zone '%s'"
+msgstr "Puerto %s/%s bloqueado en la zona '%s'"
+
+#, c-format
+msgid "Port %s/%s unblocked"
+msgstr "Puerto %s/%s desbloqueado"
+
+#, c-format
+msgid "Service '%s' enabled"
+msgstr "Servicio '%s' habilitado"
+
+#, c-format
+msgid "Service '%s' disabled"
+msgstr "Servicio '%s' deshabilitado"
+
+#. System Services search
+msgid "Search services..."
+msgstr "Buscar servicios..."

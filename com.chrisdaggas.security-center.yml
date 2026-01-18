@@ -1,0 +1,57 @@
+app-id: com.chrisdaggas.security-center
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: security-center
+
+finish-args:
+  # Display access
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  
+  # Network access (for network introspection)
+  - --share=network
+  
+  # D-Bus access for firewalld and systemd
+  - --system-talk-name=org.fedoraproject.FirewallD1
+  - --system-talk-name=org.freedesktop.systemd1
+  
+  # Access to /proc for network statistics (read-only)
+  - --filesystem=host-os:ro
+  
+  # Configuration files
+  - --filesystem=xdg-config/security-center:create
+  - --filesystem=xdg-data/security-center:create
+  
+  # Desktop integration
+  - --talk-name=org.freedesktop.portal.Desktop
+  - --talk-name=org.freedesktop.Notifications
+  
+  # PolicyKit for privileged operations
+  - --talk-name=org.freedesktop.PolicyKit1
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/security-center/cargo
+    RUST_BACKTRACE: '1'
+
+modules:
+  - name: security-center
+    buildsystem: simple
+    build-commands:
+      - cargo --offline fetch --manifest-path Cargo.toml --verbose
+      - cargo --offline build --release --verbose
+      - install -Dm755 target/release/security-center -t /app/bin/
+      - install -Dm644 data/com.chrisdaggas.security-center.desktop -t /app/share/applications/
+      - install -Dm644 data/com.chrisdaggas.security-center.metainfo.xml -t /app/share/metainfo/
+      - install -Dm644 data/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg -t /app/share/icons/hicolor/scalable/apps/
+      - install -Dm644 data/icons/hicolor/symbolic/apps/com.chrisdaggas.security-center-symbolic.svg -t /app/share/icons/hicolor/symbolic/apps/ || true
+    sources:
+      - type: dir
+        path: .
+      - cargo-sources.json

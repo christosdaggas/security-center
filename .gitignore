@@ -1,0 +1,53 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo lock - keep for application, remove for libraries
+# Uncomment the next line if this is a library
+# Cargo.lock
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Distribution/packaging output
+/dist/
+
+# AppImage build files
+*.AppImage
+appimagetool-*.AppImage
+
+# Debian build files
+*.deb
+*.buildinfo
+*.changes
+
+# RPM build files
+*.rpm
+
+# Flatpak build files
+.flatpak-builder/
+builddir/
+repo/
+*.flatpak
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Log files
+*.log
+
+# Backup files
+*.bak
+*.backup

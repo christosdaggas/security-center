@@ -1,0 +1,10 @@
+security-center (1.0.0-1) unstable; urgency=medium
+
+  * Initial release
+  * Firewall management with firewalld integration
+  * Network exposure monitoring
+  * System services management via systemd
+  * Quick administrative actions
+  * Real-time traffic and connection statistics
+
+ -- Christos Daggas <chrisdaggas@example.com>  Tue, 07 Jan 2026 12:00:00 +0200

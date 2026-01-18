@@ -1,0 +1,555 @@
+# Greek translation for security-center.
+# Copyright (C) 2026 Christos Daggas
+# This file is distributed under the same license as the security-center package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: security-center 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/christosdaggas/security-center/issues\n"
+"POT-Creation-Date: 2026-01-07 00:00+0000\n"
+"PO-Revision-Date: 2026-01-07 00:00+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Greek <el@li.org>\n"
+"Language: el\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. Application name
+msgid "Security Center"
+msgstr "Κέντρο Ασφαλείας"
+
+#. Application description
+msgid "Security Center and Firewall management for Linux"
+msgstr "Κέντρο Ασφαλείας και διαχείριση τείχους προστασίας για Linux"
+
+#. About dialog
+msgid "About Security Center"
+msgstr "Περί Κέντρου Ασφαλείας"
+
+msgid "Quit"
+msgstr "Έξοδος"
+
+#. Main window - Status
+msgid "Protected"
+msgstr "Προστατευμένο"
+
+msgid "Not Protected"
+msgstr "Μη προστατευμένο"
+
+msgid "Firewall is active"
+msgstr "Το τείχος προστασίας είναι ενεργό"
+
+msgid "Firewall not running"
+msgstr "Το τείχος προστασίας δεν εκτελείται"
+
+msgid "Firewall Active"
+msgstr "Ενεργό Τείχος Προστασίας"
+
+msgid "Firewall Paused"
+msgstr "Παύση Τείχους Προστασίας"
+
+msgid "Your system is protected"
+msgstr "Το σύστημά σας είναι προστατευμένο"
+
+msgid "All traffic is blocked"
+msgstr "Όλη η κίνηση έχει αποκλειστεί"
+
+msgid "Traffic Enabled"
+msgstr "Κίνηση ενεργοποιημένη"
+
+msgid "Traffic Disabled"
+msgstr "Κίνηση απενεργοποιημένη"
+
+#. Overview page
+msgid "Quick Stats"
+msgstr "Γρήγορα Στατιστικά"
+
+msgid "Default Zone"
+msgstr "Προεπιλεγμένη Ζώνη"
+
+msgid "Network Statistics"
+msgstr "Στατιστικά Δικτύου"
+
+msgid "System Statistics"
+msgstr "Στατιστικά Συστήματος"
+
+msgid "Connections"
+msgstr "Συνδέσεις"
+
+msgid "Traffic Ratio"
+msgstr "Αναλογία Κίνησης"
+
+msgid "Disk Usage"
+msgstr "Χρήση Δίσκου"
+
+msgid "Allowed"
+msgstr "Επιτράπηκε"
+
+msgid "Blocked"
+msgstr "Αποκλείστηκε"
+
+msgid "Dropped"
+msgstr "Απορρίφθηκε"
+
+msgid "Rejected"
+msgstr "Απορρίφθηκε (Rejected)"
+
+msgid "Forwarding"
+msgstr "Προώθηση"
+
+#. Zones page
+msgid "Zones"
+msgstr "Ζώνες"
+
+msgid "Active Zones"
+msgstr "Ενεργές Ζώνες"
+
+msgid "Zones with assigned interfaces or sources"
+msgstr "Ζώνες με αντιστοιχισμένες διεπαφές ή πηγές"
+
+msgid "Available Zones"
+msgstr "Διαθέσιμες Ζώνες"
+
+msgid "Click 'Set Default' to change the default zone"
+msgstr "Κάντε κλικ στο 'Ορισμός Προεπιλογής' για αλλαγή"
+
+msgid "Default"
+msgstr "Προεπιλογή"
+
+msgid "Set Default"
+msgstr "Ορισμός Προεπιλογής"
+
+msgid "Services"
+msgstr "Υπηρεσίες"
+
+msgid "Ports"
+msgstr "Θύρες"
+
+msgid "Interfaces"
+msgstr "Διεπαφές"
+
+msgid "Sources"
+msgstr "Πηγές"
+
+#. Ports page
+msgid "Add Port"
+msgstr "Προσθήκη Θύρας"
+
+msgid "Open Ports"
+msgstr "Ανοιχτές Θύρες"
+
+msgid "Custom ports opened in the firewall"
+msgstr "Προσαρμοσμένες θύρες που ανοίχτηκαν στο τείχος προστασίας"
+
+msgid "Blocked Ports"
+msgstr "Αποκλεισμένες Θύρες"
+
+msgid "Ports explicitly blocked via rich rules"
+msgstr "Θύρες αποκλεισμένες ρητά μέσω rich rules"
+
+msgid "Summary"
+msgstr "Σύνοψη"
+
+msgid "No port rules configured"
+msgstr "Δεν έχουν ρυθμιστεί κανόνες θυρών"
+
+msgid "Click 'Add Port' to create a rule"
+msgstr "Κάντε κλικ στο 'Προσθήκη Θύρας' για δημιουργία κανόνα"
+
+msgid "TCP Ports"
+msgstr "Θύρες TCP"
+
+msgid "UDP Ports"
+msgstr "Θύρες UDP"
+
+msgid "No blocked ports"
+msgstr "Καμία αποκλεισμένη θύρα"
+
+msgid "Ports blocked via rich rules will appear here"
+msgstr "Οι θύρες που αποκλείονται μέσω rich rules θα εμφανίζονται εδώ"
+
+msgid "Remove block rule"
+msgstr "Αφαίρεση κανόνα αποκλεισμού"
+
+msgid "Delete this port rule"
+msgstr "Διαγραφή αυτού του κανόνα θύρας"
+
+#. Add port dialog
+msgid "Add Port Rule"
+msgstr "Προσθήκη Κανόνα Θύρας"
+
+msgid "Port Details"
+msgstr "Λεπτομέρειες Θύρας"
+
+msgid "Name (optional)"
+msgstr "Όνομα (προαιρετικό)"
+
+msgid "Port Number"
+msgstr "Αριθμός Θύρας"
+
+msgid "Protocol"
+msgstr "Πρωτόκολλο"
+
+msgid "TCP"
+msgstr "TCP"
+
+msgid "UDP"
+msgstr "UDP"
+
+msgid "Both"
+msgstr "Και τα δύο"
+
+msgid "Firewall Action"
+msgstr "Ενέργεια Τείχους Προστασίας"
+
+msgid "How the firewall should handle incoming traffic on this port"
+msgstr "Πώς το τείχος προστασίας θα χειρίζεται την εισερχόμενη κίνηση"
+
+msgid "Action"
+msgstr "Ενέργεια"
+
+msgid "Allow (Open Port)"
+msgstr "Να Επιτρέπεται (Άνοιγμα Θύρας)"
+
+msgid "Block (Reject Connections)"
+msgstr "Αποκλεισμός (Απόρριψη Συνδέσεων)"
+
+msgid "Allow opens the port, Block rejects connections"
+msgstr "Το 'Να Επιτρέπεται' ανοίγει τη θύρα, το 'Αποκλεισμός' απορρίπτει συνδέσεις"
+
+msgid "Options"
+msgstr "Επιλογές"
+
+msgid "Zone"
+msgstr "Ζώνη"
+
+msgid "Make Permanent"
+msgstr "Να γίνει Μόνιμο"
+
+msgid "Rule persists after reboot"
+msgstr "Ο κανόνας διατηρείται μετά την επανεκκίνηση"
+
+msgid "Port must be between 1 and 65535"
+msgstr "Η θύρα πρέπει να είναι μεταξύ 1 και 65535"
+
+#. Services page
+msgid "Authentication may be required to modify services"
+msgstr "Μπορεί να απαιτείται πιστοποίηση για την τροποποίηση υπηρεσιών"
+
+msgid "Enabled Services"
+msgstr "Ενεργοποιημένες Υπηρεσίες"
+
+msgid "Services allowing traffic through the firewall"
+msgstr "Υπηρεσίες που επιτρέπουν την κίνηση μέσω του τείχους προστασίας"
+
+msgid "Common Services"
+msgstr "Κοινές Υπηρεσίες"
+
+msgid "Frequently used network services"
+msgstr "Συχνά χρησιμοποιούμενες υπηρεσίες δικτύου"
+
+msgid "No services enabled"
+msgstr "Καμία υπηρεσία ενεργοποιημένη"
+
+msgid "Enable services to allow specific traffic"
+msgstr "Ενεργοποιήστε υπηρεσίες για να επιτρέψετε συγκεκριμένη κίνηση"
+
+msgid "Disable service"
+msgstr "Απενεργοποίηση υπηρεσίας"
+
+msgid "Enable service"
+msgstr "Ενεργοποίηση υπηρεσίας"
+
+#. Network Exposure page
+msgid "Network Exposure"
+msgstr "Έκθεση Δικτύου"
+
+msgid "Monitor listening ports and their firewall status"
+msgstr "Παρακολούθηση θυρών ακρόασης και της κατάστασης του τείχους προστασίας τους"
+
+msgid "Refresh"
+msgstr "Ανανέωση"
+
+msgid "Exposed to Network"
+msgstr "Εκτεθειμένο στο Δίκτυο"
+
+msgid "These ports are listening on all interfaces"
+msgstr "Αυτές οι θύρες ακούνε σε όλες τις διεπαφές"
+
+msgid "Local Only"
+msgstr "Μόνο Τοπικά"
+
+msgid "These ports are only accessible locally"
+msgstr "Αυτές οι θύρες είναι προσβάσιμες μόνο τοπικά"
+
+msgid "All Listening Ports"
+msgstr "Όλες οι Θύρες Ακρόασης"
+
+msgid "Scan to see listening ports"
+msgstr "Σάρωση για εμφάνιση θυρών ακρόασης"
+
+msgid "Total Ports"
+msgstr "Σύνολο Θυρών"
+
+msgid "Exposed"
+msgstr "Εκτεθειμένα"
+
+msgid "Warning"
+msgstr "Προειδοποίηση"
+
+msgid "Listening Address"
+msgstr "Διεύθυνση Ακρόασης"
+
+msgid "Process"
+msgstr "Διεργασία"
+
+msgid "Unknown Process"
+msgstr "Άγνωστη Διεργασία"
+
+msgid "Actions"
+msgstr "Ενέργειες"
+
+msgid "Stop Service"
+msgstr "Διακοπή Υπηρεσίας"
+
+msgid "Stop the service using this port"
+msgstr "Διακοπή της υπηρεσίας που χρησιμοποιεί αυτή τη θύρα"
+
+msgid "Block Port"
+msgstr "Αποκλεισμός Θύρας"
+
+msgid "Add a firewall rule to block this port"
+msgstr "Προσθήκη κανόνα τείχους προστασίας για αποκλεισμό αυτής της θύρας"
+
+#. System Services page
+msgid "System Services"
+msgstr "Υπηρεσίες Συστήματος"
+
+msgid "Manage system services and daemons"
+msgstr "Διαχείριση υπηρεσιών συστήματος και δαιμόνων"
+
+msgid "Refresh services list"
+msgstr "Ανανέωση λίστας υπηρεσιών"
+
+msgid "Running Services"
+msgstr "Εκτελούμενες Υπηρεσίες"
+
+msgid "Services that are currently active"
+msgstr "Υπηρεσίες που είναι τώρα ενεργές"
+
+msgid "Stopped Services"
+msgstr "Σταματημένες Υπηρεσίες"
+
+msgid "Services that are not running"
+msgstr "Υπηρεσίες που δεν εκτελούνται"
+
+msgid "Failed Services"
+msgstr "Αποτυχημένες Υπηρεσίες"
+
+msgid "Services that have failed"
+msgstr "Υπηρεσίες που έχουν αποτύχει"
+
+msgid "Stop service"
+msgstr "Διακοπή υπηρεσίας"
+
+msgid "Start service"
+msgstr "Εκκίνηση υπηρεσίας"
+
+msgid "Restart service"
+msgstr "Επανεκκίνηση υπηρεσίας"
+
+msgid "Disable (won't start on boot)"
+msgstr "Απενεργοποίηση (δεν εκκινεί κατά την εκκίνηση)"
+
+msgid "Enable (start on boot)"
+msgstr "Ενεργοποίηση (εκκινεί κατά την εκκίνηση)"
+
+#. Quick Actions page
+msgid "Quick Actions"
+msgstr "Γρήγορες Ενέργειες"
+
+msgid "One-click administrative operations"
+msgstr "Διοικητικές λειτουργίες με ένα κλικ"
+
+msgid "These actions may affect system security and stability"
+msgstr "Αυτές οι ενέργειες μπορεί να επηρεάσουν την ασφάλεια και σταθερότητα"
+
+msgid "Dismiss"
+msgstr "Απόρριψη"
+
+msgid "Firewall"
+msgstr "Τείχος Προστασίας"
+
+msgid "Manage firewalld service and rules"
+msgstr "Διαχείριση υπηρεσίας firewalld και κανόνων"
+
+msgid "Network"
+msgstr "Δίκτυο"
+
+msgid "Network service management"
+msgstr "Διαχείριση υπηρεσίας δικτύου"
+
+msgid "Manage system services"
+msgstr "Διαχείριση υπηρεσιών συστήματος"
+
+msgid "Ready to execute actions"
+msgstr "Έτοιμο για εκτέλεση ενεργειών"
+
+msgid "Execute"
+msgstr "Εκτέλεση"
+
+msgid "Confirm Action"
+msgstr "Επιβεβαίωση Ενέργειας"
+
+msgid "Running..."
+msgstr "Εκτελείται..."
+
+msgid "Executing..."
+msgstr "Εκτέλεση..."
+
+#. Preferences
+msgid "Preferences"
+msgstr "Προτιμήσεις"
+
+msgid "Appearance"
+msgstr "Εμφάνιση"
+
+msgid "Theme"
+msgstr "Θέμα"
+
+msgid "Choose the application color scheme"
+msgstr "Επιλέξτε το χρωματικό σχήμα της εφαρμογής"
+
+msgid "Dark"
+msgstr "Σκούρο"
+
+msgid "Light"
+msgstr "Φωτεινό"
+
+msgid "System"
+msgstr "Σύστημα"
+
+msgid "Dark theme"
+msgstr "Σκούρο θέμα"
+
+msgid "Light theme"
+msgstr "Φωτεινό θέμα"
+
+msgid "Follow system theme"
+msgstr "Ακολούθηση θέματος συστήματος"
+
+#. Tooltips
+msgid "Refresh (Ctrl+R)"
+msgstr "Ανανέωση (Ctrl+R)"
+
+#. Dialog buttons
+msgid "Cancel"
+msgstr "Ακύρωση"
+
+msgid "Add"
+msgstr "Προσθήκη"
+
+#. Error messages
+msgid "Error"
+msgstr "Σφάλμα"
+
+msgid "Failed to connect to firewalld"
+msgstr "Απέτυχε η σύνδεση στο firewalld"
+
+msgid "Failed to add port"
+msgstr "Απέτυχε η προσθήκη θύρας"
+
+msgid "Failed to block port"
+msgstr "Απέτυχε ο αποκλεισμός θύρας"
+
+msgid "Failed to delete port"
+msgstr "Απέτυχε η διαγραφή θύρας"
+
+msgid "Failed to set default zone"
+msgstr "Απέτυχε ο ορισμός προεπιλεγμένης ζώνης"
+
+msgid "Failed to enable service"
+msgstr "Απέτυχε η ενεργοποίηση υπηρεσίας"
+
+msgid "Failed to disable service"
+msgstr "Απέτυχε η απενεργοποίηση υπηρεσίας"
+
+msgid "Failed to connect to systemd"
+msgstr "Απέτυχε η σύνδεση στο systemd"
+
+msgid "Failed to execute action"
+msgstr "Απέτυχε η εκτέλεση ενέργειας"
+
+msgid "Failed to scan network"
+msgstr "Απέτυχε η σάρωση δικτύου"
+
+msgid "Task failed"
+msgstr "Η εργασία απέτυχε"
+
+#. Success messages
+msgid "Port opened (allowed)"
+msgstr "Η θύρα άνοιξε (επιτράπηκε)"
+
+msgid "Port blocked (rejected)"
+msgstr "Η θύρα αποκλείστηκε (απορρίφθηκε)"
+
+msgid "Firewall configuration reloaded"
+msgstr "Η διαμόρφωση του τείχους προστασίας επαναφορτώθηκε"
+
+msgid "Firewall enabled"
+msgstr "Το τείχος προστασίας ενεργοποιήθηκε"
+
+msgid "Firewall disabled (panic mode)"
+msgstr "Το τείχος προστασίας απενεργοποιήθηκε (κατάσταση πανικού)"
+
+#. Status format strings
+#, c-format
+msgid "%d services currently active"
+msgstr "%d υπηρεσίες τώρα ενεργές"
+
+#, c-format
+msgid "%d services not running"
+msgstr "%d υπηρεσίες δεν εκτελούνται"
+
+#, c-format
+msgid "%d services have failed"
+msgstr "%d υπηρεσίες έχουν αποτύχει"
+
+#, c-format
+msgid "%d allowed, %d blocked"
+msgstr "%d επιτράπηκαν, %d αποκλείστηκαν"
+
+#, c-format
+msgid "Zone: %s"
+msgstr "Ζώνη: %s"
+
+#, c-format
+msgid "Default zone set to '%s'"
+msgstr "Η προεπιλεγμένη ζώνη ορίστηκε σε '%s'"
+
+#, c-format
+msgid "Port %s/%s deleted"
+msgstr "Η θύρα %s/%s διαγράφηκε"
+
+#, c-format
+msgid "Port %s/%s blocked in zone '%s'"
+msgstr "Η θύρα %s/%s αποκλείστηκε στη ζώνη '%s'"
+
+#, c-format
+msgid "Port %s/%s unblocked"
+msgstr "Η θύρα %s/%s ξεμπλοκαρίστηκε"
+
+#, c-format
+msgid "Service '%s' enabled"
+msgstr "Η υπηρεσία '%s' ενεργοποιήθηκε"
+
+#, c-format
+msgid "Service '%s' disabled"
+msgstr "Η υπηρεσία '%s' απενεργοποιήθηκε"
+
+#. System Services search
+msgid "Search services..."
+msgstr "Αναζήτηση υπηρεσιών..."

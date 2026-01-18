@@ -1,0 +1,555 @@
+# Simplified Chinese translation for security-center.
+# Copyright (C) 2026 Christos Daggas
+# This file is distributed under the same license as the security-center package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: security-center 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/chrisdaggas/security-center/issues\n"
+"POT-Creation-Date: 2026-01-07 00:00+0000\n"
+"PO-Revision-Date: 2026-01-07 00:00+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Chinese (Simplified) <zh@li.org>\n"
+"Language: zh\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. Application name
+msgid "Security Center"
+msgstr "安全中心"
+
+#. Application description
+msgid "Security Center and Firewall management for Linux"
+msgstr "Linux 安全中心和防火墙管理"
+
+#. About dialog
+msgid "About Security Center"
+msgstr "关于安全中心"
+
+msgid "Quit"
+msgstr "退出"
+
+#. Main window - Status
+msgid "Protected"
+msgstr "已保护"
+
+msgid "Not Protected"
+msgstr "未保护"
+
+msgid "Firewall is active"
+msgstr "防火墙已激活"
+
+msgid "Firewall not running"
+msgstr "防火墙未运行"
+
+msgid "Firewall Active"
+msgstr "防火墙活动"
+
+msgid "Firewall Paused"
+msgstr "防火墙已暂停"
+
+msgid "Your system is protected"
+msgstr "您的系统已受保护"
+
+msgid "All traffic is blocked"
+msgstr "所有流量已被阻止"
+
+msgid "Traffic Enabled"
+msgstr "流量已启用"
+
+msgid "Traffic Disabled"
+msgstr "流量已禁用"
+
+#. Overview page
+msgid "Quick Stats"
+msgstr "快速统计"
+
+msgid "Default Zone"
+msgstr "默认区域"
+
+msgid "Network Statistics"
+msgstr "网络统计"
+
+msgid "System Statistics"
+msgstr "系统统计"
+
+msgid "Connections"
+msgstr "连接"
+
+msgid "Traffic Ratio"
+msgstr "流量比率"
+
+msgid "Disk Usage"
+msgstr "磁盘使用"
+
+msgid "Allowed"
+msgstr "已允许"
+
+msgid "Blocked"
+msgstr "已阻止"
+
+msgid "Dropped"
+msgstr "已丢弃"
+
+msgid "Rejected"
+msgstr "已拒绝"
+
+msgid "Forwarding"
+msgstr "转发"
+
+#. Zones page
+msgid "Zones"
+msgstr "区域"
+
+msgid "Active Zones"
+msgstr "活动区域"
+
+msgid "Zones with assigned interfaces or sources"
+msgstr "已分配接口或来源的区域"
+
+msgid "Available Zones"
+msgstr "可用区域"
+
+msgid "Click 'Set Default' to change the default zone"
+msgstr "点击"设为默认"更改默认区域"
+
+msgid "Default"
+msgstr "默认"
+
+msgid "Set Default"
+msgstr "设为默认"
+
+msgid "Services"
+msgstr "服务"
+
+msgid "Ports"
+msgstr "端口"
+
+msgid "Interfaces"
+msgstr "接口"
+
+msgid "Sources"
+msgstr "来源"
+
+#. Ports page
+msgid "Add Port"
+msgstr "添加端口"
+
+msgid "Open Ports"
+msgstr "开放端口"
+
+msgid "Custom ports opened in the firewall"
+msgstr "防火墙中已打开的自定义端口"
+
+msgid "Blocked Ports"
+msgstr "已阻止的端口"
+
+msgid "Ports explicitly blocked via rich rules"
+msgstr "通过富规则明确阻止的端口"
+
+msgid "Summary"
+msgstr "摘要"
+
+msgid "No port rules configured"
+msgstr "未配置端口规则"
+
+msgid "Click 'Add Port' to create a rule"
+msgstr "点击"添加端口"创建规则"
+
+msgid "TCP Ports"
+msgstr "TCP 端口"
+
+msgid "UDP Ports"
+msgstr "UDP 端口"
+
+msgid "No blocked ports"
+msgstr "没有被阻止的端口"
+
+msgid "Ports blocked via rich rules will appear here"
+msgstr "通过富规则阻止的端口将显示在此处"
+
+msgid "Remove block rule"
+msgstr "移除阻止规则"
+
+msgid "Delete this port rule"
+msgstr "删除此端口规则"
+
+#. Add port dialog
+msgid "Add Port Rule"
+msgstr "添加端口规则"
+
+msgid "Port Details"
+msgstr "端口详情"
+
+msgid "Name (optional)"
+msgstr "名称（可选）"
+
+msgid "Port Number"
+msgstr "端口号"
+
+msgid "Protocol"
+msgstr "协议"
+
+msgid "TCP"
+msgstr "TCP"
+
+msgid "UDP"
+msgstr "UDP"
+
+msgid "Both"
+msgstr "两者"
+
+msgid "Firewall Action"
+msgstr "防火墙操作"
+
+msgid "How the firewall should handle incoming traffic on this port"
+msgstr "防火墙如何处理此端口的入站流量"
+
+msgid "Action"
+msgstr "操作"
+
+msgid "Allow (Open Port)"
+msgstr "允许（打开端口）"
+
+msgid "Block (Reject Connections)"
+msgstr "阻止（拒绝连接）"
+
+msgid "Allow opens the port, Block rejects connections"
+msgstr ""允许"打开端口，"阻止"拒绝连接"
+
+msgid "Options"
+msgstr "选项"
+
+msgid "Zone"
+msgstr "区域"
+
+msgid "Make Permanent"
+msgstr "设为永久"
+
+msgid "Rule persists after reboot"
+msgstr "重启后规则保持有效"
+
+msgid "Port must be between 1 and 65535"
+msgstr "端口必须在 1 到 65535 之间"
+
+#. Services page
+msgid "Authentication may be required to modify services"
+msgstr "修改服务可能需要身份验证"
+
+msgid "Enabled Services"
+msgstr "已启用的服务"
+
+msgid "Services allowing traffic through the firewall"
+msgstr "允许流量通过防火墙的服务"
+
+msgid "Common Services"
+msgstr "常用服务"
+
+msgid "Frequently used network services"
+msgstr "常用网络服务"
+
+msgid "No services enabled"
+msgstr "没有已启用的服务"
+
+msgid "Enable services to allow specific traffic"
+msgstr "启用服务以允许特定流量"
+
+msgid "Disable service"
+msgstr "禁用服务"
+
+msgid "Enable service"
+msgstr "启用服务"
+
+#. Network Exposure page
+msgid "Network Exposure"
+msgstr "网络暴露"
+
+msgid "Monitor listening ports and their firewall status"
+msgstr "监控监听端口及其防火墙状态"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Exposed to Network"
+msgstr "已暴露于网络"
+
+msgid "These ports are listening on all interfaces"
+msgstr "这些端口正在所有接口上监听"
+
+msgid "Local Only"
+msgstr "仅本地"
+
+msgid "These ports are only accessible locally"
+msgstr "这些端口仅可在本地访问"
+
+msgid "All Listening Ports"
+msgstr "所有监听端口"
+
+msgid "Scan to see listening ports"
+msgstr "扫描以查看监听端口"
+
+msgid "Total Ports"
+msgstr "总端口数"
+
+msgid "Exposed"
+msgstr "已暴露"
+
+msgid "Warning"
+msgstr "警告"
+
+msgid "Listening Address"
+msgstr "监听地址"
+
+msgid "Process"
+msgstr "进程"
+
+msgid "Unknown Process"
+msgstr "未知进程"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Stop Service"
+msgstr "停止服务"
+
+msgid "Stop the service using this port"
+msgstr "停止使用此端口的服务"
+
+msgid "Block Port"
+msgstr "阻止端口"
+
+msgid "Add a firewall rule to block this port"
+msgstr "添加防火墙规则以阻止此端口"
+
+#. System Services page
+msgid "System Services"
+msgstr "系统服务"
+
+msgid "Manage system services and daemons"
+msgstr "管理系统服务和守护进程"
+
+msgid "Refresh services list"
+msgstr "刷新服务列表"
+
+msgid "Running Services"
+msgstr "正在运行的服务"
+
+msgid "Services that are currently active"
+msgstr "当前活动的服务"
+
+msgid "Stopped Services"
+msgstr "已停止的服务"
+
+msgid "Services that are not running"
+msgstr "未运行的服务"
+
+msgid "Failed Services"
+msgstr "失败的服务"
+
+msgid "Services that have failed"
+msgstr "已失败的服务"
+
+msgid "Stop service"
+msgstr "停止服务"
+
+msgid "Start service"
+msgstr "启动服务"
+
+msgid "Restart service"
+msgstr "重启服务"
+
+msgid "Disable (won't start on boot)"
+msgstr "禁用（启动时不会运行）"
+
+msgid "Enable (start on boot)"
+msgstr "启用（启动时运行）"
+
+#. Quick Actions page
+msgid "Quick Actions"
+msgstr "快速操作"
+
+msgid "One-click administrative operations"
+msgstr "一键管理操作"
+
+msgid "These actions may affect system security and stability"
+msgstr "这些操作可能会影响系统安全和稳定性"
+
+msgid "Dismiss"
+msgstr "关闭"
+
+msgid "Firewall"
+msgstr "防火墙"
+
+msgid "Manage firewalld service and rules"
+msgstr "管理 firewalld 服务和规则"
+
+msgid "Network"
+msgstr "网络"
+
+msgid "Network service management"
+msgstr "网络服务管理"
+
+msgid "Manage system services"
+msgstr "管理系统服务"
+
+msgid "Ready to execute actions"
+msgstr "准备执行操作"
+
+msgid "Execute"
+msgstr "执行"
+
+msgid "Confirm Action"
+msgstr "确认操作"
+
+msgid "Running..."
+msgstr "正在运行..."
+
+msgid "Executing..."
+msgstr "正在执行..."
+
+#. Preferences
+msgid "Preferences"
+msgstr "首选项"
+
+msgid "Appearance"
+msgstr "外观"
+
+msgid "Theme"
+msgstr "主题"
+
+msgid "Choose the application color scheme"
+msgstr "选择应用程序配色方案"
+
+msgid "Dark"
+msgstr "深色"
+
+msgid "Light"
+msgstr "浅色"
+
+msgid "System"
+msgstr "系统"
+
+msgid "Dark theme"
+msgstr "深色主题"
+
+msgid "Light theme"
+msgstr "浅色主题"
+
+msgid "Follow system theme"
+msgstr "跟随系统主题"
+
+#. Tooltips
+msgid "Refresh (Ctrl+R)"
+msgstr "刷新 (Ctrl+R)"
+
+#. Dialog buttons
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Add"
+msgstr "添加"
+
+#. Error messages
+msgid "Error"
+msgstr "错误"
+
+msgid "Failed to connect to firewalld"
+msgstr "连接 firewalld 失败"
+
+msgid "Failed to add port"
+msgstr "添加端口失败"
+
+msgid "Failed to block port"
+msgstr "阻止端口失败"
+
+msgid "Failed to delete port"
+msgstr "删除端口失败"
+
+msgid "Failed to set default zone"
+msgstr "设置默认区域失败"
+
+msgid "Failed to enable service"
+msgstr "启用服务失败"
+
+msgid "Failed to disable service"
+msgstr "禁用服务失败"
+
+msgid "Failed to connect to systemd"
+msgstr "连接 systemd 失败"
+
+msgid "Failed to execute action"
+msgstr "执行操作失败"
+
+msgid "Failed to scan network"
+msgstr "扫描网络失败"
+
+msgid "Task failed"
+msgstr "任务失败"
+
+#. Success messages
+msgid "Port opened (allowed)"
+msgstr "端口已打开（已允许）"
+
+msgid "Port blocked (rejected)"
+msgstr "端口已阻止（已拒绝）"
+
+msgid "Firewall configuration reloaded"
+msgstr "防火墙配置已重新加载"
+
+msgid "Firewall enabled"
+msgstr "防火墙已启用"
+
+msgid "Firewall disabled (panic mode)"
+msgstr "防火墙已禁用（紧急模式）"
+
+#. Status format strings
+#, c-format
+msgid "%d services currently active"
+msgstr "%d 个服务当前活动"
+
+#, c-format
+msgid "%d services not running"
+msgstr "%d 个服务未运行"
+
+#, c-format
+msgid "%d services have failed"
+msgstr "%d 个服务已失败"
+
+#, c-format
+msgid "%d allowed, %d blocked"
+msgstr "%d 个已允许，%d 个已阻止"
+
+#, c-format
+msgid "Zone: %s"
+msgstr "区域：%s"
+
+#, c-format
+msgid "Default zone set to '%s'"
+msgstr "默认区域已设置为 '%s'"
+
+#, c-format
+msgid "Port %s/%s deleted"
+msgstr "端口 %s/%s 已删除"
+
+#, c-format
+msgid "Port %s/%s blocked in zone '%s'"
+msgstr "端口 %s/%s 在区域 '%s' 中已阻止"
+
+#, c-format
+msgid "Port %s/%s unblocked"
+msgstr "端口 %s/%s 已解除阻止"
+
+#, c-format
+msgid "Service '%s' enabled"
+msgstr "服务 '%s' 已启用"
+
+#, c-format
+msgid "Service '%s' disabled"
+msgstr "服务 '%s' 已禁用"
+
+#. System Services search
+msgid "Search services..."
+msgstr "搜索服务..."

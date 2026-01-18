@@ -1,0 +1,555 @@
+# German translation for security-center.
+# Copyright (C) 2026 Christos Daggas
+# This file is distributed under the same license as the security-center package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: security-center 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/chrisdaggas/security-center/issues\n"
+"POT-Creation-Date: 2026-01-07 00:00+0000\n"
+"PO-Revision-Date: 2026-01-07 00:00+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: German <de@li.org>\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. Application name
+msgid "Security Center"
+msgstr "Sicherheitscenter"
+
+#. Application description
+msgid "Security Center and Firewall management for Linux"
+msgstr "Sicherheitscenter und Firewall-Verwaltung für Linux"
+
+#. About dialog
+msgid "About Security Center"
+msgstr "Über Sicherheitscenter"
+
+msgid "Quit"
+msgstr "Beenden"
+
+#. Main window - Status
+msgid "Protected"
+msgstr "Geschützt"
+
+msgid "Not Protected"
+msgstr "Nicht geschützt"
+
+msgid "Firewall is active"
+msgstr "Firewall ist aktiv"
+
+msgid "Firewall not running"
+msgstr "Firewall läuft nicht"
+
+msgid "Firewall Active"
+msgstr "Firewall aktiv"
+
+msgid "Firewall Paused"
+msgstr "Firewall pausiert"
+
+msgid "Your system is protected"
+msgstr "Ihr System ist geschützt"
+
+msgid "All traffic is blocked"
+msgstr "Jeglicher Verkehr ist blockiert"
+
+msgid "Traffic Enabled"
+msgstr "Verkehr aktiviert"
+
+msgid "Traffic Disabled"
+msgstr "Verkehr deaktiviert"
+
+#. Overview page
+msgid "Quick Stats"
+msgstr "Schnellstatistik"
+
+msgid "Default Zone"
+msgstr "Standardzone"
+
+msgid "Network Statistics"
+msgstr "Netzwerkstatistiken"
+
+msgid "System Statistics"
+msgstr "Systemstatistiken"
+
+msgid "Connections"
+msgstr "Verbindungen"
+
+msgid "Traffic Ratio"
+msgstr "Verkehrsverhältnis"
+
+msgid "Disk Usage"
+msgstr "Speicherplatznutzung"
+
+msgid "Allowed"
+msgstr "Erlaubt"
+
+msgid "Blocked"
+msgstr "Blockiert"
+
+msgid "Dropped"
+msgstr "Verworfen"
+
+msgid "Rejected"
+msgstr "Abgelehnt"
+
+msgid "Forwarding"
+msgstr "Weiterleitung"
+
+#. Zones page
+msgid "Zones"
+msgstr "Zonen"
+
+msgid "Active Zones"
+msgstr "Aktive Zonen"
+
+msgid "Zones with assigned interfaces or sources"
+msgstr "Zonen mit zugewiesenen Schnittstellen oder Quellen"
+
+msgid "Available Zones"
+msgstr "Verfügbare Zonen"
+
+msgid "Click 'Set Default' to change the default zone"
+msgstr "Klicken Sie auf 'Als Standard festlegen', um die Standardzone zu ändern"
+
+msgid "Default"
+msgstr "Standard"
+
+msgid "Set Default"
+msgstr "Als Standard festlegen"
+
+msgid "Services"
+msgstr "Dienste"
+
+msgid "Ports"
+msgstr "Ports"
+
+msgid "Interfaces"
+msgstr "Schnittstellen"
+
+msgid "Sources"
+msgstr "Quellen"
+
+#. Ports page
+msgid "Add Port"
+msgstr "Port hinzufügen"
+
+msgid "Open Ports"
+msgstr "Offene Ports"
+
+msgid "Custom ports opened in the firewall"
+msgstr "Benutzerdefinierte Ports, die in der Firewall geöffnet sind"
+
+msgid "Blocked Ports"
+msgstr "Blockierte Ports"
+
+msgid "Ports explicitly blocked via rich rules"
+msgstr "Explizit über Rich Rules blockierte Ports"
+
+msgid "Summary"
+msgstr "Zusammenfassung"
+
+msgid "No port rules configured"
+msgstr "Keine Portregeln konfiguriert"
+
+msgid "Click 'Add Port' to create a rule"
+msgstr "Klicken Sie auf 'Port hinzufügen', um eine Regel zu erstellen"
+
+msgid "TCP Ports"
+msgstr "TCP Ports"
+
+msgid "UDP Ports"
+msgstr "UDP Ports"
+
+msgid "No blocked ports"
+msgstr "Keine blockierten Ports"
+
+msgid "Ports blocked via rich rules will appear here"
+msgstr "Über Rich Rules blockierte Ports werden hier angezeigt"
+
+msgid "Remove block rule"
+msgstr "Blockierregel entfernen"
+
+msgid "Delete this port rule"
+msgstr "Diese Portregel löschen"
+
+#. Add port dialog
+msgid "Add Port Rule"
+msgstr "Portregel hinzufügen"
+
+msgid "Port Details"
+msgstr "Port-Details"
+
+msgid "Name (optional)"
+msgstr "Name (optional)"
+
+msgid "Port Number"
+msgstr "Portnummer"
+
+msgid "Protocol"
+msgstr "Protokoll"
+
+msgid "TCP"
+msgstr "TCP"
+
+msgid "UDP"
+msgstr "UDP"
+
+msgid "Both"
+msgstr "Beide"
+
+msgid "Firewall Action"
+msgstr "Firewall-Aktion"
+
+msgid "How the firewall should handle incoming traffic on this port"
+msgstr "Wie die Firewall eingehenden Verkehr auf diesem Port behandeln soll"
+
+msgid "Action"
+msgstr "Aktion"
+
+msgid "Allow (Open Port)"
+msgstr "Erlauben (Port öffnen)"
+
+msgid "Block (Reject Connections)"
+msgstr "Blockieren (Verbindungen ablehnen)"
+
+msgid "Allow opens the port, Block rejects connections"
+msgstr "'Erlauben' öffnet den Port, 'Blockieren' lehnt Verbindungen ab"
+
+msgid "Options"
+msgstr "Optionen"
+
+msgid "Zone"
+msgstr "Zone"
+
+msgid "Make Permanent"
+msgstr "Dauerhaft machen"
+
+msgid "Rule persists after reboot"
+msgstr "Regel bleibt nach Neustart bestehen"
+
+msgid "Port must be between 1 and 65535"
+msgstr "Port muss zwischen 1 und 65535 liegen"
+
+#. Services page
+msgid "Authentication may be required to modify services"
+msgstr "Authentifizierung kann erforderlich sein, um Dienste zu ändern"
+
+msgid "Enabled Services"
+msgstr "Aktivierte Dienste"
+
+msgid "Services allowing traffic through the firewall"
+msgstr "Dienste, die Verkehr durch die Firewall erlauben"
+
+msgid "Common Services"
+msgstr "Gemeinsame Dienste"
+
+msgid "Frequently used network services"
+msgstr "Häufig genutzte Netzwerkdienste"
+
+msgid "No services enabled"
+msgstr "Keine Dienste aktiviert"
+
+msgid "Enable services to allow specific traffic"
+msgstr "Dienste aktivieren, um bestimmten Verkehr zu erlauben"
+
+msgid "Disable service"
+msgstr "Dienst deaktivieren"
+
+msgid "Enable service"
+msgstr "Dienst aktivieren"
+
+#. Network Exposure page
+msgid "Network Exposure"
+msgstr "Netzwerkexposition"
+
+msgid "Monitor listening ports and their firewall status"
+msgstr "Überwachung von abhörenden Ports und deren Firewall-Status"
+
+msgid "Refresh"
+msgstr "Aktualisieren"
+
+msgid "Exposed to Network"
+msgstr "Dem Netzwerk ausgesetzt"
+
+msgid "These ports are listening on all interfaces"
+msgstr "Diese Ports hören auf allen Schnittstellen"
+
+msgid "Local Only"
+msgstr "Nur lokal"
+
+msgid "These ports are only accessible locally"
+msgstr "Diese Ports sind nur lokal zugänglich"
+
+msgid "All Listening Ports"
+msgstr "Alle abhörenden Ports"
+
+msgid "Scan to see listening ports"
+msgstr "Scannen, um abhörende Ports zu sehen"
+
+msgid "Total Ports"
+msgstr "Gesamte Ports"
+
+msgid "Exposed"
+msgstr "Ausgesetzt"
+
+msgid "Warning"
+msgstr "Warnung"
+
+msgid "Listening Address"
+msgstr "Abhöradresse"
+
+msgid "Process"
+msgstr "Prozess"
+
+msgid "Unknown Process"
+msgstr "Unbekannter Prozess"
+
+msgid "Actions"
+msgstr "Aktionen"
+
+msgid "Stop Service"
+msgstr "Dienst stoppen"
+
+msgid "Stop the service using this port"
+msgstr "Den Dienst stoppen, der diesen Port verwendet"
+
+msgid "Block Port"
+msgstr "Port blockieren"
+
+msgid "Add a firewall rule to block this port"
+msgstr "Eine Firewall-Regel hinzufügen, um diesen Port zu blockieren"
+
+#. System Services page
+msgid "System Services"
+msgstr "Systemdienste"
+
+msgid "Manage system services and daemons"
+msgstr "Verwalten von Systemdiensten und Daemons"
+
+msgid "Refresh services list"
+msgstr "Dienstliste aktualisieren"
+
+msgid "Running Services"
+msgstr "Laufende Dienste"
+
+msgid "Services that are currently active"
+msgstr "Dienste, die derzeit aktiv sind"
+
+msgid "Stopped Services"
+msgstr "Gestoppte Dienste"
+
+msgid "Services that are not running"
+msgstr "Dienste, die nicht laufen"
+
+msgid "Failed Services"
+msgstr "Fehlgeschlagene Dienste"
+
+msgid "Services that have failed"
+msgstr "Dienste, die fehlgeschlagen sind"
+
+msgid "Stop service"
+msgstr "Dienst stoppen"
+
+msgid "Start service"
+msgstr "Dienst starten"
+
+msgid "Restart service"
+msgstr "Dienst neu starten"
+
+msgid "Disable (won't start on boot)"
+msgstr "Deaktivieren (startet nicht beim Boot)"
+
+msgid "Enable (start on boot)"
+msgstr "Aktivieren (startet beim Boot)"
+
+#. Quick Actions page
+msgid "Quick Actions"
+msgstr "Schnellaktionen"
+
+msgid "One-click administrative operations"
+msgstr "Verwaltungsoperationen mit einem Klick"
+
+msgid "These actions may affect system security and stability"
+msgstr "Diese Aktionen können die Sicherheit und Stabilität des Systems beeinträchtigen"
+
+msgid "Dismiss"
+msgstr "Verwerfen"
+
+msgid "Firewall"
+msgstr "Firewall"
+
+msgid "Manage firewalld service and rules"
+msgstr "Firewalld-Dienst und Regeln verwalten"
+
+msgid "Network"
+msgstr "Netzwerk"
+
+msgid "Network service management"
+msgstr "Verwaltung von Netzwerkdiensten"
+
+msgid "Manage system services"
+msgstr "Verwalten von Systemdiensten"
+
+msgid "Ready to execute actions"
+msgstr "Bereit zur Ausführung von Aktionen"
+
+msgid "Execute"
+msgstr "Ausführen"
+
+msgid "Confirm Action"
+msgstr "Aktion bestätigen"
+
+msgid "Running..."
+msgstr "Wird ausgeführt..."
+
+msgid "Executing..."
+msgstr "Führe aus..."
+
+#. Preferences
+msgid "Preferences"
+msgstr "Einstellungen"
+
+msgid "Appearance"
+msgstr "Erscheinungsbild"
+
+msgid "Theme"
+msgstr "Thema"
+
+msgid "Choose the application color scheme"
+msgstr "Wählen Sie das Farbschema der Anwendung"
+
+msgid "Dark"
+msgstr "Dunkel"
+
+msgid "Light"
+msgstr "Hell"
+
+msgid "System"
+msgstr "System"
+
+msgid "Dark theme"
+msgstr "Dunkles Thema"
+
+msgid "Light theme"
+msgstr "Helles Thema"
+
+msgid "Follow system theme"
+msgstr "Systemthema folgen"
+
+#. Tooltips
+msgid "Refresh (Ctrl+R)"
+msgstr "Aktualisieren (Strg+R)"
+
+#. Dialog buttons
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgid "Add"
+msgstr "Hinzufügen"
+
+#. Error messages
+msgid "Error"
+msgstr "Fehler"
+
+msgid "Failed to connect to firewalld"
+msgstr "Verbindung zu firewalld fehlgeschlagen"
+
+msgid "Failed to add port"
+msgstr "Hinzufügen des Ports fehlgeschlagen"
+
+msgid "Failed to block port"
+msgstr "Blockieren des Ports fehlgeschlagen"
+
+msgid "Failed to delete port"
+msgstr "Löschen des Ports fehlgeschlagen"
+
+msgid "Failed to set default zone"
+msgstr "Festlegen der Standardzone fehlgeschlagen"
+
+msgid "Failed to enable service"
+msgstr "Aktivieren des Dienstes fehlgeschlagen"
+
+msgid "Failed to disable service"
+msgstr "Deaktivieren des Dienstes fehlgeschlagen"
+
+msgid "Failed to connect to systemd"
+msgstr "Verbindung zu systemd fehlgeschlagen"
+
+msgid "Failed to execute action"
+msgstr "Ausführung der Aktion fehlgeschlagen"
+
+msgid "Failed to scan network"
+msgstr "Scannen des Netzwerks fehlgeschlagen"
+
+msgid "Task failed"
+msgstr "Aufgabe fehlgeschlagen"
+
+#. Success messages
+msgid "Port opened (allowed)"
+msgstr "Port geöffnet (erlaubt)"
+
+msgid "Port blocked (rejected)"
+msgstr "Port blockiert (abgelehnt)"
+
+msgid "Firewall configuration reloaded"
+msgstr "Firewall-Konfiguration neu geladen"
+
+msgid "Firewall enabled"
+msgstr "Firewall aktiviert"
+
+msgid "Firewall disabled (panic mode)"
+msgstr "Firewall deaktiviert (Panikmodus)"
+
+#. Status format strings
+#, c-format
+msgid "%d services currently active"
+msgstr "%d Dienste aktuell aktiv"
+
+#, c-format
+msgid "%d services not running"
+msgstr "%d Dienste laufen nicht"
+
+#, c-format
+msgid "%d services have failed"
+msgstr "%d Dienste sind fehlgeschlagen"
+
+#, c-format
+msgid "%d allowed, %d blocked"
+msgstr "%d erlaubt, %d blockiert"
+
+#, c-format
+msgid "Zone: %s"
+msgstr "Zone: %s"
+
+#, c-format
+msgid "Default zone set to '%s'"
+msgstr "Standardzone auf '%s' gesetzt"
+
+#, c-format
+msgid "Port %s/%s deleted"
+msgstr "Port %s/%s gelöscht"
+
+#, c-format
+msgid "Port %s/%s blocked in zone '%s'"
+msgstr "Port %s/%s in Zone '%s' blockiert"
+
+#, c-format
+msgid "Port %s/%s unblocked"
+msgstr "Port %s/%s entblockt"
+
+#, c-format
+msgid "Service '%s' enabled"
+msgstr "Dienst '%s' aktiviert"
+
+#, c-format
+msgid "Service '%s' disabled"
+msgstr "Dienst '%s' deaktiviert"
+
+#. System Services search
+msgid "Search services..."
+msgstr "Dienste suchen..."

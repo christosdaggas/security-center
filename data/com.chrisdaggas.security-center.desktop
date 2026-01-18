@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Security Center
+Comment=Manage your system security, firewall and services
+Exec=security-center
+Icon=com.chrisdaggas.security-center
+Terminal=false
+Type=Application
+Categories=System;Security;Settings;
+Keywords=firewall;security;network;firewalld;services;systemd;
+StartupNotify=true
+StartupWMClass=com.chrisdaggas.security-center

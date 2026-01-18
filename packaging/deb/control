@@ -1,0 +1,38 @@
+Source: security-center
+Section: admin
+Priority: optional
+Maintainer: Christos Daggas <chrisdaggas@example.com>
+Build-Depends: debhelper (>= 12),
+               cargo (>= 1.70),
+               rustc (>= 1.70),
+               libgtk-4-dev (>= 4.14),
+               libadwaita-1-dev (>= 1.5),
+               libcairo2-dev,
+               libpango1.0-dev,
+               libgdk-pixbuf-2.0-dev,
+               libgraphene-1.0-dev
+Standards-Version: 4.6.0
+Homepage: https://github.com/christosdaggas/security-center
+Vcs-Browser: https://github.com/christosdaggas/security-center
+Vcs-Git: https://github.com/christosdaggas/security-center.git
+
+Package: security-center
+Architecture: amd64
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         libgtk-4-1 (>= 4.14),
+         libadwaita-1-0 (>= 1.5),
+         firewalld,
+         policykit-1
+Description: Modern GTK4 security center for Linux
+ Security Center is a modern GTK4/Libadwaita application for managing
+ system security on Linux. It provides a user-friendly interface for
+ controlling firewalld, monitoring network exposure, and managing
+ system services.
+ .
+ Features include:
+  - Firewall zone management
+  - Port and service configuration
+  - Network exposure monitoring
+  - System service management
+  - Quick administrative actions

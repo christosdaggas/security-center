@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Christos Daggas -->
+<component type="desktop-application">
+  <id>com.chrisdaggas.security-center</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  
+  <name>Security Center</name>
+  <summary>Manage your system security, firewall and services</summary>
+  
+  <description>
+    <p>
+      Security Center is a modern application for managing
+      system security on Linux. It provides a comprehensive and user-friendly
+      interface for controlling your firewall, monitoring network exposure,
+      and managing system services.
+    </p>
+    <p>Features include:</p>
+    <ul>
+      <li>Firewall management with firewalld integration</li>
+      <li>Open and block ports with custom rules</li>
+      <li>Enable and disable network services</li>
+      <li>Configure firewall zones</li>
+      <li>Monitor network exposure and listening ports</li>
+      <li>Quick actions for common administrative tasks</li>
+      <li>System services management via systemd</li>
+      <li>Real-time traffic and connection statistics</li>
+    </ul>
+  </description>
+  
+  <launchable type="desktop-id">com.chrisdaggas.security-center.desktop</launchable>
+  
+  <url type="homepage">https://github.com/chrisdaggas/security-center</url>
+  <url type="bugtracker">https://github.com/chrisdaggas/security-center/issues</url>
+  
+  <developer id="com.chrisdaggas">
+    <name>Christos Daggas</name>
+  </developer>
+  
+  <branding>
+    <color type="primary" scheme_preference="light">#3584e4</color>
+    <color type="primary" scheme_preference="dark">#1a5fb4</color>
+  </branding>
+  
+  <screenshots>
+    <screenshot type="default">
+      <caption>Overview dashboard with firewall status</caption>
+      <image>https://raw.githubusercontent.com/chrisdaggas/security-center/main/screenshots/overview.png</image>
+    </screenshot>
+  </screenshots>
+  
+  <content_rating type="oars-1.1" />
+  
+  <releases>
+    <release version="1.0.0" date="2026-01-07">
+      <description>
+        <p>Initial release of Security Center with the following features:</p>
+        <ul>
+          <li>Firewall status overview and quick toggle</li>
+          <li>Port management (open, block, remove rules)</li>
+          <li>Service management for firewalld services</li>
+          <li>Zone configuration and management</li>
+          <li>Network exposure monitoring</li>
+          <li>Quick administrative actions</li>
+          <li>System services management</li>
+          <li>Traffic and connection statistics with charts</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+  
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </recommends>
+  
+  <categories>
+    <category>System</category>
+    <category>Security</category>
+    <category>Settings</category>
+  </categories>
+  
+  <keywords>
+    <keyword>firewall</keyword>
+    <keyword>security</keyword>
+    <keyword>network</keyword>
+    <keyword>firewalld</keyword>
+    <keyword>services</keyword>
+    <keyword>systemd</keyword>
+    <keyword>ports</keyword>
+    <keyword>zones</keyword>
+  </keywords>
+  
+  <provides>
+    <binary>security-center</binary>
+  </provides>
+</component>

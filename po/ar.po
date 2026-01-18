@@ -1,0 +1,555 @@
+# Arabic translation for security-center.
+# Copyright (C) 2026 Christos Daggas
+# This file is distributed under the same license as the security-center package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: security-center 1.0.0\n"
+"Report-Msgid-Bugs-To: https://github.com/chrisdaggas/security-center/issues\n"
+"POT-Creation-Date: 2026-01-07 00:00+0000\n"
+"PO-Revision-Date: 2026-01-07 00:00+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: Arabic <ar@li.org>\n"
+"Language: ar\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 ? 4 : 5;\n"
+
+#. Application name
+msgid "Security Center"
+msgstr "مركز الأمان"
+
+#. Application description
+msgid "Security Center and Firewall management for Linux"
+msgstr "مركز الأمان وإدارة جدار الحماية لنظام لينكس"
+
+#. About dialog
+msgid "About Security Center"
+msgstr "حول مركز الأمان"
+
+msgid "Quit"
+msgstr "إنهاء"
+
+#. Main window - Status
+msgid "Protected"
+msgstr "محمي"
+
+msgid "Not Protected"
+msgstr "غير محمي"
+
+msgid "Firewall is active"
+msgstr "جدار الحماية نشط"
+
+msgid "Firewall not running"
+msgstr "جدار الحماية لا يعمل"
+
+msgid "Firewall Active"
+msgstr "جدار الحماية نشط"
+
+msgid "Firewall Paused"
+msgstr "جدار الحماية متوقف مؤقتاً"
+
+msgid "Your system is protected"
+msgstr "نظامك محمي"
+
+msgid "All traffic is blocked"
+msgstr "جميع حركة المرور محظورة"
+
+msgid "Traffic Enabled"
+msgstr "حركة المرور مُفعّلة"
+
+msgid "Traffic Disabled"
+msgstr "حركة المرور مُعطّلة"
+
+#. Overview page
+msgid "Quick Stats"
+msgstr "إحصائيات سريعة"
+
+msgid "Default Zone"
+msgstr "المنطقة الافتراضية"
+
+msgid "Network Statistics"
+msgstr "إحصائيات الشبكة"
+
+msgid "System Statistics"
+msgstr "إحصائيات النظام"
+
+msgid "Connections"
+msgstr "الاتصالات"
+
+msgid "Traffic Ratio"
+msgstr "نسبة حركة المرور"
+
+msgid "Disk Usage"
+msgstr "استخدام القرص"
+
+msgid "Allowed"
+msgstr "مسموح"
+
+msgid "Blocked"
+msgstr "محظور"
+
+msgid "Dropped"
+msgstr "مُسقَط"
+
+msgid "Rejected"
+msgstr "مرفوض"
+
+msgid "Forwarding"
+msgstr "إعادة التوجيه"
+
+#. Zones page
+msgid "Zones"
+msgstr "المناطق"
+
+msgid "Active Zones"
+msgstr "المناطق النشطة"
+
+msgid "Zones with assigned interfaces or sources"
+msgstr "المناطق ذات الواجهات أو المصادر المُعيّنة"
+
+msgid "Available Zones"
+msgstr "المناطق المتاحة"
+
+msgid "Click 'Set Default' to change the default zone"
+msgstr "انقر على 'تعيين كافتراضي' لتغيير المنطقة الافتراضية"
+
+msgid "Default"
+msgstr "افتراضي"
+
+msgid "Set Default"
+msgstr "تعيين كافتراضي"
+
+msgid "Services"
+msgstr "الخدمات"
+
+msgid "Ports"
+msgstr "المنافذ"
+
+msgid "Interfaces"
+msgstr "الواجهات"
+
+msgid "Sources"
+msgstr "المصادر"
+
+#. Ports page
+msgid "Add Port"
+msgstr "إضافة منفذ"
+
+msgid "Open Ports"
+msgstr "المنافذ المفتوحة"
+
+msgid "Custom ports opened in the firewall"
+msgstr "المنافذ المخصصة المفتوحة في جدار الحماية"
+
+msgid "Blocked Ports"
+msgstr "المنافذ المحظورة"
+
+msgid "Ports explicitly blocked via rich rules"
+msgstr "المنافذ المحظورة صراحةً عبر القواعد الغنية"
+
+msgid "Summary"
+msgstr "ملخص"
+
+msgid "No port rules configured"
+msgstr "لا توجد قواعد منافذ مُهيّأة"
+
+msgid "Click 'Add Port' to create a rule"
+msgstr "انقر على 'إضافة منفذ' لإنشاء قاعدة"
+
+msgid "TCP Ports"
+msgstr "منافذ TCP"
+
+msgid "UDP Ports"
+msgstr "منافذ UDP"
+
+msgid "No blocked ports"
+msgstr "لا توجد منافذ محظورة"
+
+msgid "Ports blocked via rich rules will appear here"
+msgstr "ستظهر المنافذ المحظورة عبر القواعد الغنية هنا"
+
+msgid "Remove block rule"
+msgstr "إزالة قاعدة الحظر"
+
+msgid "Delete this port rule"
+msgstr "حذف قاعدة هذا المنفذ"
+
+#. Add port dialog
+msgid "Add Port Rule"
+msgstr "إضافة قاعدة منفذ"
+
+msgid "Port Details"
+msgstr "تفاصيل المنفذ"
+
+msgid "Name (optional)"
+msgstr "الاسم (اختياري)"
+
+msgid "Port Number"
+msgstr "رقم المنفذ"
+
+msgid "Protocol"
+msgstr "البروتوكول"
+
+msgid "TCP"
+msgstr "TCP"
+
+msgid "UDP"
+msgstr "UDP"
+
+msgid "Both"
+msgstr "كلاهما"
+
+msgid "Firewall Action"
+msgstr "إجراء جدار الحماية"
+
+msgid "How the firewall should handle incoming traffic on this port"
+msgstr "كيف يجب أن يتعامل جدار الحماية مع حركة المرور الواردة على هذا المنفذ"
+
+msgid "Action"
+msgstr "الإجراء"
+
+msgid "Allow (Open Port)"
+msgstr "السماح (فتح المنفذ)"
+
+msgid "Block (Reject Connections)"
+msgstr "الحظر (رفض الاتصالات)"
+
+msgid "Allow opens the port, Block rejects connections"
+msgstr "السماح يفتح المنفذ، الحظر يرفض الاتصالات"
+
+msgid "Options"
+msgstr "الخيارات"
+
+msgid "Zone"
+msgstr "المنطقة"
+
+msgid "Make Permanent"
+msgstr "جعله دائماً"
+
+msgid "Rule persists after reboot"
+msgstr "تبقى القاعدة بعد إعادة التشغيل"
+
+msgid "Port must be between 1 and 65535"
+msgstr "يجب أن يكون المنفذ بين 1 و 65535"
+
+#. Services page
+msgid "Authentication may be required to modify services"
+msgstr "قد تكون المصادقة مطلوبة لتعديل الخدمات"
+
+msgid "Enabled Services"
+msgstr "الخدمات المُفعّلة"
+
+msgid "Services allowing traffic through the firewall"
+msgstr "الخدمات التي تسمح بحركة المرور عبر جدار الحماية"
+
+msgid "Common Services"
+msgstr "الخدمات الشائعة"
+
+msgid "Frequently used network services"
+msgstr "خدمات الشبكة المستخدمة بشكل متكرر"
+
+msgid "No services enabled"
+msgstr "لا توجد خدمات مُفعّلة"
+
+msgid "Enable services to allow specific traffic"
+msgstr "تفعيل الخدمات للسماح بحركة مرور محددة"
+
+msgid "Disable service"
+msgstr "تعطيل الخدمة"
+
+msgid "Enable service"
+msgstr "تفعيل الخدمة"
+
+#. Network Exposure page
+msgid "Network Exposure"
+msgstr "التعرض للشبكة"
+
+msgid "Monitor listening ports and their firewall status"
+msgstr "مراقبة المنافذ المستمعة وحالة جدار الحماية الخاصة بها"
+
+msgid "Refresh"
+msgstr "تحديث"
+
+msgid "Exposed to Network"
+msgstr "مكشوف للشبكة"
+
+msgid "These ports are listening on all interfaces"
+msgstr "هذه المنافذ تستمع على جميع الواجهات"
+
+msgid "Local Only"
+msgstr "محلي فقط"
+
+msgid "These ports are only accessible locally"
+msgstr "هذه المنافذ يمكن الوصول إليها محلياً فقط"
+
+msgid "All Listening Ports"
+msgstr "جميع المنافذ المستمعة"
+
+msgid "Scan to see listening ports"
+msgstr "مسح لرؤية المنافذ المستمعة"
+
+msgid "Total Ports"
+msgstr "إجمالي المنافذ"
+
+msgid "Exposed"
+msgstr "مكشوف"
+
+msgid "Warning"
+msgstr "تحذير"
+
+msgid "Listening Address"
+msgstr "عنوان الاستماع"
+
+msgid "Process"
+msgstr "العملية"
+
+msgid "Unknown Process"
+msgstr "عملية غير معروفة"
+
+msgid "Actions"
+msgstr "الإجراءات"
+
+msgid "Stop Service"
+msgstr "إيقاف الخدمة"
+
+msgid "Stop the service using this port"
+msgstr "إيقاف الخدمة التي تستخدم هذا المنفذ"
+
+msgid "Block Port"
+msgstr "حظر المنفذ"
+
+msgid "Add a firewall rule to block this port"
+msgstr "إضافة قاعدة جدار حماية لحظر هذا المنفذ"
+
+#. System Services page
+msgid "System Services"
+msgstr "خدمات النظام"
+
+msgid "Manage system services and daemons"
+msgstr "إدارة خدمات النظام والخدمات الخفية"
+
+msgid "Refresh services list"
+msgstr "تحديث قائمة الخدمات"
+
+msgid "Running Services"
+msgstr "الخدمات قيد التشغيل"
+
+msgid "Services that are currently active"
+msgstr "الخدمات النشطة حالياً"
+
+msgid "Stopped Services"
+msgstr "الخدمات المتوقفة"
+
+msgid "Services that are not running"
+msgstr "الخدمات التي لا تعمل"
+
+msgid "Failed Services"
+msgstr "الخدمات الفاشلة"
+
+msgid "Services that have failed"
+msgstr "الخدمات التي فشلت"
+
+msgid "Stop service"
+msgstr "إيقاف الخدمة"
+
+msgid "Start service"
+msgstr "بدء الخدمة"
+
+msgid "Restart service"
+msgstr "إعادة تشغيل الخدمة"
+
+msgid "Disable (won't start on boot)"
+msgstr "تعطيل (لن تبدأ عند الإقلاع)"
+
+msgid "Enable (start on boot)"
+msgstr "تفعيل (البدء عند الإقلاع)"
+
+#. Quick Actions page
+msgid "Quick Actions"
+msgstr "إجراءات سريعة"
+
+msgid "One-click administrative operations"
+msgstr "عمليات إدارية بنقرة واحدة"
+
+msgid "These actions may affect system security and stability"
+msgstr "قد تؤثر هذه الإجراءات على أمان واستقرار النظام"
+
+msgid "Dismiss"
+msgstr "إغلاق"
+
+msgid "Firewall"
+msgstr "جدار الحماية"
+
+msgid "Manage firewalld service and rules"
+msgstr "إدارة خدمة وقواعد firewalld"
+
+msgid "Network"
+msgstr "الشبكة"
+
+msgid "Network service management"
+msgstr "إدارة خدمات الشبكة"
+
+msgid "Manage system services"
+msgstr "إدارة خدمات النظام"
+
+msgid "Ready to execute actions"
+msgstr "جاهز لتنفيذ الإجراءات"
+
+msgid "Execute"
+msgstr "تنفيذ"
+
+msgid "Confirm Action"
+msgstr "تأكيد الإجراء"
+
+msgid "Running..."
+msgstr "جارٍ التشغيل..."
+
+msgid "Executing..."
+msgstr "جارٍ التنفيذ..."
+
+#. Preferences
+msgid "Preferences"
+msgstr "التفضيلات"
+
+msgid "Appearance"
+msgstr "المظهر"
+
+msgid "Theme"
+msgstr "السمة"
+
+msgid "Choose the application color scheme"
+msgstr "اختر نظام ألوان التطبيق"
+
+msgid "Dark"
+msgstr "داكن"
+
+msgid "Light"
+msgstr "فاتح"
+
+msgid "System"
+msgstr "النظام"
+
+msgid "Dark theme"
+msgstr "سمة داكنة"
+
+msgid "Light theme"
+msgstr "سمة فاتحة"
+
+msgid "Follow system theme"
+msgstr "اتباع سمة النظام"
+
+#. Tooltips
+msgid "Refresh (Ctrl+R)"
+msgstr "تحديث (Ctrl+R)"
+
+#. Dialog buttons
+msgid "Cancel"
+msgstr "إلغاء"
+
+msgid "Add"
+msgstr "إضافة"
+
+#. Error messages
+msgid "Error"
+msgstr "خطأ"
+
+msgid "Failed to connect to firewalld"
+msgstr "فشل الاتصال بـ firewalld"
+
+msgid "Failed to add port"
+msgstr "فشل في إضافة المنفذ"
+
+msgid "Failed to block port"
+msgstr "فشل في حظر المنفذ"
+
+msgid "Failed to delete port"
+msgstr "فشل في حذف المنفذ"
+
+msgid "Failed to set default zone"
+msgstr "فشل في تعيين المنطقة الافتراضية"
+
+msgid "Failed to enable service"
+msgstr "فشل في تفعيل الخدمة"
+
+msgid "Failed to disable service"
+msgstr "فشل في تعطيل الخدمة"
+
+msgid "Failed to connect to systemd"
+msgstr "فشل الاتصال بـ systemd"
+
+msgid "Failed to execute action"
+msgstr "فشل في تنفيذ الإجراء"
+
+msgid "Failed to scan network"
+msgstr "فشل في مسح الشبكة"
+
+msgid "Task failed"
+msgstr "فشلت المهمة"
+
+#. Success messages
+msgid "Port opened (allowed)"
+msgstr "تم فتح المنفذ (مسموح)"
+
+msgid "Port blocked (rejected)"
+msgstr "تم حظر المنفذ (مرفوض)"
+
+msgid "Firewall configuration reloaded"
+msgstr "تم إعادة تحميل تكوين جدار الحماية"
+
+msgid "Firewall enabled"
+msgstr "تم تفعيل جدار الحماية"
+
+msgid "Firewall disabled (panic mode)"
+msgstr "تم تعطيل جدار الحماية (وضع الذعر)"
+
+#. Status format strings
+#, c-format
+msgid "%d services currently active"
+msgstr "%d خدمة نشطة حالياً"
+
+#, c-format
+msgid "%d services not running"
+msgstr "%d خدمة لا تعمل"
+
+#, c-format
+msgid "%d services have failed"
+msgstr "%d خدمة فشلت"
+
+#, c-format
+msgid "%d allowed, %d blocked"
+msgstr "%d مسموح، %d محظور"
+
+#, c-format
+msgid "Zone: %s"
+msgstr "المنطقة: %s"
+
+#, c-format
+msgid "Default zone set to '%s'"
+msgstr "تم تعيين المنطقة الافتراضية إلى '%s'"
+
+#, c-format
+msgid "Port %s/%s deleted"
+msgstr "تم حذف المنفذ %s/%s"
+
+#, c-format
+msgid "Port %s/%s blocked in zone '%s'"
+msgstr "تم حظر المنفذ %s/%s في المنطقة '%s'"
+
+#, c-format
+msgid "Port %s/%s unblocked"
+msgstr "تم إلغاء حظر المنفذ %s/%s"
+
+#, c-format
+msgid "Service '%s' enabled"
+msgstr "تم تفعيل الخدمة '%s'"
+
+#, c-format
+msgid "Service '%s' disabled"
+msgstr "تم تعطيل الخدمة '%s'"
+
+#. System Services search
+msgid "Search services..."
+msgstr "البحث عن الخدمات..."
