@@ -170,3 +170,11 @@ Open an issue for:
 - Bug reports
 - Feature requests
 - Questions about the codebase
+
+
+## License change
+
+This project was relicensed to the MIT License (see `LICENSE`). If you have
+contributed code and did not agree to relicensing, please contact the
+maintainer. By contributing you confirm that you have the right to license
+your contributions under the project's license.
