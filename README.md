@@ -2,18 +2,22 @@
 
 A modern, GTK4/Libadwaita security management application for Linux, providing a clean interface to **firewalld**, **systemd**, and system security monitoring.
 
-![Security Center](data/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg)
+![Security Center]<img width="1451" height="850" alt="security-center-white" src="https://github.com/user-attachments/assets/9bfe741e-6433-4167-b563-8f30ba901ffa" />
 
 ## Features
 
 - **Firewall Management**: View and manage firewalld zones, services, and ports
-- **Port Control**: Open and block custom TCP/UDP ports with rich rules
+- **Port Control**: Open and block custom TCP/UDP ports with rich rules; consolidated view groups same-port entries across zones and protocols
 - **Network Exposure**: Monitor listening ports and correlate with firewall status
 - **System Services**: Manage systemd services with start/stop/enable/disable
-- **Quick Actions**: Common administrative tasks with one click
-- **Dashboard Overview**: Real-time statistics showing firewall status, connections, and traffic
+- **Quick Actions**: Common administrative tasks with one click (enable/disable firewall, panic mode, etc.)
+- **Dashboard Overview**: Real-time statistics showing firewall status, connections, and traffic with donut, bar, and line charts
+- **Three-State Firewall Display**: Dashboard shows Active, Panic Mode, or Inactive states with appropriate indicators
+- **Collapsible Sidebar**: Toggle between expanded and icon-only navigation mode
+- **Update Checker**: Automatic GitHub release check notifies when new versions are available
 - **GNOME Integration**: Native look and feel with Libadwaita, dark mode support
 - **Safe by Default**: Read-only mode with Polkit authentication for changes
+- **Internationalization**: Translations for Arabic, German, Greek, Spanish, French, Hindi, Italian, Portuguese, Russian, and Chinese
 
 ## Screenshots
 
@@ -100,6 +104,7 @@ security-center/
 │   ├── config.rs            # Application settings
 │   ├── autostart.rs         # Desktop autostart management
 │   ├── storage.rs           # Port metadata persistence
+│   ├── version_check.rs     # GitHub release update checker
 │   ├── admin/               # Administrative actions
 │   │   ├── actions.rs       # Quick action definitions
 │   │   └── network.rs       # Network exposure scanner
@@ -108,23 +113,36 @@ security-center/
 │   ├── systemd/             # systemd D-Bus client
 │   │   └── client.rs        # Service management
 │   ├── models/              # Data models
-│   │   ├── zone.rs, port.rs, service.rs, interface.rs
+│   │   ├── zone.rs          # Firewall zone model
+│   │   ├── port.rs          # Port model with rich rule parsing
+│   │   ├── consolidated_port.rs  # Port consolidation logic
+│   │   ├── service.rs       # Firewall service model
+│   │   └── interface.rs     # Network interface model
 │   ├── stats/               # System statistics
 │   │   ├── collectors.rs    # Traffic/connection collection
-│   │   └── cache.rs         # Stats caching
+│   │   ├── cache.rs         # Stats caching
+│   │   └── models.rs        # Stats data models
 │   └── ui/                  # GTK4/Adw widgets and pages
-│       ├── main_window.rs
-│       ├── overview_page.rs
-│       ├── zones_page.rs
-│       ├── ports_page.rs
-│       ├── services_page.rs
-│       ├── network_exposure_page.rs
-│       ├── quick_actions_page.rs
+│       ├── main_window.rs   # Main window with collapsible sidebar
+│       ├── overview_page.rs # Dashboard with charts and status
+│       ├── zones_page.rs    # Zone management
+│       ├── ports_page.rs    # Port rules with consolidated view
+│       ├── services_page.rs # Firewall services
+│       ├── system_services_page.rs  # Systemd services
+│       ├── network_exposure_page.rs # Network exposure analysis
+│       ├── quick_actions_page.rs    # Administrative quick actions
+│       ├── help_page.rs     # Help and documentation
 │       └── widgets/         # Custom chart widgets
-└── data/
-    ├── icons/               # Application icons
-    ├── *.desktop            # Desktop entry
-    └── *.metainfo.xml       # AppStream metadata
+│           ├── donut_chart.rs
+│           ├── bar_chart.rs
+│           ├── line_chart.rs
+│           └── network_activity_chart.rs
+├── data/
+│   ├── icons/               # Application icons
+│   ├── *.desktop            # Desktop entry
+│   └── *.metainfo.xml       # AppStream metadata
+├── po/                      # Translation files
+└── packaging/               # DEB, RPM, Arch, AppImage packaging
 ```
 
 ### Key Design Decisions

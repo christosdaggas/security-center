@@ -1,0 +1,67 @@
+# Maintainer: Christos Daggas <chrisdaggas@example.com>
+pkgname=security-center
+pkgver=1.4.0
+pkgrel=1
+pkgdesc="A modern GTK4/Libadwaita security center for Linux"
+arch=('x86_64')
+url="https://github.com/christosdaggas/security-center"
+license=('MIT')
+depends=(
+    'gtk4>=4.14'
+    'libadwaita>=1.5'
+    'firewalld'
+    'polkit'
+)
+makedepends=(
+    'cargo'
+    'git'
+)
+optdepends=(
+    'systemd: For service management'
+)
+source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+prepare() {
+    cd "$pkgname-$pkgver"
+    export RUSTUP_TOOLCHAIN=stable
+    cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+    cd "$pkgname-$pkgver"
+    export RUSTUP_TOOLCHAIN=stable
+    export CARGO_TARGET_DIR=target
+    cargo build --frozen --release --all-features
+}
+
+check() {
+    cd "$pkgname-$pkgver"
+    export RUSTUP_TOOLCHAIN=stable
+    cargo test --frozen --all-features
+}
+
+package() {
+    cd "$pkgname-$pkgver"
+    
+    # Install binary
+    install -Dm755 "target/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
+    
+    # Install desktop file
+    install -Dm644 "data/com.chrisdaggas.security-center.desktop" \
+        "$pkgdir/usr/share/applications/com.chrisdaggas.security-center.desktop"
+    
+    # Install metainfo
+    install -Dm644 "data/com.chrisdaggas.security-center.metainfo.xml" \
+        "$pkgdir/usr/share/metainfo/com.chrisdaggas.security-center.metainfo.xml"
+    
+    # Install icon
+    install -Dm644 "data/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg" \
+        "$pkgdir/usr/share/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg"
+    
+    # Install license
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    
+    # Install documentation
+    install -Dm644 CONTRIBUTING.md "$pkgdir/usr/share/doc/$pkgname/CONTRIBUTING.md"
+}

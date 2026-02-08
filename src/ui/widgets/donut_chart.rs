@@ -214,7 +214,7 @@ mod imp {
             // Primary text (percentage)
             cr.select_font_face("Sans", gtk4::cairo::FontSlant::Normal, gtk4::cairo::FontWeight::Bold);
             cr.set_font_size(24.0);
-            let extents = cr.text_extents(&primary).unwrap();
+            let extents = cr.text_extents(&primary).unwrap_or_else(|_| gtk4::cairo::TextExtents::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
             cr.move_to(cx - extents.width() / 2.0, cy);
             let _ = cr.show_text(&primary);
             
@@ -227,7 +227,7 @@ mod imp {
                 text_color.blue() as f64,
                 0.7,
             );
-            let extents = cr.text_extents(&secondary).unwrap();
+            let extents = cr.text_extents(&secondary).unwrap_or_else(|_| gtk4::cairo::TextExtents::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
             cr.move_to(cx - extents.width() / 2.0, cy + 18.0);
             let _ = cr.show_text(&secondary);
         }

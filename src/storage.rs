@@ -30,7 +30,6 @@ pub struct PortMetadata {
 }
 
 impl PortMetadata {
-    /// Create new port metadata with a name.
     pub fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -44,7 +43,6 @@ impl PortMetadata {
         }
     }
 
-    /// Create new port metadata with name and description.
     pub fn with_description(name: &str, description: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -58,7 +56,6 @@ impl PortMetadata {
         }
     }
     
-    /// Create port metadata for a deny rule.
     pub fn deny_rule(port: u16, protocol: &str, zone: &str, incoming: &str, outgoing: &str, name: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -79,11 +76,10 @@ pub struct PortStorage {
     data: HashMap<String, PortMetadata>,
     path: PathBuf,
     loaded: bool,
-    dirty: bool,  // Track if data needs saving
+    dirty: bool,
 }
 
 impl PortStorage {
-    /// Create a new port storage instance (does not load from disk yet).
     pub fn new() -> Self {
         let path = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -98,7 +94,6 @@ impl PortStorage {
         }
     }
 
-    /// Ensure data is loaded from disk.
     fn ensure_loaded(&mut self) {
         if !self.loaded {
             self.load();
@@ -106,7 +101,6 @@ impl PortStorage {
         }
     }
 
-    /// Load metadata from disk.
     fn load(&mut self) {
         if let Ok(content) = fs::read_to_string(&self.path) {
             match serde_json::from_str(&content) {
@@ -121,10 +115,13 @@ impl PortStorage {
         self.dirty = false;
     }
 
-    /// Save metadata to disk.
     pub fn save(&mut self) {
+        use std::io::Write;
+        #[cfg(unix)]
+        use std::os::unix::fs::PermissionsExt;
+
         if !self.dirty {
-            return;  // Nothing to save
+            return;
         }
         
         if let Some(parent) = self.path.parent() {
@@ -133,10 +130,23 @@ impl PortStorage {
 
         match serde_json::to_string_pretty(&self.data) {
             Ok(content) => {
-                if let Err(e) = fs::write(&self.path, content) {
-                    warn!("Failed to save port metadata: {}", e);
-                } else {
-                    self.dirty = false;
+                match fs::File::create(&self.path) {
+                    Ok(mut file) => {
+                        #[cfg(unix)]
+                        {
+                            if let Err(e) = file.set_permissions(fs::Permissions::from_mode(0o600)) {
+                                warn!("Failed to set file permissions: {}", e);
+                            }
+                        }
+                        if let Err(e) = file.write_all(content.as_bytes()) {
+                            warn!("Failed to save port metadata: {}", e);
+                        } else {
+                            self.dirty = false;
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Failed to create port metadata file: {}", e);
+                    }
                 }
             }
             Err(e) => {
@@ -145,13 +155,11 @@ impl PortStorage {
         }
     }
 
-    /// Get metadata for a port.
     pub fn get(&mut self, key: &str) -> Option<PortMetadata> {
         self.ensure_loaded();
         self.data.get(key).cloned()
     }
 
-    /// Set metadata for a port (marks dirty and saves).
     pub fn set(&mut self, key: String, metadata: PortMetadata) {
         self.ensure_loaded();
         self.data.insert(key, metadata);
@@ -159,7 +167,6 @@ impl PortStorage {
         self.save();
     }
 
-    /// Remove metadata for a port (marks dirty and saves).
     pub fn remove(&mut self, key: &str) {
         self.ensure_loaded();
         if self.data.remove(key).is_some() {
@@ -168,19 +175,16 @@ impl PortStorage {
         }
     }
 
-    /// Check if a port has metadata.
     pub fn has(&mut self, key: &str) -> bool {
         self.ensure_loaded();
         self.data.contains_key(key)
     }
 
-    /// Get all stored port keys.
     pub fn keys(&mut self) -> Vec<String> {
         self.ensure_loaded();
         self.data.keys().cloned().collect()
     }
 
-    /// Get all stored rules that have deny actions (not fetched from firewalld).
     pub fn get_deny_rules(&mut self) -> Vec<PortMetadata> {
         self.ensure_loaded();
         self.data.values()
@@ -189,18 +193,15 @@ impl PortStorage {
             .collect()
     }
 
-    /// Get all stored rules.
     pub fn get_all(&mut self) -> Vec<PortMetadata> {
         self.ensure_loaded();
         self.data.values().cloned().collect()
     }
 
-    /// Create a key for a port/protocol/zone tuple.
     pub fn make_key(port: u16, protocol: &str, zone: &str) -> String {
         format!("{}/{}/{}", port, protocol, zone)
     }
 
-    /// Create a key for a port/protocol pair (without zone).
     pub fn make_simple_key(port: u16, protocol: &str) -> String {
         format!("{}/{}", port, protocol)
     }

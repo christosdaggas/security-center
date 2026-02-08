@@ -193,7 +193,7 @@ mod imp {
                 );
                 cr.select_font_face("Sans", gtk4::cairo::FontSlant::Normal, gtk4::cairo::FontWeight::Normal);
                 cr.set_font_size(12.0);
-                let extents = cr.text_extents(&placeholder).unwrap();
+                let extents = cr.text_extents(&placeholder).unwrap_or_else(|_| gtk4::cairo::TextExtents::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
                 cr.move_to((width - extents.width()) / 2.0, height / 2.0);
                 let _ = cr.show_text(&placeholder);
                 return;

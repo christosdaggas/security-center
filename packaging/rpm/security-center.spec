@@ -1,5 +1,5 @@
 Name:           security-center
-Version:        1.0.0
+Version:        1.4.0
 Release:        1%{?dist}
 Summary:        A modern GTK4 security center for Linux
 
@@ -57,6 +57,13 @@ install -Dm644 README.md %{buildroot}%{_docdir}/%{name}/README.md
 %{_docdir}/%{name}/README.md
 
 %changelog
+* Sun Feb 08 2026 Christos Daggas <chrisdaggas@example.com> - 1.4.0-1
+- Consolidated port view — same-port entries grouped into single rows
+- Improved firewall state display (Active, Panic Mode, Inactive)
+- Traffic switch disabled when firewall is stopped
+- Dashboard status syncs after Quick Actions changes
+- Fixed restart button stretching and signal feedback loops
+
 * Tue Jan 07 2026 Christos Daggas <chrisdaggas@example.com> - 1.0.0-1
 - Initial release
 - Firewall management with firewalld integration

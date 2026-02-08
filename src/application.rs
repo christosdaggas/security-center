@@ -24,7 +24,6 @@ glib::wrapper! {
 }
 
 impl Application {
-    /// Create a new application instance.
     pub fn new(app_id: &str) -> Self {
         glib::Object::builder()
             .property("application-id", app_id)
@@ -32,23 +31,19 @@ impl Application {
             .build()
     }
 
-    /// Setup application actions.
     fn setup_actions(&self) {
-        // Quit action
         let quit_action = gio::ActionEntry::builder("quit")
             .activate(|app: &Self, _, _| {
                 app.quit();
             })
             .build();
 
-        // About action
         let about_action = gio::ActionEntry::builder("about")
             .activate(|app: &Self, _, _| {
                 app.show_about_dialog();
             })
             .build();
 
-        // Preferences action
         let preferences_action = gio::ActionEntry::builder("preferences")
             .activate(|app: &Self, _, _| {
                 app.show_preferences_dialog();
@@ -58,7 +53,6 @@ impl Application {
         self.add_action_entries([quit_action, about_action, preferences_action]);
     }
 
-    /// Show preferences dialog with theme selection.
     fn show_preferences_dialog(&self) {
         let dialog = adw::PreferencesDialog::builder()
             .title("Preferences")
@@ -66,19 +60,16 @@ impl Application {
 
         let page = adw::PreferencesPage::new();
         
-        // Appearance group
         let appearance_group = adw::PreferencesGroup::builder()
             .title("Appearance")
             .build();
 
-        // Theme selection
         let theme_row = adw::ComboRow::builder()
             .title("Theme")
             .subtitle("Choose the application color scheme")
             .model(&gtk4::StringList::new(&["System", "Light", "Dark"]))
             .build();
 
-        // Set current theme
         let settings = self.imp().settings.borrow();
         let current = match settings.theme() {
             "light" => 1,
@@ -88,7 +79,6 @@ impl Application {
         drop(settings);
         theme_row.set_selected(current);
 
-        // Connect theme change
         let app = self.clone();
         theme_row.connect_selected_notify(move |row| {
             let theme = match row.selected() {
@@ -102,13 +92,11 @@ impl Application {
         appearance_group.add(&theme_row);
         page.add(&appearance_group);
 
-        // Behavior group
         let behavior_group = adw::PreferencesGroup::builder()
             .title("Behavior")
             .description("Startup and system integration options")
             .build();
 
-        // Check actual autostart state
         let autostart_enabled = crate::autostart::is_autostart_enabled();
 
         let autostart_row = adw::SwitchRow::builder()
@@ -148,16 +136,11 @@ impl Application {
         }
     }
 
-    /// Set and apply the theme.
     pub fn set_theme(&self, theme: &str) {
-        // Save to settings
         self.imp().settings.borrow_mut().set_theme(theme);
-        
-        // Apply theme
         self.apply_theme(theme);
     }
 
-    /// Apply the theme to the application.
     fn apply_theme(&self, theme: &str) {
         let style_manager = adw::StyleManager::default();
         match theme {
@@ -167,13 +150,11 @@ impl Application {
         }
     }
 
-    /// Setup keyboard shortcuts.
     fn setup_shortcuts(&self) {
         self.set_accels_for_action("app.quit", &["<Control>q"]);
         self.set_accels_for_action("win.refresh", &["<Control>r", "F5"]);
     }
 
-    /// Show the about dialog.
     fn show_about_dialog(&self) {
         let dialog = adw::AboutDialog::builder()
             .application_name("Security Center")
@@ -186,6 +167,27 @@ impl Application {
             .copyright("© 2024-2026 Christos A. Daggas")
             .developers(vec!["Christos A. Daggas".to_string()])
             .comments("Manage your system security, firewall and services")
+            .release_notes("<p>Version 1.4.0 - February 2026</p><ul>\
+                <li>Consolidated Port View - Same-port entries grouped into single rows</li>\
+                <li>Improved Firewall State Display - Three-state dashboard (Active, Panic Mode, Inactive)</li>\
+                <li>Traffic Switch Guard - Prevents accidental toggling when firewall is stopped</li>\
+                <li>Dashboard Status Sync - Firewall status updates correctly after Quick Actions</li>\
+                <li>Restart Button Fix - Properly centered on the dashboard</li>\
+                <li>Signal Loop Fix - Eliminated switch feedback loops and error spam</li>\
+            </ul><p>Version 1.3.0 - February 2026</p><ul>\
+                <li>Collapsible Sidebar - Toggle between expanded and icon-only mode</li>\
+                <li>Split Header Design - Distinct app title and page title areas</li>\
+                <li>Menu Popover - Quick access to theme selection, About, and Quit</li>\
+                <li>GitHub Update Checker - Notifies when new versions are available</li>\
+                <li>Multi-Zone Port Selection - Add ports to multiple zones at once</li>\
+                <li>Security Hardening - Improved input validation and file permissions</li>\
+            </ul><p>Version 1.0.0 - Initial Release</p><ul>\
+                <li>Firewall zone management</li>\
+                <li>Service and port configuration</li>\
+                <li>System services monitoring</li>\
+                <li>Network exposure analysis</li>\
+                <li>Quick actions for common tasks</li>\
+            </ul>")
             .build();
 
         if let Some(window) = self.active_window() {
@@ -193,17 +195,13 @@ impl Application {
         }
     }
 
-    /// Register icon search paths so the app icon can be found.
     fn register_icon_paths(&self) {
-        // Add icon search paths for development mode
-        // When installed, icons should be in /usr/share/icons/hicolor (default search path)
         if let Some(display) = gtk4::gdk::Display::default() {
             let icon_theme = gtk4::IconTheme::for_display(&display);
             
             // Try to find icons relative to the executable (for development/portable use)
             if let Ok(exe_path) = std::env::current_exe() {
                 if let Some(exe_dir) = exe_path.parent() {
-                    // Check for icons relative to executable: ../../data/icons (from target/release/)
                     let dev_icons = exe_dir.join("../../data/icons");
                     if dev_icons.exists() {
                         if let Some(path_str) = dev_icons.canonicalize().ok().and_then(|p| p.to_str().map(String::from)) {
@@ -213,17 +211,14 @@ impl Application {
                 }
             }
             
-            // Also check current working directory (for cargo run)
             icon_theme.add_search_path("data/icons");
         }
     }
 
-    /// Load and apply CSS styles with GNOME accent color support.
     fn load_css(&self) {
         let provider = gtk4::CssProvider::new();
         
         if let Some(display) = gtk4::gdk::Display::default() {
-            // Get accent color from GNOME settings with fallback
             let accent_color = self.get_accent_color();
             
             let css = format!(r#"
@@ -297,10 +292,7 @@ impl Application {
         }
     }
 
-    /// Get the GNOME accent color, falling back to a default blue if not available.
     fn get_accent_color(&self) -> String {
-        // Try to get accent color from GNOME settings using gio::Settings
-        // This is safer than spawning a shell command
         let accent_color = gtk4::gio::Settings::new("org.gnome.desktop.interface")
             .string("accent-color");
         
@@ -318,7 +310,6 @@ impl Application {
             _ => {}
         }
         
-        // Fallback: Use a nice default blue that works well with both light and dark themes
         let style_manager = adw::StyleManager::default();
         let is_dark = style_manager.is_dark();
         if is_dark {
@@ -350,7 +341,6 @@ mod imp {
     impl ObjectImpl for Application {
         fn constructed(&self) {
             self.parent_constructed();
-            // Initialize settings
             self.settings.replace(Settings::new());
         }
     }
@@ -359,18 +349,14 @@ mod imp {
         fn activate(&self) {
             let app = self.obj();
             
-            // Load CSS
             app.load_css();
             
-            // Apply saved theme
             let theme = self.settings.borrow().theme().to_string();
             app.apply_theme(&theme);
             
-            // Setup actions and shortcuts
             app.setup_actions();
             app.setup_shortcuts();
 
-            // Get or create window
             let window = self.window.get_or_init(|| {
                 MainWindow::new(&*app)
             });
@@ -382,10 +368,8 @@ mod imp {
             self.parent_startup();
             info!("Application starting up");
             
-            // Register icon search paths early so icons are available for windows
             self.obj().register_icon_paths();
             
-            // Set the default icon for all windows in the application
             gtk4::Window::set_default_icon_name("com.chrisdaggas.security-center");
         }
     }

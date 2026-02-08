@@ -4,7 +4,7 @@
 
 //! Main application window with navigation.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use gtk4::prelude::*;
@@ -30,7 +30,7 @@ impl MainWindow {
             .property("application", app)
             .property("title", "Security Center")
             .property("default-width", 1200)
-            .property("default-height", 720)
+            .property("default-height", 740)
             .property("icon-name", "com.chrisdaggas.security-center")
             .build();
 
@@ -101,6 +101,21 @@ impl MainWindow {
         if let Some(switch) = overview_page.traffic_switch() {
             let window_clone = self.clone();
             switch.connect_state_set(move |switch, state| {
+                // Skip if the switch is being updated programmatically
+                if window_clone.imp().updating_switch.get() {
+                    switch.set_state(state);
+                    return glib::Propagation::Stop;
+                }
+                // If firewalld is not running, show a message and reset the switch
+                if !window_clone.imp().firewall_connected.get() {
+                    window_clone.show_toast("Firewall service is not running");
+                    // Guard the reset to prevent re-entering this handler
+                    window_clone.imp().updating_switch.set(true);
+                    switch.set_state(!state);
+                    switch.set_active(!state);
+                    window_clone.imp().updating_switch.set(false);
+                    return glib::Propagation::Stop;
+                }
                 window_clone.toggle_firewall(state);
                 switch.set_state(state);
                 glib::Propagation::Stop
@@ -117,19 +132,25 @@ impl MainWindow {
         imp.quick_actions_page.replace(Some(quick_actions_page));
         imp.stack.replace(Some(stack.clone()));
 
+        // === MAIN HORIZONTAL LAYOUT ===
+        let main_box = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+
         // === SIDEBAR ===
         let sidebar_box = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
+            .width_request(250)
             .build();
+        sidebar_box.add_css_class("sidebar-box");
 
         // Sidebar header with app title
         let sidebar_header = adw::HeaderBar::new();
         sidebar_header.set_show_end_title_buttons(false);
+        sidebar_header.set_show_start_title_buttons(false);
 
         // Sidebar collapse button (top-right of sidebar header)
         let sidebar_toggle_btn = gtk4::Button::builder()
             .icon_name("sidebar-show-symbolic")
-            .tooltip_text("Hide sidebar")
+            .tooltip_text("Collapse sidebar")
             .build();
         sidebar_toggle_btn.add_css_class("flat");
         sidebar_toggle_btn.set_action_name(Some("win.toggle-sidebar"));
@@ -139,7 +160,7 @@ impl MainWindow {
         sidebar_header.set_title_widget(Some(&sidebar_title));
         sidebar_box.append(&sidebar_header);
 
-        // Navigation list with icons
+        // Navigation list
         let nav_list = gtk4::ListBox::builder()
             .selection_mode(gtk4::SelectionMode::Single)
             .css_classes(vec!["navigation-sidebar".to_string()])
@@ -157,13 +178,38 @@ impl MainWindow {
             ("help", "Help", "help-about-symbolic"),
         ];
 
-        for (id, label, icon) in items {
-            let row = adw::ActionRow::builder()
-                .title(label)
-                .build();
-            row.add_prefix(&gtk4::Image::from_icon_name(icon));
+        // Create nav rows with separate labels for collapse functionality
+        let mut nav_labels: Vec<gtk4::Label> = Vec::new();
+        let mut nav_boxes: Vec<gtk4::Box> = Vec::new();
+
+        for (id, label_text, icon_name) in items {
+            let row = gtk4::ListBoxRow::new();
+            row.set_selectable(true);
+            row.set_tooltip_text(Some(label_text));
+
+            let hbox = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
+            hbox.set_margin_top(14);
+            hbox.set_margin_bottom(14);
+            hbox.set_margin_start(12);
+            hbox.set_margin_end(12);
+            hbox.add_css_class("nav-row-box");
+
+            let icon = gtk4::Image::from_icon_name(icon_name);
+            icon.set_pixel_size(20);
+            hbox.append(&icon);
+
+            let label = gtk4::Label::new(Some(label_text));
+            label.set_halign(gtk4::Align::Start);
+            label.set_hexpand(true);
+            label.add_css_class("nav-label");
+            hbox.append(&label);
+
+            row.set_child(Some(&hbox));
             row.set_widget_name(id);
             nav_list.append(&row);
+
+            nav_labels.push(label);
+            nav_boxes.push(hbox);
         }
 
         let stack_clone = stack.clone();
@@ -173,7 +219,6 @@ impl MainWindow {
                 let name = row.widget_name();
                 stack_clone.set_visible_child_name(&name);
                 
-                // Update content title
                 let title = match name.as_str() {
                     "overview" => "Overview",
                     "zones" => "Zones",
@@ -189,7 +234,6 @@ impl MainWindow {
                     content_title.set_title(title);
                 }
                 
-                // Refresh page when selected
                 match name.as_str() {
                     "system-services" => {
                         if let Some(page) = window_clone.imp().system_services_page.borrow().as_ref() {
@@ -215,6 +259,26 @@ impl MainWindow {
         sidebar_scroll.set_child(Some(&nav_list));
         sidebar_box.append(&sidebar_scroll);
 
+        // Update banner
+        let update_banner = gtk4::Box::new(gtk4::Orientation::Horizontal, 6);
+        update_banner.add_css_class("update-banner");
+        update_banner.set_visible(false);
+        update_banner.set_halign(gtk4::Align::Start);
+        update_banner.set_margin_start(12);
+        update_banner.set_margin_end(12);
+        update_banner.set_margin_top(8);
+
+        let update_icon = gtk4::Image::from_icon_name("software-update-available-symbolic");
+        update_icon.set_pixel_size(14);
+        update_banner.append(&update_icon);
+
+        let update_label = gtk4::Label::new(Some("New version available"));
+        update_label.add_css_class("update-banner-label");
+        update_banner.append(&update_label);
+
+        sidebar_box.append(&update_banner);
+        imp.update_banner.replace(Some(update_banner));
+
         // Version and author info at the bottom of sidebar
         let info_box = gtk4::Box::new(gtk4::Orientation::Vertical, 2);
         info_box.set_margin_start(12);
@@ -234,29 +298,33 @@ impl MainWindow {
         
         sidebar_box.append(&info_box);
 
+        // Store collapsible sidebar refs
+        *imp.sidebar_box.borrow_mut() = Some(sidebar_box.clone());
+        *imp.sidebar_title.borrow_mut() = Some(sidebar_title);
+        *imp.sidebar_toggle_btn.borrow_mut() = Some(sidebar_toggle_btn);
+        *imp.info_box.borrow_mut() = Some(info_box);
+        *imp.nav_labels.borrow_mut() = nav_labels;
+        *imp.nav_boxes.borrow_mut() = nav_boxes;
+        imp.sidebar_collapsed.set(false);
+
+        self.check_for_updates();
+
+        // Separator between sidebar and content
+        let separator = gtk4::Separator::new(gtk4::Orientation::Vertical);
+
         // === CONTENT AREA ===
         let content_box = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
+        content_box.set_hexpand(true);
         
         let header = adw::HeaderBar::new();
         let content_title = adw::WindowTitle::new("Overview", "");
         header.set_title_widget(Some(&content_title));
         imp.content_title.replace(Some(content_title));
-
-        // Sidebar toggle button in content header (restores sidebar after hiding)
-        let content_toggle_btn = gtk4::Button::builder()
-            .icon_name("sidebar-show-symbolic")
-            .tooltip_text("Show sidebar")
-            .build();
-        content_toggle_btn.add_css_class("flat");
-        content_toggle_btn.set_visible(false);
-        content_toggle_btn.set_action_name(Some("win.toggle-sidebar"));
-        header.pack_start(&content_toggle_btn);
         
         let menu_button = gtk4::MenuButton::builder()
             .icon_name("open-menu-symbolic")
             .build();
         
-        // Create custom popover with theme selection
         let popover = self.create_menu_popover();
         menu_button.set_popover(Some(&popover));
         
@@ -280,20 +348,12 @@ impl MainWindow {
             .build();
         content_box.append(&scrolled);
 
-        // === SPLIT VIEW ===
-        // Use OverlaySplitView for collapsible sidebar
-        let split_view = adw::OverlaySplitView::new();
-        split_view.set_min_sidebar_width(220.0);
-        split_view.set_max_sidebar_width(280.0);
-        split_view.set_pin_sidebar(true);
-        split_view.set_sidebar(Some(&sidebar_box));
-        split_view.set_content(Some(&content_box));
+        // Assemble main layout
+        main_box.append(&sidebar_box);
+        main_box.append(&separator);
+        main_box.append(&content_box);
 
-        // Store references
-        *imp.split_view.borrow_mut() = Some(split_view.clone());
-        *imp.content_toggle_btn.borrow_mut() = Some(content_toggle_btn);
-
-        toast_overlay.set_child(Some(&split_view));
+        toast_overlay.set_child(Some(&main_box));
         self.set_content(Some(&toast_overlay));
     }
 
@@ -511,22 +571,64 @@ impl MainWindow {
         self.add_action_entries([refresh, action_toggle_sidebar]);
     }
 
-    /// Toggle the sidebar visibility.
+    /// Toggle sidebar between collapsed (icons only) and expanded.
     fn toggle_sidebar(&self) {
         let imp = self.imp();
 
-        let split_view_borrow = imp.split_view.borrow();
-        let Some(split_view) = split_view_borrow.as_ref() else {
-            return;
-        };
+        let is_collapsed = imp.sidebar_collapsed.get();
+        let new_collapsed = !is_collapsed;
+        imp.sidebar_collapsed.set(new_collapsed);
 
-        // Toggle the sidebar visibility using OverlaySplitView's show_sidebar property
-        let currently_shown = split_view.shows_sidebar();
-        split_view.set_show_sidebar(!currently_shown);
+        // Update sidebar width
+        if let Some(sidebar_box) = imp.sidebar_box.borrow().as_ref() {
+            if new_collapsed {
+                sidebar_box.set_width_request(50);
+                sidebar_box.add_css_class("sidebar-collapsed");
+            } else {
+                sidebar_box.set_width_request(250);
+                sidebar_box.remove_css_class("sidebar-collapsed");
+            }
+        }
 
-        // Update button visibility: show content toggle when sidebar is hidden
-        if let Some(btn) = imp.content_toggle_btn.borrow().as_ref() {
-            btn.set_visible(currently_shown); // will be hidden after toggle
+        // Hide/show sidebar title
+        if let Some(sidebar_title) = imp.sidebar_title.borrow().as_ref() {
+            sidebar_title.set_visible(!new_collapsed);
+        }
+
+        // Hide/show navigation labels
+        for label in imp.nav_labels.borrow().iter() {
+            label.set_visible(!new_collapsed);
+        }
+
+        // Adjust nav box layout for collapsed mode
+        for hbox in imp.nav_boxes.borrow().iter() {
+            if new_collapsed {
+                hbox.set_margin_start(0);
+                hbox.set_margin_end(0);
+                hbox.set_spacing(0);
+                hbox.set_halign(gtk4::Align::Center);
+            } else {
+                hbox.set_margin_start(12);
+                hbox.set_margin_end(12);
+                hbox.set_spacing(12);
+                hbox.set_halign(gtk4::Align::Fill);
+            }
+        }
+
+        // Hide/show info box at bottom
+        if let Some(info_box) = imp.info_box.borrow().as_ref() {
+            info_box.set_visible(!new_collapsed);
+        }
+
+        // Update toggle button tooltip and icon
+        if let Some(btn) = imp.sidebar_toggle_btn.borrow().as_ref() {
+            if new_collapsed {
+                btn.set_tooltip_text(Some("Expand sidebar"));
+                btn.set_icon_name("sidebar-show-right-symbolic");
+            } else {
+                btn.set_tooltip_text(Some("Collapse sidebar"));
+                btn.set_icon_name("sidebar-show-symbolic");
+            }
         }
     }
 
@@ -586,43 +688,51 @@ impl MainWindow {
             }).await;
             
             // Back on the main thread - update UI
-            if let Ok(Some((zones, services, _default_zone, ports, blocked_ports))) = data {
-                let imp = window.imp();
-                
-                // Update zones page
-                if let Some(ref zones) = zones {
-                    if let Some(page) = imp.zones_page.borrow().as_ref() {
-                        page.set_zones(zones);
-                    }
-                }
-                
-                // Update services page
-                if let Some(ref services) = services {
-                    if let Some(page) = imp.services_page.borrow().as_ref() {
-                        page.set_services(services);
-                    }
-                }
-                
-                // Update ports page with both open and blocked ports
-                if let Some(page) = imp.ports_page.borrow().as_ref() {
-                    // Pass available zone names for the dropdown
+            match data {
+                Ok(Some((zones, services, _default_zone, ports, blocked_ports))) => {
+                    let imp = window.imp();
+                    
+                    // Update zones page
                     if let Some(ref zones) = zones {
-                        let zone_names: Vec<String> = zones.iter().map(|z| z.name.clone()).collect();
-                        page.set_available_zones(&zone_names);
+                        if let Some(page) = imp.zones_page.borrow().as_ref() {
+                            page.set_zones(zones);
+                        }
                     }
-                    page.set_ports(&ports);
-                    page.set_blocked_ports(&blocked_ports);
-                }
+                    
+                    // Update services page
+                    if let Some(ref services) = services {
+                        if let Some(page) = imp.services_page.borrow().as_ref() {
+                            page.set_services(services);
+                        }
+                    }
+                    
+                    // Update ports page with both open and blocked ports
+                    if let Some(page) = imp.ports_page.borrow().as_ref() {
+                        // Pass available zone names for the dropdown
+                        if let Some(ref zones) = zones {
+                            let zone_names: Vec<String> = zones.iter().map(|z| z.name.clone()).collect();
+                            page.set_available_zones(&zone_names);
+                        }
+                        // Merge open and blocked ports into a single list
+                        let mut all_ports = ports.clone();
+                        all_ports.extend(blocked_ports.iter().cloned());
+                        page.set_ports(&all_ports);
+                    }
 
-                // Update overview page quick stats and blocked ports
-                if let Some(ref zones) = zones {
-                    if let Some(page) = imp.overview_page.borrow().as_ref() {
-                        page.set_zones(zones);
-                        page.set_blocked_ports(&blocked_ports);
+                    // Update overview page quick stats and blocked ports
+                    if let Some(ref zones) = zones {
+                        if let Some(page) = imp.overview_page.borrow().as_ref() {
+                            page.set_zones(zones);
+                            page.set_blocked_ports(&blocked_ports);
+                        }
                     }
+                    
+                    window.update_status(true, false);
                 }
-                
-                window.update_status(true, false);
+                _ => {
+                    // Connection to firewalld failed — the service is likely stopped
+                    window.update_status(false, false);
+                }
             }
         });
     }
@@ -660,17 +770,21 @@ impl MainWindow {
                 }
                 Ok(Err(e)) => {
                     window.show_toast(&format!("Error: {}", e));
-                    // Reset switch state via overview page
+                    // Reset switch state via overview page (guarded)
+                    window.imp().updating_switch.set(true);
                     if let Some(page) = window.imp().overview_page.borrow().as_ref() {
                         page.set_traffic_enabled(!enable);
                     }
+                    window.imp().updating_switch.set(false);
                 }
                 Err(e) => {
                     window.show_toast(&format!("Error: {:?}", e));
-                    // Reset switch state via overview page
+                    // Reset switch state via overview page (guarded)
+                    window.imp().updating_switch.set(true);
                     if let Some(page) = window.imp().overview_page.borrow().as_ref() {
                         page.set_traffic_enabled(!enable);
                     }
+                    window.imp().updating_switch.set(false);
                 }
             }
         });
@@ -680,12 +794,24 @@ impl MainWindow {
     fn update_status(&self, connected: bool, panic_mode: bool) {
         let imp = self.imp();
         
-        let active = connected && !panic_mode;
+        // Track whether firewalld is running
+        imp.firewall_connected.set(connected);
         
-        // Update via overview page
+        // Guard: prevent the switch signal from triggering toggle_firewall
+        imp.updating_switch.set(true);
+        
+        // Update via overview page with the correct state
         if let Some(page) = imp.overview_page.borrow().as_ref() {
-            page.set_traffic_enabled(active);
+            if !connected {
+                page.set_firewall_state(super::overview_page::FirewallState::Stopped);
+            } else if panic_mode {
+                page.set_firewall_state(super::overview_page::FirewallState::PanicMode);
+            } else {
+                page.set_firewall_state(super::overview_page::FirewallState::Active);
+            }
         }
+        
+        imp.updating_switch.set(false);
     }
 
     /// Show an error message.
@@ -704,6 +830,55 @@ impl MainWindow {
     pub fn client(&self) -> Rc<RefCell<FirewallClient>> {
         self.imp().client.clone()
     }
+
+    /// Run the one-time GitHub release check in the background.
+    fn check_for_updates(&self) {
+        use crate::version_check;
+
+        let obj = self.clone();
+        const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+        // Spawn the HTTP request on a background thread
+        glib::spawn_future_local(async move {
+            // Run the async HTTP check on a blocking thread pool
+            let result = gtk4::gio::spawn_blocking(move || {
+                // Create a simple tokio runtime for this one request
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .ok()?;
+                rt.block_on(version_check::check_for_update(APP_VERSION))
+            }).await;
+
+            // Handle the result on the GTK main thread
+            if let Ok(Some(update_info)) = result {
+                obj.show_update_available(&update_info);
+            }
+        });
+    }
+
+    /// Display the update banner with a clickable link.
+    fn show_update_available(&self, info: &crate::version_check::UpdateInfo) {
+        let imp = self.imp();
+        if let Some(ref banner) = *imp.update_banner.borrow() {
+            // Clear placeholder children and rebuild with real info
+            while let Some(child) = banner.first_child() {
+                banner.remove(&child);
+            }
+
+            let icon = gtk4::Image::from_icon_name("software-update-available-symbolic");
+            icon.set_pixel_size(14);
+            icon.add_css_class("update-icon");
+            banner.append(&icon);
+
+            let label_text = format!("v{} available", info.latest_version);
+            let link = gtk4::LinkButton::with_label(&info.download_url, &label_text);
+            link.add_css_class("update-link");
+            banner.append(&link);
+
+            banner.set_visible(true);
+        }
+    }
 }
 
 mod imp {
@@ -716,8 +891,6 @@ mod imp {
         pub stack: RefCell<Option<gtk4::Stack>>,
         pub toast_overlay: RefCell<Option<adw::ToastOverlay>>,
         pub content_title: RefCell<Option<adw::WindowTitle>>,
-        pub split_view: RefCell<Option<adw::OverlaySplitView>>,
-        pub content_toggle_btn: RefCell<Option<gtk4::Button>>,
         pub overview_page: RefCell<Option<OverviewPage>>,
         pub zones_page: RefCell<Option<ZonesPage>>,
         pub services_page: RefCell<Option<ServicesPage>>,
@@ -725,6 +898,19 @@ mod imp {
         pub system_services_page: RefCell<Option<SystemServicesPage>>,
         pub network_exposure_page: RefCell<Option<NetworkExposurePage>>,
         pub quick_actions_page: RefCell<Option<QuickActionsPage>>,
+        pub update_banner: RefCell<Option<gtk4::Box>>,
+        // Collapsible sidebar fields
+        pub sidebar_collapsed: Cell<bool>,
+        pub sidebar_box: RefCell<Option<gtk4::Box>>,
+        pub sidebar_title: RefCell<Option<adw::WindowTitle>>,
+        pub sidebar_toggle_btn: RefCell<Option<gtk4::Button>>,
+        pub info_box: RefCell<Option<gtk4::Box>>,
+        pub nav_labels: RefCell<Vec<gtk4::Label>>,
+        pub nav_boxes: RefCell<Vec<gtk4::Box>>,
+        /// Guard flag to prevent traffic switch signal feedback loops.
+        pub updating_switch: Cell<bool>,
+        /// Whether firewalld is currently connected/running.
+        pub firewall_connected: Cell<bool>,
     }
 
     #[glib::object_subclass]

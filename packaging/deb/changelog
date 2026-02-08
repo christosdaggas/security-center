@@ -1,3 +1,13 @@
+security-center (1.4.0-1) unstable; urgency=medium
+
+  * Consolidated port view — same-port entries grouped into single rows
+  * Improved firewall state display (Active, Panic Mode, Inactive)
+  * Traffic switch disabled when firewall is stopped
+  * Dashboard status syncs after Quick Actions changes
+  * Fixed restart button stretching and signal feedback loops
+
+ -- Christos Daggas <chrisdaggas@example.com>  Sun, 08 Feb 2026 12:00:00 +0200
+
 security-center (1.0.0-1) unstable; urgency=medium
 
   * Initial release
