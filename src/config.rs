@@ -63,7 +63,6 @@ impl Default for Settings {
 }
 
 impl Settings {
-    /// Create a new Settings instance, loading from disk.
     pub fn new() -> Self {
         let path = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
@@ -93,16 +92,32 @@ impl Settings {
         Self { settings, path }
     }
 
-    /// Save settings to disk.
     pub fn save(&self) {
+        use std::io::Write;
+        #[cfg(unix)]
+        use std::os::unix::fs::PermissionsExt;
+
         if let Some(parent) = self.path.parent() {
             let _ = fs::create_dir_all(parent);
         }
 
         match serde_json::to_string_pretty(&self.settings) {
             Ok(content) => {
-                if let Err(e) = fs::write(&self.path, content) {
-                    warn!("Failed to save settings: {}", e);
+                match fs::File::create(&self.path) {
+                    Ok(mut file) => {
+                        #[cfg(unix)]
+                        {
+                            if let Err(e) = file.set_permissions(fs::Permissions::from_mode(0o600)) {
+                                warn!("Failed to set file permissions: {}", e);
+                            }
+                        }
+                        if let Err(e) = file.write_all(content.as_bytes()) {
+                            warn!("Failed to save settings: {}", e);
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Failed to create settings file: {}", e);
+                    }
                 }
             }
             Err(e) => {
@@ -111,67 +126,55 @@ impl Settings {
         }
     }
 
-    /// Get the window width.
     pub fn window_width(&self) -> i32 {
         self.settings.window_width
     }
 
-    /// Set the window width.
     pub fn set_window_width(&mut self, width: i32) {
         self.settings.window_width = width;
         self.save();
     }
 
-    /// Get the window height.
     pub fn window_height(&self) -> i32 {
         self.settings.window_height
     }
 
-    /// Set the window height.
     pub fn set_window_height(&mut self, height: i32) {
         self.settings.window_height = height;
         self.save();
     }
 
-    /// Get whether the window is maximized.
     pub fn is_maximized(&self) -> bool {
         self.settings.is_maximized
     }
 
-    /// Set whether the window is maximized.
     pub fn set_maximized(&mut self, maximized: bool) {
         self.settings.is_maximized = maximized;
         self.save();
     }
 
-    /// Get the theme preference.
     pub fn theme(&self) -> &str {
         &self.settings.theme
     }
 
-    /// Set the theme preference.
     pub fn set_theme(&mut self, theme: &str) {
         self.settings.theme = theme.to_string();
         self.save();
     }
 
-    /// Get autostart on login setting.
     pub fn autostart_on_login(&self) -> bool {
         self.settings.autostart_on_login
     }
 
-    /// Set autostart on login.
     pub fn set_autostart_on_login(&mut self, enabled: bool) {
         self.settings.autostart_on_login = enabled;
         self.save();
     }
 
-    /// Get show tray icon setting.
     pub fn show_tray_icon(&self) -> bool {
         self.settings.show_tray_icon
     }
 
-    /// Set show tray icon.
     pub fn set_show_tray_icon(&mut self, enabled: bool) {
         self.settings.show_tray_icon = enabled;
         self.save();

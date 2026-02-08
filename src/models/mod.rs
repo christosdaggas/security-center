@@ -13,3 +13,6 @@ pub use zone::Zone;
 pub use service::Service;
 pub use port::Port;
 pub use interface::Interface;
+pub use consolidated_port::ConsolidatedPort;
+
+mod consolidated_port;

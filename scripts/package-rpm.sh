@@ -6,7 +6,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-VERSION="1.0.0"
+VERSION="1.4.0"
 APP_NAME="security-center"
 
 cd "$PROJECT_DIR"

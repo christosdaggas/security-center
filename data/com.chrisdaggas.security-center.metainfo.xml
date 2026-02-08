@@ -52,6 +52,19 @@
   <content_rating type="oars-1.1" />
   
   <releases>
+    <release version="1.4.0" date="2026-02-08">
+      <description>
+        <p>What's New in 1.4.0:</p>
+        <ul>
+          <li>Consolidated port view — same-port entries grouped into single rows</li>
+          <li>Improved firewall state display with three states (Active, Panic Mode, Inactive)</li>
+          <li>Traffic switch is disabled when firewall is stopped to prevent errors</li>
+          <li>Dashboard status now syncs correctly after Quick Actions changes</li>
+          <li>Fixed restart button stretching on the dashboard</li>
+          <li>Eliminated signal feedback loops causing error spam</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-01-07">
       <description>
         <p>Initial release of Security Center with the following features:</p>

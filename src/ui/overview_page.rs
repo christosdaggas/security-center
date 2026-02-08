@@ -15,6 +15,17 @@ use crate::models::Zone;
 use crate::stats::{StatsCache, TrafficCollector, ConnectionCollector};
 use super::widgets::{DonutChart, LineChart, BarChart};
 
+/// Represents the overall firewall state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FirewallState {
+    /// Firewall is running, traffic flows through rules normally.
+    Active,
+    /// Firewall is running but panic mode is on — all traffic is blocked.
+    PanicMode,
+    /// Firewall service is stopped — traffic flows freely, unfiltered.
+    Stopped,
+}
+
 glib::wrapper! {
     /// Overview page showing firewall status.
     pub struct OverviewPage(ObjectSubclass<imp::OverviewPage>)
@@ -37,43 +48,97 @@ impl OverviewPage {
     }
 
     /// Update the traffic status display.
+    /// `enabled` = true means firewall is active and traffic is flowing normally.
     pub fn set_traffic_enabled(&self, enabled: bool) {
+        // Delegate to set_firewall_state with appropriate state
+        if enabled {
+            self.set_firewall_state(FirewallState::Active);
+        } else {
+            self.set_firewall_state(FirewallState::PanicMode);
+        }
+    }
+
+    /// Update the full firewall state display.
+    pub fn set_firewall_state(&self, state: FirewallState) {
         let imp = self.imp();
-        
-        if let Some(switch) = imp.traffic_switch.borrow().as_ref() {
-            switch.set_active(enabled);
-        }
-        
-        if let Some(label) = imp.traffic_label.borrow().as_ref() {
-            if enabled {
-                label.set_label("Traffic Enabled");
-                label.remove_css_class("error");
-                label.add_css_class("success");
-            } else {
-                label.set_label("Traffic Disabled");
-                label.remove_css_class("success");
-                label.add_css_class("error");
+
+        match state {
+            FirewallState::Active => {
+                // Firewall running, traffic flowing normally
+                if let Some(switch) = imp.traffic_switch.borrow().as_ref() {
+                    switch.set_active(true);
+                    switch.set_sensitive(true);
+                }
+                if let Some(label) = imp.traffic_label.borrow().as_ref() {
+                    label.set_label("Traffic Enabled");
+                    label.remove_css_class("error");
+                    label.remove_css_class("warning");
+                    label.add_css_class("success");
+                }
+                if let Some(icon) = imp.status_icon.borrow().as_ref() {
+                    icon.set_icon_name(Some("security-high-symbolic"));
+                    icon.remove_css_class("error");
+                    icon.remove_css_class("warning");
+                    icon.add_css_class("success");
+                }
+                if let Some(title) = imp.status_title.borrow().as_ref() {
+                    title.set_label("Firewall Active");
+                }
+                if let Some(subtitle) = imp.status_subtitle.borrow().as_ref() {
+                    subtitle.set_label("Your system is protected");
+                }
             }
-        }
-
-        if let Some(icon) = imp.status_icon.borrow().as_ref() {
-            if enabled {
-                icon.set_icon_name(Some("security-high-symbolic"));
-                icon.remove_css_class("error");
-                icon.add_css_class("success");
-            } else {
-                icon.set_icon_name(Some("security-low-symbolic"));
-                icon.remove_css_class("success");
-                icon.add_css_class("error");
+            FirewallState::PanicMode => {
+                // Firewall running but panic mode blocks ALL traffic
+                if let Some(switch) = imp.traffic_switch.borrow().as_ref() {
+                    switch.set_active(false);
+                    switch.set_sensitive(true);
+                }
+                if let Some(label) = imp.traffic_label.borrow().as_ref() {
+                    label.set_label("Traffic Blocked");
+                    label.remove_css_class("success");
+                    label.remove_css_class("warning");
+                    label.add_css_class("error");
+                }
+                if let Some(icon) = imp.status_icon.borrow().as_ref() {
+                    icon.set_icon_name(Some("security-low-symbolic"));
+                    icon.remove_css_class("success");
+                    icon.remove_css_class("warning");
+                    icon.add_css_class("error");
+                }
+                if let Some(title) = imp.status_title.borrow().as_ref() {
+                    title.set_label("Panic Mode");
+                }
+                if let Some(subtitle) = imp.status_subtitle.borrow().as_ref() {
+                    subtitle.set_label("All network traffic is blocked");
+                }
             }
-        }
-
-        if let Some(title) = imp.status_title.borrow().as_ref() {
-            title.set_label(if enabled { "Firewall Active" } else { "Firewall Paused" });
-        }
-
-        if let Some(subtitle) = imp.status_subtitle.borrow().as_ref() {
-            subtitle.set_label(if enabled { "Your system is protected" } else { "All traffic is blocked" });
+            FirewallState::Stopped => {
+                // Firewall service is not running — traffic flows freely, unfiltered
+                // Panic mode requires firewalld, so the switch must be disabled.
+                if let Some(switch) = imp.traffic_switch.borrow().as_ref() {
+                    switch.set_active(true);
+                    switch.set_sensitive(false);
+                }
+                if let Some(label) = imp.traffic_label.borrow().as_ref() {
+                    label.set_label("Traffic Enabled");
+                    label.remove_css_class("error");
+                    label.remove_css_class("success");
+                    label.add_css_class("warning");
+                }
+                if let Some(icon) = imp.status_icon.borrow().as_ref() {
+                    icon.set_icon_name(Some("security-low-symbolic"));
+                    icon.remove_css_class("success");
+                    icon.remove_css_class("error");
+                    icon.add_css_class("warning");
+                }
+                if let Some(title) = imp.status_title.borrow().as_ref() {
+                    title.set_label("Firewall Inactive");
+                }
+                if let Some(subtitle) = imp.status_subtitle.borrow().as_ref() {
+                    subtitle.set_label("Firewall is stopped — traffic is unfiltered");
+                }
+            }
         }
     }
 
@@ -202,6 +267,8 @@ impl OverviewPage {
             .tooltip_text("Restart Firewall")
             .css_classes(vec!["circular".to_string()])
             .valign(gtk4::Align::Center)
+            .halign(gtk4::Align::Center)
+            .vexpand(false)
             .build();
 
         let restart_label = gtk4::Label::builder()
