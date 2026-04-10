@@ -49,9 +49,7 @@ Exec=security-center --minimized
 Icon={}
 Terminal=false
 Type=Application
-Categories=System;Security;Settings;GTK;GNOME;
-X-GNOME-Autostart-enabled=true
-X-GNOME-Autostart-Delay=5
+Categories=System;Security;Settings;
 NoDisplay=false
 "#,
         APP_NAME, APP_ID

@@ -6,14 +6,15 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-VERSION="1.4.0"
+VERSION="1.5.0"
 APP_NAME="security-center"
 APP_ID="com.chrisdaggas.security-center"
-APPIMAGE_NAME="Security_Center-${VERSION}-x86_64.AppImage"
+ARCH="$(uname -m)"
+APPIMAGE_NAME="Security_Center-${VERSION}-${ARCH}.AppImage"
 
 cd "$PROJECT_DIR"
 
-echo "==> Building AppImage..."
+echo "==> Building AppImage for ${ARCH}..."
 
 # Ensure release binary exists
 if [ ! -f "$PROJECT_DIR/target/release/$APP_NAME" ]; then
@@ -32,6 +33,7 @@ mkdir -p "$APPDIR/usr/share/applications"
 mkdir -p "$APPDIR/usr/share/metainfo"
 mkdir -p "$APPDIR/usr/share/icons/hicolor/256x256/apps"
 mkdir -p "$APPDIR/usr/share/icons/hicolor/scalable/apps"
+mkdir -p "$APPDIR/usr/share/glib-2.0/schemas"
 mkdir -p "$PROJECT_DIR/dist/appimage"
 
 # Copy binary
@@ -58,6 +60,39 @@ if command -v rsvg-convert &> /dev/null; then
         -o "$APPDIR/usr/share/icons/hicolor/256x256/apps/${APP_ID}.png"
 fi
 
+# Bundle required shared libraries
+echo "[INFO] Bundling shared libraries..."
+BINARY="$APPDIR/usr/bin/$APP_NAME"
+
+# Collect all required shared libraries (excluding glibc/ld-linux which must come from host)
+ldd "$BINARY" | grep "=> /" | awk '{print $3}' | while read -r lib; do
+    # Skip glibc, ld-linux, and other base system libraries that must match the host
+    case "$(basename "$lib")" in
+        libc.so*|libm.so*|libdl.so*|librt.so*|libpthread.so*|ld-linux*|libstdc++*) continue ;;
+    esac
+    cp -n "$lib" "$APPDIR/usr/lib/" 2>/dev/null || true
+done
+
+# Bundle GDK-Pixbuf loaders
+PIXBUF_DIR=$(pkg-config --variable=gdk_pixbuf_moduledir gdk-pixbuf-2.0 2>/dev/null || echo "")
+if [ -n "$PIXBUF_DIR" ] && [ -d "$PIXBUF_DIR" ]; then
+    mkdir -p "$APPDIR/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders"
+    cp -r "$PIXBUF_DIR"/*.so "$APPDIR/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders/" 2>/dev/null || true
+    # Generate loaders cache for the bundled path
+    GDK_PIXBUF_MODULEDIR="$APPDIR/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders" \
+        gdk-pixbuf-query-loaders > "$APPDIR/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache" 2>/dev/null || true
+fi
+
+# Bundle GLib schemas
+SCHEMAS_DIR=$(pkg-config --variable=schemasdir gio-2.0 2>/dev/null || echo "/usr/share/glib-2.0/schemas")
+if [ -d "$SCHEMAS_DIR" ]; then
+    cp "$SCHEMAS_DIR"/org.gtk.* "$APPDIR/usr/share/glib-2.0/schemas/" 2>/dev/null || true
+    cp "$SCHEMAS_DIR"/org.gnome.desktop.interface.gschema.xml "$APPDIR/usr/share/glib-2.0/schemas/" 2>/dev/null || true
+    glib-compile-schemas "$APPDIR/usr/share/glib-2.0/schemas/" 2>/dev/null || true
+fi
+
+echo "[INFO] Bundled $(ls "$APPDIR/usr/lib/"*.so* 2>/dev/null | wc -l) shared libraries"
+
 # Create AppRun script
 cat > "$APPDIR/AppRun" << 'APPRUN_EOF'
 #!/bin/bash
@@ -68,6 +103,7 @@ export PATH="${APPDIR}/usr/bin:${PATH}"
 export LD_LIBRARY_PATH="${APPDIR}/usr/lib:${LD_LIBRARY_PATH}"
 export XDG_DATA_DIRS="${APPDIR}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 export GSETTINGS_SCHEMA_DIR="${APPDIR}/usr/share/glib-2.0/schemas:${GSETTINGS_SCHEMA_DIR}"
+export GDK_PIXBUF_MODULE_FILE="${APPDIR}/usr/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache"
 export GTK_USE_PORTAL=1
 
 exec "${APPDIR}/usr/bin/security-center" "$@"
@@ -75,11 +111,11 @@ APPRUN_EOF
 chmod +x "$APPDIR/AppRun"
 
 # Download appimagetool if not present
-APPIMAGETOOL="$WORK_DIR/appimagetool-x86_64.AppImage"
+APPIMAGETOOL="$WORK_DIR/appimagetool-${ARCH}.AppImage"
 if [ ! -f "$APPIMAGETOOL" ]; then
-    echo "[INFO] Downloading appimagetool..."
+    echo "[INFO] Downloading appimagetool for ${ARCH}..."
     wget -q --show-progress \
-        "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" \
+        "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH}.AppImage" \
         -O "$APPIMAGETOOL"
     chmod +x "$APPIMAGETOOL"
 fi
@@ -89,7 +125,7 @@ export APPIMAGE_EXTRACT_AND_RUN=1
 # Create AppImage
 echo "[INFO] Generating AppImage..."
 cd "$WORK_DIR"
-ARCH=x86_64 "$APPIMAGETOOL" --no-appstream AppDir "$PROJECT_DIR/dist/appimage/$APPIMAGE_NAME"
+ARCH="$ARCH" "$APPIMAGETOOL" --no-appstream AppDir "$PROJECT_DIR/dist/appimage/$APPIMAGE_NAME"
 
 if [ -f "$PROJECT_DIR/dist/appimage/$APPIMAGE_NAME" ]; then
     chmod +x "$PROJECT_DIR/dist/appimage/$APPIMAGE_NAME"

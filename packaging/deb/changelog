@@ -1,3 +1,17 @@
+security-center (1.5.0-1) unstable; urgency=medium
+
+  * Cross-distro support for Fedora, Ubuntu, Debian and all desktop environments
+  * Fixed Debian/Ubuntu package dependencies (polkit package naming)
+  * KDE Plasma compatibility for accent color detection
+  * Config directory renamed from gnome-security-center to security-center
+  * Automatic settings migration from old config path
+  * Universal autostart desktop entry for all DEs
+  * AppImage now bundles GTK4/libadwaita shared libraries
+  * Architecture-independent AppImage build
+  * Clear error message when PolicyKit is not installed
+
+ -- Christos Daggas <chrisdaggas@example.com>  Thu, 10 Apr 2026 12:00:00 +0200
+
 security-center (1.4.0-1) unstable; urgency=medium
 
   * Consolidated port view — same-port entries grouped into single rows

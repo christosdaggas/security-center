@@ -1,6 +1,6 @@
 [package]
 name = "security-center"
-version = "1.4.0"
+version = "1.5.0"
 edition = "2021"
 authors = ["Christos Daggas <chrisdaggas@example.com>"]
 license = "MIT"
@@ -50,7 +50,7 @@ Security Center is a modern GTK4/Libadwaita application for managing \
 system security on Linux. It provides a user-friendly interface for \
 controlling firewalld, monitoring network exposure, and managing \
 system services."""
-depends = "$auto, firewalld, polkit"
+depends = "$auto, firewalld, polkitd | policykit-1"
 section = "admin"
 priority = "optional"
 assets = [

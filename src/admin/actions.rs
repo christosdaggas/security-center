@@ -110,7 +110,7 @@ pub const QUICK_ACTIONS: &[AdminAction] = &[
         id: "firewall_panic_off",
         title: "Disable Panic Mode",
         description: "Restore normal firewall operation after panic mode.",
-        icon: "emblem-ok-symbolic",
+        icon: "security-high-symbolic",
         destructive: false,
         category: ActionCategory::Firewall,
     },
@@ -317,28 +317,32 @@ impl QuickActionsManager {
     }
 
     fn reload_systemd(&mut self) -> Result<String> {
-        let output = std::process::Command::new("pkexec")
-            .args(["systemctl", "daemon-reload"])
-            .output()
-            .context("Failed to execute pkexec systemctl daemon-reload")?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            if stderr.contains("dismissed") || stderr.contains("cancelled") || output.status.code() == Some(126) {
-                return Err(anyhow!("Authentication cancelled"));
-            }
-            return Err(anyhow!("Failed to reload systemd: {}", stderr));
-        }
-
+        run_systemctl_command("daemon-reload", "")?;
         Ok("Systemd configuration reloaded".to_string())
     }
 }
 
 /// Run a systemctl command with pkexec for authentication.
 fn run_systemctl_command(action: &str, service: &str) -> Result<()> {
-    let output = std::process::Command::new("pkexec")
-        .args(["systemctl", action, service])
+    // Check if pkexec is available
+    if std::process::Command::new("which")
+        .arg("pkexec")
         .output()
+        .map(|o| !o.status.success())
+        .unwrap_or(true)
+    {
+        return Err(anyhow!(
+            "PolicyKit (pkexec) is not installed. Install 'polkit' or 'policykit-1' to perform administrative actions."
+        ));
+    }
+
+    let mut cmd = std::process::Command::new("pkexec");
+    cmd.arg("systemctl").arg(action);
+    if !service.is_empty() {
+        cmd.arg(service);
+    }
+
+    let output = cmd.output()
         .context(format!("Failed to execute pkexec systemctl {} {}", action, service))?;
 
     if !output.status.success() {

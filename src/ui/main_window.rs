@@ -291,11 +291,6 @@ impl MainWindow {
         version_label.set_halign(gtk4::Align::Start);
         info_box.append(&version_label);
         
-        let author_label = gtk4::Label::new(None);
-        author_label.set_markup("<span size=\"x-small\">By Christos A. Daggas</span>");
-        author_label.set_halign(gtk4::Align::Start);
-        info_box.append(&author_label);
-        
         sidebar_box.append(&info_box);
 
         // Store collapsible sidebar refs

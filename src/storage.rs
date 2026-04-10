@@ -83,7 +83,7 @@ impl PortStorage {
     pub fn new() -> Self {
         let path = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("gnome-security-center")
+            .join("security-center")
             .join("port_metadata.json");
 
         Self {

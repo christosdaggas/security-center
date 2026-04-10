@@ -1,6 +1,6 @@
 # Maintainer: Christos Daggas <chrisdaggas@example.com>
 pkgname=security-center
-pkgver=1.4.0
+pkgver=1.5.0
 pkgrel=1
 pkgdesc="A modern GTK4/Libadwaita security center for Linux"
 arch=('x86_64')

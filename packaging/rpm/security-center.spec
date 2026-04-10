@@ -1,5 +1,5 @@
 Name:           security-center
-Version:        1.4.0
+Version:        1.5.0
 Release:        1%{?dist}
 Summary:        A modern GTK4 security center for Linux
 
@@ -57,6 +57,17 @@ install -Dm644 README.md %{buildroot}%{_docdir}/%{name}/README.md
 %{_docdir}/%{name}/README.md
 
 %changelog
+* Thu Apr 10 2026 Christos Daggas <chrisdaggas@example.com> - 1.5.0-1
+- Cross-distro support for Fedora, Ubuntu, Debian and all desktop environments
+- Fixed Debian/Ubuntu package dependencies (polkit package naming)
+- KDE Plasma compatibility for accent color detection
+- Config directory renamed from gnome-security-center to security-center
+- Automatic settings migration from old config path
+- Universal autostart desktop entry for all DEs
+- AppImage now bundles GTK4/libadwaita shared libraries
+- Architecture-independent AppImage build
+- Clear error message when PolicyKit is not installed
+
 * Sun Feb 08 2026 Christos Daggas <chrisdaggas@example.com> - 1.4.0-1
 - Consolidated port view — same-port entries grouped into single rows
 - Improved firewall state display (Active, Panic Mode, Inactive)

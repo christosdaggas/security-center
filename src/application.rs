@@ -146,7 +146,23 @@ impl Application {
         match theme {
             "light" => style_manager.set_color_scheme(adw::ColorScheme::ForceLight),
             "dark" => style_manager.set_color_scheme(adw::ColorScheme::ForceDark),
-            _ => style_manager.set_color_scheme(adw::ColorScheme::Default),
+            _ => {
+                // Use PreferDark/PreferLight to properly follow system preference
+                // ColorScheme::Default doesn't always detect GNOME's dark mode correctly
+                if style_manager.system_supports_color_schemes() {
+                    style_manager.set_color_scheme(adw::ColorScheme::Default);
+                } else {
+                    // Fallback: check GTK settings for dark theme preference
+                    let prefers_dark = gtk4::Settings::default()
+                        .map(|s| s.is_gtk_application_prefer_dark_theme())
+                        .unwrap_or(false);
+                    if prefers_dark {
+                        style_manager.set_color_scheme(adw::ColorScheme::PreferDark);
+                    } else {
+                        style_manager.set_color_scheme(adw::ColorScheme::PreferLight);
+                    }
+                }
+            }
         }
     }
 
@@ -167,7 +183,17 @@ impl Application {
             .copyright("© 2024-2026 Christos A. Daggas")
             .developers(vec!["Christos A. Daggas".to_string()])
             .comments("Manage your system security, firewall and services")
-            .release_notes("<p>Version 1.4.0 - February 2026</p><ul>\
+            .release_notes("<p>Version 1.5.0 - April 2026</p><ul>\
+                <li>Cross-Distro Support - Works on Fedora, Ubuntu, Debian and all desktop environments</li>\
+                <li>Fixed Debian/Ubuntu package dependencies (polkit package naming)</li>\
+                <li>KDE Plasma Compatibility - Accent color detection no longer crashes on non-GNOME desktops</li>\
+                <li>DE-Agnostic Config - Config directory renamed from gnome-security-center to security-center</li>\
+                <li>Automatic Settings Migration - Existing settings are migrated to new config path</li>\
+                <li>Universal Autostart - Desktop entry works on GNOME, KDE, XFCE and other DEs</li>\
+                <li>AppImage Library Bundling - AppImage now bundles GTK4/libadwaita for portability</li>\
+                <li>Architecture-Independent AppImage - Build script detects system architecture automatically</li>\
+                <li>PolicyKit Detection - Clear error message when polkit is not installed</li>\
+            </ul><p>Version 1.4.0 - February 2026</p><ul>\
                 <li>Consolidated Port View - Same-port entries grouped into single rows</li>\
                 <li>Improved Firewall State Display - Three-state dashboard (Active, Panic Mode, Inactive)</li>\
                 <li>Traffic Switch Guard - Prevents accidental toggling when firewall is stopped</li>\
@@ -293,29 +319,42 @@ impl Application {
     }
 
     fn get_accent_color(&self) -> String {
-        let accent_color = gtk4::gio::Settings::new("org.gnome.desktop.interface")
-            .string("accent-color");
-        
-        // Map GNOME accent color names to actual colors
-        match accent_color.as_str() {
-            "blue" => return "#3584e4".to_string(),
-            "teal" => return "#2190a4".to_string(),
-            "green" => return "#3a944a".to_string(),
-            "yellow" => return "#c88800".to_string(),
-            "orange" => return "#ed5b00".to_string(),
-            "red" => return "#e62d42".to_string(),
-            "pink" => return "#d56199".to_string(),
-            "purple" => return "#9141ac".to_string(),
-            "slate" => return "#6f8396".to_string(),
-            _ => {}
+        // Try to read GNOME accent color (schema may not exist on KDE/other DEs)
+        if let Some(accent) = self.try_gnome_accent_color() {
+            return accent;
         }
-        
+
         let style_manager = adw::StyleManager::default();
         let is_dark = style_manager.is_dark();
         if is_dark {
             "#62a0ea".to_string() // Lighter blue for dark theme
         } else {
             "#3584e4".to_string() // Standard GNOME blue for light theme
+        }
+    }
+
+    fn try_gnome_accent_color(&self) -> Option<String> {
+        // Check if the GNOME schema is available before accessing it
+        let schema_source = gtk4::gio::SettingsSchemaSource::default()?;
+        let schema = schema_source.lookup("org.gnome.desktop.interface", true)?;
+        if !schema.has_key("accent-color") {
+            return None;
+        }
+
+        let settings = gtk4::gio::Settings::new("org.gnome.desktop.interface");
+        let accent_color = settings.string("accent-color");
+
+        match accent_color.as_str() {
+            "blue" => Some("#3584e4".to_string()),
+            "teal" => Some("#2190a4".to_string()),
+            "green" => Some("#3a944a".to_string()),
+            "yellow" => Some("#c88800".to_string()),
+            "orange" => Some("#ed5b00".to_string()),
+            "red" => Some("#e62d42".to_string()),
+            "pink" => Some("#d56199".to_string()),
+            "purple" => Some("#9141ac".to_string()),
+            "slate" => Some("#6f8396".to_string()),
+            _ => None,
         }
     }
 }

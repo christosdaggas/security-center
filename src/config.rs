@@ -64,10 +64,19 @@ impl Default for Settings {
 
 impl Settings {
     pub fn new() -> Self {
-        let path = dirs::config_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("gnome-security-center")
-            .join("settings.json");
+        let config_base = dirs::config_dir()
+            .unwrap_or_else(|| PathBuf::from("."));
+
+        let new_dir = config_base.join("security-center");
+        let path = new_dir.join("settings.json");
+
+        // Migrate from old "gnome-security-center" directory if it exists
+        let old_dir = config_base.join("gnome-security-center");
+        if old_dir.exists() && !new_dir.exists() {
+            if let Err(e) = fs::rename(&old_dir, &new_dir) {
+                warn!("Failed to migrate config from {:?} to {:?}: {}", old_dir, new_dir, e);
+            }
+        }
 
         let settings = if path.exists() {
             match fs::read_to_string(&path) {

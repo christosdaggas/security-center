@@ -58,7 +58,7 @@ impl StatsCache {
     pub fn new() -> Self {
         let path = dirs::cache_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("gnome-security-center")
+            .join("security-center")
             .join("stats_cache.json");
 
         Self {

@@ -159,7 +159,23 @@ impl PortsPage {
 
         // Collect ports from firewalld (allowed + blocked already merged by caller)
         let mut all_ports: Vec<Port> = ports.to_vec();
-        
+
+        // Enrich ports with names from local storage (firewalld doesn't store names)
+        {
+            let mut storage = imp.storage.borrow_mut();
+            for port in &mut all_ports {
+                if port.name.is_none() {
+                    let zone = port.zone.as_deref().unwrap_or("");
+                    let key = PortStorage::make_key(port.number, &port.protocol, zone);
+                    if let Some(metadata) = storage.get(&key) {
+                        if !metadata.name.is_empty() {
+                            port.name = Some(metadata.name.clone());
+                        }
+                    }
+                }
+            }
+        }
+
         // Add deny rules from our storage (these aren't in firewalld's port list)
         let deny_rules = imp.storage.borrow_mut().get_deny_rules();
         for rule in deny_rules {
@@ -599,7 +615,7 @@ impl PortsPage {
                 "public" => "network-wireless-symbolic",
                 "home" => "user-home-symbolic",
                 "work" => "user-available-symbolic",
-                "trusted" => "emblem-ok-symbolic",
+                "trusted" => "security-high-symbolic",
                 "block" | "drop" => "action-unavailable-symbolic",
                 "dmz" => "network-server-symbolic",
                 _ => "network-wired-symbolic",
@@ -888,7 +904,7 @@ impl PortsPage {
                 "public" => "network-wireless-symbolic",
                 "home" => "user-home-symbolic",
                 "work" => "user-available-symbolic",
-                "trusted" => "emblem-ok-symbolic",
+                "trusted" => "security-high-symbolic",
                 "block" | "drop" => "action-unavailable-symbolic",
                 "dmz" => "network-server-symbolic",
                 _ => "network-wired-symbolic",

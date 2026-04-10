@@ -52,6 +52,21 @@
   <content_rating type="oars-1.1" />
   
   <releases>
+    <release version="1.5.0" date="2026-04-10">
+      <description>
+        <p>What's New in 1.5.0:</p>
+        <ul>
+          <li>Cross-distro support — works on Fedora, Ubuntu, Debian and all desktop environments</li>
+          <li>Fixed Debian/Ubuntu package dependencies (polkit package naming)</li>
+          <li>KDE Plasma compatibility — accent color detection no longer crashes on non-GNOME desktops</li>
+          <li>Config directory renamed from gnome-security-center to security-center (auto-migrated)</li>
+          <li>Universal autostart — desktop entry works on GNOME, KDE, XFCE and other DEs</li>
+          <li>AppImage now bundles GTK4/libadwaita shared libraries for portability</li>
+          <li>AppImage build script detects system architecture automatically</li>
+          <li>Clear error message when PolicyKit (pkexec) is not installed</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.4.0" date="2026-02-08">
       <description>
         <p>What's New in 1.4.0:</p>
