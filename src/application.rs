@@ -183,7 +183,20 @@ impl Application {
             .copyright("© 2024-2026 Christos A. Daggas")
             .developers(vec!["Christos A. Daggas".to_string()])
             .comments("Manage your system security, firewall and services")
-            .release_notes("<p>Version 1.5.0 - April 2026</p><ul>\
+            .release_notes("<p>Version 1.6.0 - April 2026</p><ul>\
+                <li>Dependency Security Updates - Patched bytes, quinn-proto, rustls-webpki, and rand vulnerabilities</li>\
+                <li>Input Validation Hardening - Centralized validators for protocols, port names, systemctl actions, and service names</li>\
+                <li>Firewalld Rich Rule Protection - Protocols are validated before constructing any rich rule string</li>\
+                <li>Config File Sanitization - JSON files are validated, size-limited, and invalid entries are discarded on load</li>\
+                <li>pkexec Parameter Validation - All privileged commands validate action and service names against allowlists</li>\
+                <li>Semver Version Parsing - Replaced custom version parser with robust semver comparison</li>\
+                <li>Build Script Hardening - Removed unwrap from build.rs environment variable reads</li>\
+                <li>CI/CD Pipeline - Added GitHub Actions workflow with cargo audit, cargo deny, clippy, and tests</li>\
+                <li>Test Coverage Expansion - Increased from 5 to 31 tests covering security-critical paths</li>\
+                <li>Accessibility Improvements - Added tooltip descriptions to chart widgets</li>\
+                <li>Logging Safety - Default log level set to info; path leakage removed from log messages</li>\
+                <li>Unused Dependency Cleanup - Removed futures, once_cell, thiserror, and toml from dependencies</li>\
+            </ul><p>Version 1.5.0 - April 2026</p><ul>\
                 <li>Cross-Distro Support - Works on Fedora, Ubuntu, Debian and all desktop environments</li>\
                 <li>Fixed Debian/Ubuntu package dependencies (polkit package naming)</li>\
                 <li>KDE Plasma Compatibility - Accent color detection no longer crashes on non-GNOME desktops</li>\

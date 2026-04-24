@@ -9,4 +9,4 @@ Categories=System;Security;Settings;
 Keywords=firewall;security;network;firewalld;services;systemd;
 StartupNotify=true
 StartupWMClass=com.chrisdaggas.security-center
-X-AppImage-Version=1.5.0
+X-AppImage-Version=1.6.0

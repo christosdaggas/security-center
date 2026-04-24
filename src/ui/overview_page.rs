@@ -407,6 +407,7 @@ impl OverviewPage {
         // Traffic ratio donut chart
         let traffic_card = self.create_chart_card("Traffic Ratio");
         let donut_chart = DonutChart::new();
+        donut_chart.set_tooltip_text(Some("Traffic ratio chart showing accepted vs blocked packets"));
         donut_chart.set_size_request(180, 180);
         donut_chart.set_halign(gtk4::Align::Center);
         donut_chart.set_margin_top(8);
@@ -426,6 +427,7 @@ impl OverviewPage {
         // Blocked ports bar chart  
         let ports_card = self.create_chart_card("Blocked Ports");
         let bar_chart = BarChart::new();
+        bar_chart.set_tooltip_text(Some("Bar chart showing top blocked ports"));
         bar_chart.set_size_request(-1, 160);
         bar_chart.set_hexpand(true);
         bar_chart.set_margin_top(8);
@@ -544,6 +546,7 @@ impl OverviewPage {
 
         // Line chart for TCP/UDP/ICMP
         let chart = LineChart::new();
+        chart.set_tooltip_text(Some("Line chart showing TCP, UDP, and ICMP connection history"));
         chart.set_size_request(-1, 120);
         chart.set_hexpand(true);
         chart.set_margin_top(8);

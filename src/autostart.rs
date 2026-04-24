@@ -60,7 +60,7 @@ NoDisplay=false
     file.write_all(desktop_content.as_bytes())
         .map_err(|e| format!("Failed to write autostart file: {}", e))?;
 
-    tracing::info!("Autostart enabled: {}", path.display());
+    tracing::info!("Autostart enabled for {}", APP_ID);
     Ok(())
 }
 
@@ -70,7 +70,7 @@ pub fn disable_autostart() -> Result<(), String> {
         if path.exists() {
             fs::remove_file(&path)
                 .map_err(|e| format!("Failed to remove autostart file: {}", e))?;
-            tracing::info!("Autostart disabled: {}", path.display());
+            tracing::info!("Autostart disabled for {}", APP_ID);
         }
     }
     Ok(())

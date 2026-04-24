@@ -18,6 +18,8 @@ use anyhow::{anyhow, Context, Result};
 use tracing::info;
 use zbus::blocking::Connection;
 
+use crate::validation::{validate_service_name, validate_systemctl_action};
+
 /// D-Bus constants for firewalld
 const FIREWALLD_BUS: &str = "org.fedoraproject.FirewallD1";
 const FIREWALLD_PATH: &str = "/org/fedoraproject/FirewallD1";
@@ -324,6 +326,10 @@ impl QuickActionsManager {
 
 /// Run a systemctl command with pkexec for authentication.
 fn run_systemctl_command(action: &str, service: &str) -> Result<()> {
+    // Validate parameters before invoking privileged command
+    validate_systemctl_action(action)?;
+    validate_service_name(service)?;
+
     // Check if pkexec is available
     if std::process::Command::new("which")
         .arg("pkexec")

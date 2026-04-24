@@ -1,5 +1,6 @@
 [Desktop Entry]
 Name=Security Center
+GenericName=Security Settings
 Comment=Manage your system security, firewall and services
 Exec=security-center
 Icon=com.chrisdaggas.security-center

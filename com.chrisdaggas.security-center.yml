@@ -21,6 +21,8 @@ finish-args:
   - --system-talk-name=org.freedesktop.systemd1
   
   # Access to /proc for network statistics (read-only)
+  # Required for NetworkExposure::scan() which reads /proc/net/tcp, /proc/net/udp, etc.
+  # host-os:ro is used because /proc may be mounted at different locations in Flatpak sandboxes.
   - --filesystem=host-os:ro
   
   # Configuration files

@@ -16,6 +16,7 @@ use libadwaita::prelude::*;
 use crate::firewall::FirewallClient;
 use crate::models::{Port, ConsolidatedPort};
 use crate::storage::{PortMetadata, PortStorage};
+use crate::validation::{validate_port_name, validate_protocol};
 
 glib::wrapper! {
     /// Ports page for managing open ports.
@@ -430,12 +431,14 @@ impl PortsPage {
                         let _ = client.remove_port(zone, &port_str, protocol, true);
                         
                         // Also try to remove any rich rule that might be blocking this port
-                        let reject_rule = format!(
-                            "rule family=\"ipv4\" port port=\"{}\" protocol=\"{}\" reject",
-                            port_str, protocol
-                        );
-                        let _ = client.remove_rich_rule(zone, &reject_rule, false);
-                        let _ = client.remove_rich_rule(zone, &reject_rule, true);
+                        if let Some(valid_proto) = validate_protocol(protocol) {
+                            let reject_rule = format!(
+                                "rule family=\"ipv4\" port port=\"{}\" protocol=\"{}\" reject",
+                                port_str, valid_proto
+                            );
+                            let _ = client.remove_rich_rule(zone, &reject_rule, false);
+                            let _ = client.remove_rich_rule(zone, &reject_rule, true);
+                        }
                     }
                 }
                 
@@ -671,10 +674,17 @@ impl PortsPage {
                     return;
                 }
 
+                // Validate port name
+                let sanitized_name = validate_port_name(&name_text);
+                if sanitized_name.is_none() {
+                    page.show_toast("Invalid port name. Use letters, numbers, spaces, hyphens, and underscores only.");
+                    return;
+                }
+
                 // Validate port number (u16 range is 0-65535, we only accept 1-65535)
                 match port_text.parse::<u16>() {
                     Ok(port_num) if port_num >= 1 => {
-                        let name = if name_text.is_empty() { None } else { Some(name_text) };
+                        let name = sanitized_name.filter(|n| !n.is_empty());
                         
                         // Determine protocols to add
                         let protocols: Vec<&str> = match protocol_idx {
@@ -746,11 +756,15 @@ impl PortsPage {
                     client.add_port(&zone_clone, &port_clone, &protocol_clone, permanent)?;
                 } else {
                     // Block = add rich rule to reject connections
-                    let rule = format!(
-                        "rule family=\"ipv4\" port port=\"{}\" protocol=\"{}\" reject",
-                        port_clone, protocol_clone
-                    );
-                    client.add_rich_rule(&zone_clone, &rule, permanent)?;
+                    if let Some(valid_proto) = validate_protocol(&protocol_clone) {
+                        let rule = format!(
+                            "rule family=\"ipv4\" port port=\"{}\" protocol=\"{}\" reject",
+                            port_clone, valid_proto
+                        );
+                        client.add_rich_rule(&zone_clone, &rule, permanent)?;
+                    } else {
+                        return Err(anyhow::anyhow!("Invalid protocol: {}", protocol_clone));
+                    }
                 }
                 
                 // Don't reload - the port is already added to runtime config
@@ -958,8 +972,13 @@ impl PortsPage {
                     return;
                 }
 
-                // Prepare date for update
-                let name = if name_text.is_empty() { None } else { Some(name_text) };
+                // Validate port name
+                let sanitized_name = validate_port_name(&name_text);
+                if sanitized_name.is_none() {
+                    page.show_toast("Invalid port name. Use letters, numbers, spaces, hyphens, and underscores only.");
+                    return;
+                }
+                let name = sanitized_name.filter(|n| !n.is_empty());
                 
                 let protocols: Vec<&str> = match protocol_idx {
                     0 => vec!["tcp"],
@@ -1006,23 +1025,25 @@ impl PortsPage {
                 // 1. Remove ALL old rules (from original state)
                 for zone in &original.zones {
                     for protocol in &original.protocols {
-                        if original.is_blocked() {
-                            let reject_rule = format!(
-                                "rule family=\"ipv4\" port port=\"{}\" protocol=\"{}\" reject",
-                                port_str, protocol
-                            );
-                            let _ = client.remove_rich_rule(zone, &reject_rule, false);
-                            let _ = client.remove_rich_rule(zone, &reject_rule, true);
-                            
-                            let drop_rule = format!(
-                                "rule family=\"ipv4\" port port=\"{}\" protocol=\"{}\" drop",
-                                port_str, protocol
-                            );
-                            let _ = client.remove_rich_rule(zone, &drop_rule, false);
-                            let _ = client.remove_rich_rule(zone, &drop_rule, true);
-                        } else {
-                            let _ = client.remove_port(zone, &port_str, protocol, false);
-                            let _ = client.remove_port(zone, &port_str, protocol, true);
+                        if let Some(valid_proto) = validate_protocol(protocol) {
+                            if original.is_blocked() {
+                                let reject_rule = format!(
+                                    "rule family=\"ipv4\" port port=\"{}\" protocol=\"{}\" reject",
+                                    port_str, valid_proto
+                                );
+                                let _ = client.remove_rich_rule(zone, &reject_rule, false);
+                                let _ = client.remove_rich_rule(zone, &reject_rule, true);
+                                
+                                let drop_rule = format!(
+                                    "rule family=\"ipv4\" port port=\"{}\" protocol=\"{}\" drop",
+                                    port_str, valid_proto
+                                );
+                                let _ = client.remove_rich_rule(zone, &drop_rule, false);
+                                let _ = client.remove_rich_rule(zone, &drop_rule, true);
+                            } else {
+                                let _ = client.remove_port(zone, &port_str, valid_proto, false);
+                                let _ = client.remove_port(zone, &port_str, valid_proto, true);
+                            }
                         }
                     }
                 }
@@ -1030,14 +1051,18 @@ impl PortsPage {
                 // 2. Add NEW rules
                 for zone in &new_zones {
                     for protocol in &new_protocols {
-                        if action == 0 {
-                            client.add_port(zone, &port_str, protocol, permanent)?;
+                        if let Some(valid_proto) = validate_protocol(protocol) {
+                            if action == 0 {
+                                client.add_port(zone, &port_str, valid_proto, permanent)?;
+                            } else {
+                                let rule = format!(
+                                    "rule family=\"ipv4\" port port=\"{}\" protocol=\"{}\" reject",
+                                    port_str, valid_proto
+                                );
+                                client.add_rich_rule(zone, &rule, permanent)?;
+                            }
                         } else {
-                            let rule = format!(
-                                "rule family=\"ipv4\" port port=\"{}\" protocol=\"{}\" reject",
-                                port_str, protocol
-                            );
-                            client.add_rich_rule(zone, &rule, permanent)?;
+                            return Err(anyhow::anyhow!("Invalid protocol: {}", protocol));
                         }
                     }
                 }

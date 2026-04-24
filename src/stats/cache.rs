@@ -13,6 +13,7 @@ use tracing::warn;
 
 /// Cached statistics data.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct CachedStats {
     /// Timestamp when cached.
     pub timestamp: u64,
@@ -26,6 +27,7 @@ pub struct CachedStats {
 
 /// Cached traffic ratio (serializable).
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct CachedTrafficRatio {
     pub accepted: u64,
     pub blocked: u64,
@@ -33,6 +35,7 @@ pub struct CachedTrafficRatio {
 
 /// Cached connection time series (serializable).
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
 pub struct CachedConnectionStats {
     pub tcp_series: Vec<f64>,
     pub udp_series: Vec<f64>,
@@ -69,6 +72,11 @@ impl StatsCache {
 
     /// Load cached statistics.
     pub fn load(&self) -> Option<CachedStats> {
+        let metadata = fs::metadata(&self.path).ok()?;
+        if metadata.len() > 1_048_576 {
+            warn!("Stats cache file too large ({} bytes), ignoring", metadata.len());
+            return None;
+        }
         let content = fs::read_to_string(&self.path).ok()?;
         let cached: CachedStats = serde_json::from_str(&content).ok()?;
 

@@ -9,6 +9,8 @@ use tracing::info;
 use zbus::blocking::Connection;
 use zbus::zvariant::OwnedObjectPath;
 
+use crate::validation::{validate_service_name, validate_systemctl_action};
+
 const SYSTEMD_BUS: &str = "org.freedesktop.systemd1";
 const SYSTEMD_PATH: &str = "/org/freedesktop/systemd1";
 const MANAGER_INTERFACE: &str = "org.freedesktop.systemd1.Manager";
@@ -353,6 +355,22 @@ impl SystemdClient {
 
 /// Run a systemctl command with pkexec for authentication.
 fn run_systemctl_command(action: &str, service: &str) -> Result<()> {
+    // Validate parameters before invoking privileged command
+    validate_systemctl_action(action)?;
+    validate_service_name(service)?;
+
+    // Check if pkexec is available
+    if std::process::Command::new("which")
+        .arg("pkexec")
+        .output()
+        .map(|o| !o.status.success())
+        .unwrap_or(true)
+    {
+        return Err(anyhow!(
+            "PolicyKit (pkexec) is not installed. Install 'polkit' or 'policykit-1' to perform administrative actions."
+        ));
+    }
+
     let output = std::process::Command::new("pkexec")
         .args(["systemctl", action, service])
         .output()

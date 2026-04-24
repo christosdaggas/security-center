@@ -54,16 +54,19 @@ Run these checks before submitting a PR:
 
 ```bash
 # Format code
-cargo fmt
+cargo fmt --all -- --check
 
 # Run linter (with warnings as errors)
-cargo clippy -- -D warnings
+cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 # Run tests
-cargo test
+cargo test --workspace --all-features
 
-# Check for security advisories (optional)
+# Check for security advisories
 cargo audit
+
+# Check dependency policy
+cargo deny check
 ```
 
 ## Code Style

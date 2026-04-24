@@ -42,16 +42,30 @@
     <color type="primary" scheme_preference="dark">#1a5fb4</color>
   </branding>
   
-  <screenshots>
-    <screenshot type="default">
-      <caption>Overview dashboard with firewall status</caption>
-      <image>https://raw.githubusercontent.com/chrisdaggas/security-center/main/screenshots/overview.png</image>
-    </screenshot>
-  </screenshots>
+  <icon type="stock">com.chrisdaggas.security-center</icon>
   
   <content_rating type="oars-1.1" />
   
   <releases>
+    <release version="1.6.0" date="2026-04-24">
+      <description>
+        <p>What's New in 1.6.0:</p>
+        <ul>
+          <li>Dependency security updates — patched bytes, quinn-proto, rustls-webpki, and rand vulnerabilities</li>
+          <li>Input validation hardening — centralized validators for protocols, port names, systemctl actions, and service names</li>
+          <li>Firewalld rich rule protection — protocols are validated before constructing any rich rule string</li>
+          <li>Config file sanitization — JSON files are validated, size-limited, and invalid entries are discarded on load</li>
+          <li>pkexec parameter validation — all privileged commands validate action and service names against allowlists</li>
+          <li>Semver version parsing — replaced custom version parser with robust semver comparison</li>
+          <li>Build script hardening — removed unwrap from build.rs environment variable reads</li>
+          <li>CI/CD pipeline — added GitHub Actions workflow with cargo audit, cargo deny, clippy, and tests</li>
+          <li>Test coverage expansion — increased from 5 to 31 tests covering security-critical paths</li>
+          <li>Accessibility improvements — added tooltip descriptions to chart widgets</li>
+          <li>Logging safety — default log level set to info; path leakage removed from log messages</li>
+          <li>Unused dependency cleanup — removed futures, once_cell, thiserror, and toml</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.5.0" date="2026-04-10">
       <description>
         <p>What's New in 1.5.0:</p>

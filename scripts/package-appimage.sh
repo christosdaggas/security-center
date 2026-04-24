@@ -6,7 +6,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-VERSION="1.5.0"
+VERSION="1.6.0"
 APP_NAME="security-center"
 APP_ID="com.chrisdaggas.security-center"
 ARCH="$(uname -m)"
@@ -33,6 +33,7 @@ mkdir -p "$APPDIR/usr/share/applications"
 mkdir -p "$APPDIR/usr/share/metainfo"
 mkdir -p "$APPDIR/usr/share/icons/hicolor/256x256/apps"
 mkdir -p "$APPDIR/usr/share/icons/hicolor/scalable/apps"
+mkdir -p "$APPDIR/usr/share/icons/hicolor/symbolic/apps"
 mkdir -p "$APPDIR/usr/share/glib-2.0/schemas"
 mkdir -p "$PROJECT_DIR/dist/appimage"
 
@@ -51,6 +52,7 @@ cp "$PROJECT_DIR/data/${APP_ID}.metainfo.xml" "$APPDIR/usr/share/metainfo/"
 # Copy icons
 cp "$PROJECT_DIR/data/icons/hicolor/scalable/apps/${APP_ID}.svg" "$APPDIR/${APP_ID}.svg"
 cp "$PROJECT_DIR/data/icons/hicolor/scalable/apps/${APP_ID}.svg" "$APPDIR/usr/share/icons/hicolor/scalable/apps/"
+cp "$PROJECT_DIR/data/icons/hicolor/symbolic/apps/${APP_ID}-symbolic.svg" "$APPDIR/usr/share/icons/hicolor/symbolic/apps/"
 cp "$PROJECT_DIR/data/icons/hicolor/scalable/apps/${APP_ID}.svg" "$APPDIR/.DirIcon"
 
 # Generate PNG icon if rsvg-convert is available
@@ -111,13 +113,28 @@ APPRUN_EOF
 chmod +x "$APPDIR/AppRun"
 
 # Download appimagetool if not present
+# Pinned to a specific release for reproducibility.
+# Update APPIMAGETOOL_URL and APPIMAGETOOL_SHA256 when upgrading.
+APPIMAGETOOL_URL="https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-${ARCH}.AppImage"
+APPIMAGETOOL_SHA256="" # Set this to the known SHA256 of the pinned release
 APPIMAGETOOL="$WORK_DIR/appimagetool-${ARCH}.AppImage"
 if [ ! -f "$APPIMAGETOOL" ]; then
     echo "[INFO] Downloading appimagetool for ${ARCH}..."
     wget -q --show-progress \
-        "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH}.AppImage" \
+        "$APPIMAGETOOL_URL" \
         -O "$APPIMAGETOOL"
     chmod +x "$APPIMAGETOOL"
+
+    if [ -n "$APPIMAGETOOL_SHA256" ]; then
+        echo "[INFO] Verifying appimagetool checksum..."
+        echo "$APPIMAGETOOL_SHA256  $APPIMAGETOOL" | sha256sum -c - || {
+            echo "[ERROR] appimagetool checksum verification failed"
+            rm -f "$APPIMAGETOOL"
+            exit 1
+        }
+    else
+        echo "[WARN] APPIMAGETOOL_SHA256 is not set; skipping checksum verification"
+    fi
 fi
 
 export APPIMAGE_EXTRACT_AND_RUN=1

@@ -2,9 +2,13 @@ use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 
-fn main() {
-    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+fn main() -> Result<(), String> {
+    let out_dir = PathBuf::from(
+        env::var("OUT_DIR").map_err(|e| format!("OUT_DIR not set: {}", e))?,
+    );
+    let manifest_dir = PathBuf::from(
+        env::var("CARGO_MANIFEST_DIR").map_err(|e| format!("CARGO_MANIFEST_DIR not set: {}", e))?,
+    );
     
     let data_dir = manifest_dir.join("data");
     let gresource_xml = data_dir.join("com.chrisdaggas.security-center.gresource.xml");
@@ -30,4 +34,6 @@ fn main() {
             eprintln!("Warning: glib-compile-resources not available, using fallback");
         }
     }
+
+    Ok(())
 }

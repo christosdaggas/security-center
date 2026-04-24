@@ -83,16 +83,32 @@ cargo build
 RUST_LOG=debug cargo run
 
 # Run linter
-cargo clippy -- -D warnings
+cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 # Format code
-cargo fmt
+cargo fmt --all
+
+# Run tests
+cargo test --workspace --all-features
+
+# Security checks
+cargo audit
+cargo deny check
 ```
 
 **Note:** Some features require elevated privileges. For full functionality:
 ```bash
 sudo -E cargo run --release
 ```
+
+## Security
+
+- **Privilege Model**: Write operations use `pkexec` for Polkit authentication; no direct root execution.
+- **File Permissions**: Config and metadata files are created with `0o600` permissions.
+- **Input Validation**: Port names, protocols, zone names, and systemctl parameters are validated against allowlists.
+- **Update Check**: Outbound HTTPS requests are made only to `api.github.com`.
+- **Logging**: `RUST_LOG=trace` may log sensitive system information. Default log level is `info`.
+- See [SECURITY.md](SECURITY.md) for the full security policy and threat model.
 
 ## Architecture
 

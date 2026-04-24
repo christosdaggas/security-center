@@ -20,6 +20,7 @@ mod stats;
 mod storage;
 mod systemd;
 mod ui;
+mod validation;
 mod version_check;
 
 use application::Application;
@@ -27,9 +28,19 @@ use application::Application;
 const APP_ID: &str = "com.chrisdaggas.security-center";
 
 fn main() -> glib::ExitCode {
-    glib::set_prgname(Some(APP_ID));
+    glib::set_prgname(Some("security-center"));
     glib::set_application_name("Security Center");
-    tracing_subscriber::fmt::init();
+
+    // Initialize tracing with a safe default filter.
+    // RUST_LOG=trace may log sensitive system information.
+    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer().with_target(false))
+        .with(
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| EnvFilter::new("info")),
+        )
+        .init();
 
     let resource_bytes = include_bytes!(concat!(env!("OUT_DIR"), "/security-center.gresource"));
     let resource_data = glib::Bytes::from_static(resource_bytes);

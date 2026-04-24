@@ -9,8 +9,13 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
+use crate::validation::{clamp_window_dimension, validate_theme};
+
+const MAX_CONFIG_FILE_SIZE: u64 = 1_048_576; // 1 MB
+
 /// Application settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct AppSettings {
     /// Window width.
     #[serde(default = "default_width")]
@@ -74,25 +79,44 @@ impl Settings {
         let old_dir = config_base.join("gnome-security-center");
         if old_dir.exists() && !new_dir.exists() {
             if let Err(e) = fs::rename(&old_dir, &new_dir) {
-                warn!("Failed to migrate config from {:?} to {:?}: {}", old_dir, new_dir, e);
+                warn!("Failed to migrate config directory: {}", e);
             }
         }
 
         let settings = if path.exists() {
-            match fs::read_to_string(&path) {
-                Ok(content) => {
-                    match serde_json::from_str(&content) {
-                        Ok(s) => s,
+            let metadata = fs::metadata(&path);
+            if let Ok(m) = metadata {
+                if m.len() > MAX_CONFIG_FILE_SIZE {
+                    warn!("Settings file too large ({} bytes), using defaults", m.len());
+                    AppSettings::default()
+                } else {
+                    match fs::read_to_string(&path) {
+                        Ok(content) => {
+                            match serde_json::from_str::<AppSettings>(&content) {
+                                Ok(mut s) => {
+                                    // Validate fields
+                                    if validate_theme(&s.theme).is_none() {
+                                        warn!("Invalid theme '{}' in settings, resetting to system", s.theme);
+                                        s.theme = "system".to_string();
+                                    }
+                                    s.window_width = clamp_window_dimension(s.window_width);
+                                    s.window_height = clamp_window_dimension(s.window_height);
+                                    s
+                                }
+                                Err(e) => {
+                                    warn!("Failed to parse settings: {}", e);
+                                    AppSettings::default()
+                                }
+                            }
+                        }
                         Err(e) => {
-                            warn!("Failed to parse settings: {}", e);
+                            warn!("Failed to read settings: {}", e);
                             AppSettings::default()
                         }
                     }
                 }
-                Err(e) => {
-                    warn!("Failed to read settings: {}", e);
-                    AppSettings::default()
-                }
+            } else {
+                AppSettings::default()
             }
         } else {
             AppSettings::default()
@@ -187,5 +211,25 @@ impl Settings {
     pub fn set_show_tray_icon(&mut self, enabled: bool) {
         self.settings.show_tray_icon = enabled;
         self.save();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_clamp_window_dimension() {
+        assert_eq!(clamp_window_dimension(50), 100);
+        assert_eq!(clamp_window_dimension(500), 500);
+        assert_eq!(clamp_window_dimension(20000), 10000);
+    }
+
+    #[test]
+    fn test_validate_theme() {
+        assert_eq!(validate_theme("system"), Some("system"));
+        assert_eq!(validate_theme("light"), Some("light"));
+        assert_eq!(validate_theme("dark"), Some("dark"));
+        assert_eq!(validate_theme("hacked"), None);
     }
 }

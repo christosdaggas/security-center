@@ -4,6 +4,7 @@
 
 //! Automatic update checking via GitHub Releases API.
 
+use reqwest::Url;
 use serde::Deserialize;
 use tracing::{debug, warn};
 
@@ -35,10 +36,17 @@ struct GitHubRelease {
 /// Returns `Some(UpdateInfo)` if a newer version exists,
 /// `None` if the local version is current or on ANY error.
 pub async fn check_for_update(current_version: &str) -> Option<UpdateInfo> {
-    let url = format!(
+    let url = Url::parse(&format!(
         "https://api.github.com/repos/{}/{}/releases/latest",
         GITHUB_OWNER, GITHUB_REPO
-    );
+    ))
+    .ok()?;
+
+    // Defense in depth: ensure we only connect to GitHub over HTTPS
+    if url.scheme() != "https" || url.host_str() != Some("api.github.com") {
+        debug!("Unexpected update check URL, aborting");
+        return None;
+    }
 
     debug!("Checking for updates at {}", url);
 
@@ -48,7 +56,7 @@ pub async fn check_for_update(current_version: &str) -> Option<UpdateInfo> {
         .build()
         .ok()?;
 
-    let response = match client.get(&url).send().await {
+    let response = match client.get(url).send().await {
         Ok(resp) => resp,
         Err(e) => {
             debug!("Update check HTTP request failed (not an error): {}", e);
@@ -93,27 +101,15 @@ pub async fn check_for_update(current_version: &str) -> Option<UpdateInfo> {
 }
 
 fn is_newer(remote: &str, local: &str) -> bool {
-    let parse = |s: &str| -> Vec<u64> {
-        s.split('.')
-            .map(|part| part.parse::<u64>().unwrap_or(0))
-            .collect()
+    let r = match semver::Version::parse(remote) {
+        Ok(v) => v,
+        Err(_) => return false,
     };
-
-    let r = parse(remote);
-    let l = parse(local);
-
-    let max_len = r.len().max(l.len());
-    for i in 0..max_len {
-        let rv = r.get(i).copied().unwrap_or(0);
-        let lv = l.get(i).copied().unwrap_or(0);
-        if rv > lv {
-            return true;
-        }
-        if rv < lv {
-            return false;
-        }
-    }
-    false
+    let l = match semver::Version::parse(local) {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+    r > l
 }
 
 #[cfg(test)]
@@ -127,6 +123,14 @@ mod tests {
         assert!(is_newer("1.0.1", "1.0.0"));
         assert!(!is_newer("1.0.0", "1.0.0"));
         assert!(!is_newer("0.9.0", "1.0.0"));
-        assert!(is_newer("1.0.0.1", "1.0.0"));
+        // Note: semver only supports major.minor.patch; 4-component versions are treated as invalid
+    }
+
+    #[test]
+    fn test_is_newer_malformed() {
+        assert!(!is_newer("1.a.0", "1.0.0"));
+        assert!(!is_newer("1.0.0", "1.a.0"));
+        assert!(!is_newer("", "1.0.0"));
+        assert!(!is_newer("not-a-version", "1.0.0"));
     }
 }

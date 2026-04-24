@@ -27,6 +27,7 @@ use libadwaita::prelude::*;
 use tracing::error;
 
 use crate::admin::{ListeningEndpoint, NetworkExposure, FirewallStatus, get_service_name};
+use crate::validation::validate_protocol;
 
 glib::wrapper! {
     /// Page displaying network exposure information.
@@ -495,10 +496,14 @@ impl NetworkExposurePage {
                 let zone = client.get_default_zone()
                     .unwrap_or_else(|_| "public".to_string());
 
+                // Validate protocol before constructing rich rule
+                let valid_proto = validate_protocol(&protocol_clone)
+                    .ok_or_else(|| anyhow::anyhow!("Invalid protocol: {}", protocol_clone))?;
+
                 // Add rich rule to reject connections on this port
                 let rule = format!(
                     "rule family=\"ipv4\" port port=\"{}\" protocol=\"{}\" reject",
-                    port_clone, protocol_clone
+                    port_clone, valid_proto
                 );
 
                 // Add to both runtime and permanent config

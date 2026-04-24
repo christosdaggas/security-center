@@ -513,4 +513,56 @@ mod tests {
         // 127.0.0.1 in little-endian hex
         assert_eq!(parse_ipv4_hex("0100007F"), Some(Ipv4Addr::new(127, 0, 0, 1)));
     }
+
+    #[test]
+    fn test_parse_ipv4_invalid() {
+        assert_eq!(parse_ipv4_hex(""), None);
+        assert_eq!(parse_ipv4_hex("000000"), None);
+        assert_eq!(parse_ipv4_hex("000000000"), None);
+        assert_eq!(parse_ipv4_hex("notahex"), None);
+    }
+
+    #[test]
+    fn test_parse_ipv6() {
+        assert_eq!(
+            parse_ipv6_hex("00000000000000000000000000000000"),
+            Some(IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 0)))
+        );
+    }
+
+    #[test]
+    fn test_parse_ipv6_invalid() {
+        assert_eq!(parse_ipv6_hex(""), None);
+        assert_eq!(parse_ipv6_hex("000000000000000000000000000000"), None);
+        assert_eq!(parse_ipv6_hex("000000000000000000000000000000000"), None);
+    }
+
+    #[test]
+    fn test_parse_port_string() {
+        assert_eq!(parse_port_string("80/tcp"), Some((80, "tcp".to_string())));
+        assert_eq!(parse_port_string("53/udp"), Some((53, "udp".to_string())));
+        assert_eq!(parse_port_string("invalid"), None);
+        assert_eq!(parse_port_string("80/tcp/udp"), None);
+    }
+
+    #[test]
+    fn test_parse_rich_rule_port() {
+        assert_eq!(
+            parse_rich_rule_port("rule family=\"ipv4\" port port=\"80\" protocol=\"tcp\" reject"),
+            Some((80, "tcp".to_string()))
+        );
+        assert_eq!(
+            parse_rich_rule_port("rule family=\"ipv4\" port port=\"53\" protocol=\"udp\" drop"),
+            Some((53, "udp".to_string()))
+        );
+        assert_eq!(parse_rich_rule_port("not a port rule"), None);
+    }
+
+    #[test]
+    fn test_get_service_name() {
+        assert_eq!(get_service_name(22), Some("SSH"));
+        assert_eq!(get_service_name(80), Some("HTTP"));
+        assert_eq!(get_service_name(443), Some("HTTPS"));
+        assert_eq!(get_service_name(9999), None);
+    }
 }

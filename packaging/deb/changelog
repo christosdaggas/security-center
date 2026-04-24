@@ -1,3 +1,20 @@
+security-center (1.6.0-1) unstable; urgency=medium
+
+  * Security hardening release
+  * Patched dependency vulnerabilities (bytes, quinn-proto, rustls-webpki, rand)
+  * Added centralized input validation for protocols, port names, systemctl actions
+  * Validated firewalld rich rule construction against protocol allowlist
+  * Added config file size limits and JSON sanitization
+  * Added pkexec parameter allowlisting
+  * Replaced custom version parser with semver
+  * Added GitHub Actions CI with audit, deny, clippy, and tests
+  * Expanded test coverage from 5 to 31 tests
+  * Added accessibility tooltips to chart widgets
+  * Hardened logging to avoid path leakage
+  * Removed unused dependencies
+
+ -- Christos Daggas <chrisdaggas@example.com>  Thu, 24 Apr 2026 19:30:00 +0300
+
 security-center (1.5.0-1) unstable; urgency=medium
 
   * Cross-distro support for Fedora, Ubuntu, Debian and all desktop environments

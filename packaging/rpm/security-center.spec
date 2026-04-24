@@ -1,5 +1,5 @@
 Name:           security-center
-Version:        1.5.0
+Version:        1.6.0
 Release:        1%{?dist}
 Summary:        A modern GTK4 security center for Linux
 
@@ -45,6 +45,7 @@ install -Dm755 target/release/%{name} %{buildroot}%{_bindir}/%{name}
 install -Dm644 data/com.chrisdaggas.security-center.desktop %{buildroot}%{_datadir}/applications/com.chrisdaggas.security-center.desktop
 install -Dm644 data/com.chrisdaggas.security-center.metainfo.xml %{buildroot}%{_datadir}/metainfo/com.chrisdaggas.security-center.metainfo.xml
 install -Dm644 data/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg
+install -Dm644 data/icons/hicolor/symbolic/apps/com.chrisdaggas.security-center-symbolic.svg %{buildroot}%{_datadir}/icons/hicolor/symbolic/apps/com.chrisdaggas.security-center-symbolic.svg
 install -Dm644 README.md %{buildroot}%{_docdir}/%{name}/README.md
 
 %files
@@ -54,9 +55,25 @@ install -Dm644 README.md %{buildroot}%{_docdir}/%{name}/README.md
 %{_datadir}/applications/com.chrisdaggas.security-center.desktop
 %{_datadir}/metainfo/com.chrisdaggas.security-center.metainfo.xml
 %{_datadir}/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg
+%{_datadir}/icons/hicolor/symbolic/apps/com.chrisdaggas.security-center-symbolic.svg
 %{_docdir}/%{name}/README.md
 
+%post
+gtk-update-icon-cache -q -t -f %{_datadir}/icons/hicolor || :
+update-desktop-database -q %{_datadir}/applications || :
+appstreamcli refresh-cache || :
+
+%postun
+gtk-update-icon-cache -q -t -f %{_datadir}/icons/hicolor || :
+update-desktop-database -q %{_datadir}/applications || :
+appstreamcli refresh-cache || :
+
 %changelog
+* Thu Apr 24 2026 Christos Daggas <chrisdaggas@example.com> - 1.6.0-1
+- Security hardening release: dependency updates, input validation, pkexec parameter allowlisting,
+  config file sanitization, semver parsing, CI/CD pipeline, test expansion, accessibility improvements,
+  logging safety, and unused dependency cleanup.
+
 * Thu Apr 10 2026 Christos Daggas <chrisdaggas@example.com> - 1.5.0-1
 - Cross-distro support for Fedora, Ubuntu, Debian and all desktop environments
 - Fixed Debian/Ubuntu package dependencies (polkit package naming)
