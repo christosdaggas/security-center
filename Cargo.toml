@@ -1,6 +1,6 @@
 [package]
 name = "security-center"
-version = "1.6.0"
+version = "1.7.0"
 edition = "2021"
 authors = ["Christos Daggas <chrisdaggas@example.com>"]
 license = "MIT"
@@ -15,6 +15,13 @@ libadwaita = { version = "0.7", features = ["v1_5"] }
 
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 zbus = { version = "4", default-features = false, features = ["tokio"] }
+async-channel = "2"
+
+# Netlink sock_diag: per-socket byte counters without root
+netlink-sys = "0.8"
+netlink-packet-core = "0.7"
+netlink-packet-sock-diag = { version = "0.4", features = ["rich_nlas"] }
+maxminddb = "0.24"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -26,6 +33,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "5"
+gettext-rs = { version = "0.7", features = ["gettext-system"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 semver = "1"
 
@@ -58,6 +66,17 @@ assets = [
     ["data/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg", "usr/share/icons/hicolor/scalable/apps/", "644"],
     ["data/icons/hicolor/symbolic/apps/com.chrisdaggas.security-center-symbolic.svg", "usr/share/icons/hicolor/symbolic/apps/", "644"],
     ["README.md", "usr/share/doc/security-center/", "644"],
+    # Translation catalogs — compiled from po/ by scripts/package-deb.sh before `cargo deb`
+    ["target/locale/ar/LC_MESSAGES/security-center.mo", "usr/share/locale/ar/LC_MESSAGES/", "644"],
+    ["target/locale/de/LC_MESSAGES/security-center.mo", "usr/share/locale/de/LC_MESSAGES/", "644"],
+    ["target/locale/el/LC_MESSAGES/security-center.mo", "usr/share/locale/el/LC_MESSAGES/", "644"],
+    ["target/locale/es/LC_MESSAGES/security-center.mo", "usr/share/locale/es/LC_MESSAGES/", "644"],
+    ["target/locale/fr/LC_MESSAGES/security-center.mo", "usr/share/locale/fr/LC_MESSAGES/", "644"],
+    ["target/locale/hi/LC_MESSAGES/security-center.mo", "usr/share/locale/hi/LC_MESSAGES/", "644"],
+    ["target/locale/it/LC_MESSAGES/security-center.mo", "usr/share/locale/it/LC_MESSAGES/", "644"],
+    ["target/locale/pt/LC_MESSAGES/security-center.mo", "usr/share/locale/pt/LC_MESSAGES/", "644"],
+    ["target/locale/ru/LC_MESSAGES/security-center.mo", "usr/share/locale/ru/LC_MESSAGES/", "644"],
+    ["target/locale/zh/LC_MESSAGES/security-center.mo", "usr/share/locale/zh/LC_MESSAGES/", "644"],
 ]
 
 [package.metadata.generate-rpm]
@@ -68,6 +87,17 @@ assets = [
     { source = "data/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg", dest = "/usr/share/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg", mode = "644" },
     { source = "data/icons/hicolor/symbolic/apps/com.chrisdaggas.security-center-symbolic.svg", dest = "/usr/share/icons/hicolor/symbolic/apps/com.chrisdaggas.security-center-symbolic.svg", mode = "644" },
     { source = "README.md", dest = "/usr/share/doc/security-center/README.md", mode = "644" },
+    # Translation catalogs — compiled from po/ by scripts/package-rpm.sh before `cargo generate-rpm`
+    { source = "target/locale/ar/LC_MESSAGES/security-center.mo", dest = "/usr/share/locale/ar/LC_MESSAGES/security-center.mo", mode = "644" },
+    { source = "target/locale/de/LC_MESSAGES/security-center.mo", dest = "/usr/share/locale/de/LC_MESSAGES/security-center.mo", mode = "644" },
+    { source = "target/locale/el/LC_MESSAGES/security-center.mo", dest = "/usr/share/locale/el/LC_MESSAGES/security-center.mo", mode = "644" },
+    { source = "target/locale/es/LC_MESSAGES/security-center.mo", dest = "/usr/share/locale/es/LC_MESSAGES/security-center.mo", mode = "644" },
+    { source = "target/locale/fr/LC_MESSAGES/security-center.mo", dest = "/usr/share/locale/fr/LC_MESSAGES/security-center.mo", mode = "644" },
+    { source = "target/locale/hi/LC_MESSAGES/security-center.mo", dest = "/usr/share/locale/hi/LC_MESSAGES/security-center.mo", mode = "644" },
+    { source = "target/locale/it/LC_MESSAGES/security-center.mo", dest = "/usr/share/locale/it/LC_MESSAGES/security-center.mo", mode = "644" },
+    { source = "target/locale/pt/LC_MESSAGES/security-center.mo", dest = "/usr/share/locale/pt/LC_MESSAGES/security-center.mo", mode = "644" },
+    { source = "target/locale/ru/LC_MESSAGES/security-center.mo", dest = "/usr/share/locale/ru/LC_MESSAGES/security-center.mo", mode = "644" },
+    { source = "target/locale/zh/LC_MESSAGES/security-center.mo", dest = "/usr/share/locale/zh/LC_MESSAGES/security-center.mo", mode = "644" },
 ]
 
 [package.metadata.generate-rpm.scripts]

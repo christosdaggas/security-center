@@ -14,6 +14,7 @@ use libadwaita as adw;
 use libadwaita::prelude::*;
 
 use crate::firewall::FirewallClient;
+use crate::i18n::gettext;
 use crate::models::Zone;
 
 glib::wrapper! {
@@ -60,13 +61,13 @@ impl ZonesPage {
             .build();
 
         let title = gtk4::Label::builder()
-            .label("Zones")
+            .label(&gettext("Zones"))
             .css_classes(vec!["title-1".to_string()])
             .halign(gtk4::Align::Start)
             .build();
 
         let subtitle = gtk4::Label::builder()
-            .label("Manage firewall zones and their settings")
+            .label(&gettext("Manage firewall zones and their settings"))
             .css_classes(vec!["dim-label".to_string()])
             .halign(gtk4::Align::Start)
             .build();
@@ -97,17 +98,17 @@ impl ZonesPage {
         scrolled.set_child(Some(&content));
 
         // Active zones group
-        content.append(&Self::create_section_header("network-workgroup-symbolic", "Active Zones"));
+        content.append(&Self::create_section_header("network-workgroup-symbolic", &gettext("Active Zones")));
         let active_group = adw::PreferencesGroup::builder()
-            .description("Zones with assigned interfaces or sources")
+            .description(&gettext("Zones with assigned interfaces or sources"))
             .build();
         content.append(&active_group);
         imp.active_group.replace(Some(active_group));
 
         // Available zones group
-        content.append(&Self::create_section_header("view-list-symbolic", "Available Zones"));
+        content.append(&Self::create_section_header("view-list-symbolic", &gettext("Available Zones")));
         let available_group = adw::PreferencesGroup::builder()
-            .description("Click 'Set Default' to change the default zone")
+            .description(&gettext("Click 'Set Default' to change the default zone"))
             .build();
         content.append(&available_group);
         imp.available_group.replace(Some(available_group));
@@ -153,14 +154,14 @@ impl ZonesPage {
 
             match result {
                 Ok(Ok(())) => {
-                    page.show_toast(&format!("Default zone set to '{}'", zone));
+                    page.show_toast(&gettext("Default zone set to '%s'").replace("%s", &zone));
                     page.request_refresh();
                 }
                 Ok(Err(e)) => {
-                    page.show_toast(&format!("Failed to set default zone: {}", e));
+                    page.show_toast(&format!("{}: {}", gettext("Failed to set default zone"), e));
                 }
                 Err(_) => {
-                    page.show_toast("Failed to set default zone");
+                    page.show_toast(&gettext("Failed to set default zone"));
                 }
             }
         });
@@ -254,7 +255,7 @@ impl ZonesPage {
         // Default badge if this is the default zone
         if zone.is_default {
             let badge = gtk4::Label::builder()
-                .label("Default")
+                .label(&gettext("Default"))
                 .css_classes(["success", "caption"])
                 .valign(gtk4::Align::Center)
                 .build();
@@ -264,7 +265,7 @@ impl ZonesPage {
             let zone_name = zone.name.clone();
             let page = self.clone();
             let button = gtk4::Button::builder()
-                .label("Set Default")
+                .label(&gettext("Set Default"))
                 .valign(gtk4::Align::Center)
                 .css_classes(["flat"])
                 .build();
@@ -277,7 +278,7 @@ impl ZonesPage {
         // Sub-rows for zone details
         if !zone.services.is_empty() {
             let services_row = adw::ActionRow::builder()
-                .title("Services")
+                .title(&gettext("Services"))
                 .subtitle(&zone.services.join(", "))
                 .build();
             row.add_row(&services_row);
@@ -285,7 +286,7 @@ impl ZonesPage {
         
         if !zone.ports.is_empty() {
             let ports_row = adw::ActionRow::builder()
-                .title("Ports")
+                .title(&gettext("Ports"))
                 .subtitle(&zone.ports.join(", "))
                 .build();
             row.add_row(&ports_row);
@@ -293,7 +294,7 @@ impl ZonesPage {
         
         if !zone.interfaces.is_empty() {
             let ifaces_row = adw::ActionRow::builder()
-                .title("Interfaces")
+                .title(&gettext("Interfaces"))
                 .subtitle(&zone.interfaces.join(", "))
                 .build();
             row.add_row(&ifaces_row);
@@ -301,7 +302,7 @@ impl ZonesPage {
         
         if !zone.sources.is_empty() {
             let sources_row = adw::ActionRow::builder()
-                .title("Sources")
+                .title(&gettext("Sources"))
                 .subtitle(&zone.sources.join(", "))
                 .build();
             row.add_row(&sources_row);

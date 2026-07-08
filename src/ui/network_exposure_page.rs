@@ -27,6 +27,8 @@ use libadwaita::prelude::*;
 use tracing::error;
 
 use crate::admin::{ListeningEndpoint, NetworkExposure, FirewallStatus, get_service_name};
+use crate::i18n::gettext;
+use crate::ui::widgets::BarChart;
 use crate::validation::validate_protocol;
 
 glib::wrapper! {
@@ -72,13 +74,13 @@ impl NetworkExposurePage {
             .build();
 
         let title = gtk4::Label::builder()
-            .label("Network Exposure")
+            .label(&gettext("Network Exposure"))
             .css_classes(vec!["title-1".to_string()])
             .halign(gtk4::Align::Start)
             .build();
 
         let subtitle = gtk4::Label::builder()
-            .label("Monitor listening ports and their firewall status")
+            .label(&gettext("Monitor listening ports and their firewall status"))
             .css_classes(vec!["dim-label".to_string()])
             .halign(gtk4::Align::Start)
             .build();
@@ -88,7 +90,7 @@ impl NetworkExposurePage {
 
         let refresh_button = gtk4::Button::builder()
             .icon_name("view-refresh-symbolic")
-            .tooltip_text("Refresh")
+            .tooltip_text(&gettext("Refresh"))
             .css_classes(vec!["flat".to_string()])
             .valign(gtk4::Align::Center)
             .build();
@@ -129,9 +131,9 @@ impl NetworkExposurePage {
             .margin_bottom(12)
             .build();
 
-        let total_card = self.create_summary_card("Total Ports", "0", "network-server-symbolic");
-        let exposed_card = self.create_summary_card("Exposed", "0", "security-low-symbolic");
-        let blocked_card = self.create_summary_card("Blocked", "0", "security-high-symbolic");
+        let total_card = self.create_summary_card(&gettext("Total Ports"), "0", "network-server-symbolic");
+        let exposed_card = self.create_summary_card(&gettext("Exposed"), "0", "security-low-symbolic");
+        let blocked_card = self.create_summary_card(&gettext("Blocked"), "0", "security-high-symbolic");
 
         imp.total_card.replace(Some(total_card.clone()));
         imp.exposed_card.replace(Some(exposed_card.clone()));
@@ -143,28 +145,58 @@ impl NetworkExposurePage {
         content.append(&summary_box);
 
         // Exposed endpoints (risky)
-        let exposed_header = Self::create_section_header("dialog-warning-symbolic", "Exposed to Network");
+        let exposed_header = Self::create_section_header("dialog-warning-symbolic", &gettext("Exposed to Network"));
         exposed_header.set_visible(false);
         imp.exposed_header.replace(Some(exposed_header.clone()));
         content.append(&exposed_header);
         let exposed_group = adw::PreferencesGroup::builder()
-            .description("These ports are listening on all interfaces")
+            .description(&gettext("These ports are listening on all interfaces"))
             .visible(false)
             .build();
         imp.exposed_group.replace(Some(exposed_group.clone()));
         content.append(&exposed_group);
 
         // Local endpoints (safe)
-        let local_header = Self::create_section_header("computer-symbolic", "Local Only");
+        let local_header = Self::create_section_header("computer-symbolic", &gettext("Local Only"));
         local_header.set_visible(false);
         imp.local_header.replace(Some(local_header.clone()));
         content.append(&local_header);
         let local_group = adw::PreferencesGroup::builder()
-            .description("These ports are only accessible locally")
+            .description(&gettext("These ports are only accessible locally"))
             .visible(false)
             .build();
         imp.local_group.replace(Some(local_group.clone()));
         content.append(&local_group);
+
+        // Active connections (established sessions to remote hosts)
+        let conn_header = Self::create_section_header("network-transmit-receive-symbolic", &gettext("Active Connections"));
+        conn_header.set_visible(false);
+        imp.connections_header.replace(Some(conn_header.clone()));
+        content.append(&conn_header);
+
+        // Top talkers — remote hosts ranked by number of open connections
+        let talkers_card = self.create_chart_card(&gettext("Top Remote Hosts (by connections)"));
+        let talkers_chart = BarChart::new();
+        talkers_chart.set_size_request(-1, 140);
+        talkers_chart.set_hexpand(true);
+        talkers_chart.set_margin_top(8);
+        talkers_chart.set_margin_bottom(8);
+        if let Some(content_box) = talkers_card.first_child() {
+            if let Some(box_content) = content_box.downcast_ref::<gtk4::Box>() {
+                box_content.append(&talkers_chart);
+            }
+        }
+        talkers_card.set_visible(false);
+        imp.talkers_card.replace(Some(talkers_card.clone()));
+        imp.talkers_chart.replace(Some(talkers_chart));
+        content.append(&talkers_card);
+
+        let connections_group = adw::PreferencesGroup::builder()
+            .description(&gettext("Established connections to remote hosts"))
+            .visible(false)
+            .build();
+        imp.connections_group.replace(Some(connections_group.clone()));
+        content.append(&connections_group);
 
         scrolled.set_child(Some(&content));
         self.append(&scrolled);
@@ -180,7 +212,7 @@ impl NetworkExposurePage {
             .build();
 
         let status_label = gtk4::Label::builder()
-            .label("Scan to see listening ports")
+            .label(&gettext("Scan to see listening ports"))
             .css_classes(vec!["dim-label".to_string()])
             .halign(gtk4::Align::Center)
             .build();
@@ -255,13 +287,25 @@ impl NetworkExposurePage {
         glib::spawn_future_local(async move {
             let result = gtk4::gio::spawn_blocking(move || {
                 let mut scanner = NetworkExposure::new();
-                scanner.scan()
+                let endpoints = scanner.scan()?;
+                // Established connections share the same scanner/inode map
+                let connections = scanner.scan_connections().unwrap_or_default();
+                // Real per-host byte totals via netlink sock_diag (best-effort)
+                let talkers = crate::admin::collect_top_talkers().ok();
+                // Resolve remote-host countries offline; empty when connections have no remotes
+                let geo = crate::admin::GeoIp::load();
+                let geo_labels: std::collections::HashMap<std::net::IpAddr, String> = connections
+                    .iter()
+                    .filter_map(|c| geo.country_label(c.remote_addr).map(|l| (c.remote_addr, l)))
+                    .collect();
+                Ok::<_, anyhow::Error>((endpoints, connections, talkers, geo_labels))
             })
             .await;
 
             match result {
-                Ok(Ok(endpoints)) => {
+                Ok(Ok((endpoints, connections, talkers, geo_labels))) => {
                     page.update_endpoints(endpoints);
+                    page.update_connections(connections, talkers, geo_labels);
                 }
                 Ok(Err(e)) => {
                     error!("Failed to scan network: {}", e);
@@ -272,6 +316,180 @@ impl NetworkExposurePage {
                 }
             }
         });
+    }
+
+    /// A titled card container matching the overview cards.
+    fn create_chart_card(&self, title: &str) -> gtk4::Frame {
+        let frame = gtk4::Frame::builder().build();
+        frame.add_css_class("card");
+        let card_content = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Vertical)
+            .spacing(8)
+            .margin_top(16)
+            .margin_bottom(16)
+            .margin_start(16)
+            .margin_end(16)
+            .build();
+        let title_label = gtk4::Label::builder()
+            .label(title)
+            .css_classes(vec!["heading".to_string()])
+            .halign(gtk4::Align::Start)
+            .build();
+        card_content.append(&title_label);
+        frame.set_child(Some(&card_content));
+        frame
+    }
+
+    /// Render the established-connections section.
+    ///
+    /// `talkers` carries real per-host byte totals from netlink sock_diag when
+    /// available; otherwise the top-hosts chart falls back to connection counts.
+    fn update_connections(
+        &self,
+        connections: Vec<crate::admin::ActiveConnection>,
+        talkers: Option<Vec<crate::admin::TalkerBytes>>,
+        geo_labels: std::collections::HashMap<std::net::IpAddr, String>,
+    ) {
+        let imp = self.imp();
+
+        // Top talkers: prefer real byte totals, fall back to connection counts.
+        {
+            let ranked: Vec<(String, u64)> = match &talkers {
+                Some(t) if !t.is_empty() => t
+                    .iter()
+                    .take(5)
+                    .map(|tb| {
+                        (
+                            format!("{} ({})", tb.addr, format_bytes(tb.total())),
+                            tb.total(),
+                        )
+                    })
+                    .collect(),
+                _ => {
+                    let mut counts: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
+                    for conn in &connections {
+                        *counts.entry(conn.remote_addr.to_string()).or_insert(0) += 1;
+                    }
+                    let mut c: Vec<(String, u64)> = counts.into_iter().collect();
+                    c.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+                    c.truncate(5);
+                    c
+                }
+            };
+
+            // Reflect the metric in the card title
+            let title = if talkers.as_ref().is_some_and(|t| !t.is_empty()) {
+                gettext("Top Remote Hosts (by traffic)")
+            } else {
+                gettext("Top Remote Hosts (by connections)")
+            };
+            if let Some(card) = imp.talkers_card.borrow().as_ref() {
+                if let Some(content) = card.first_child() {
+                    if let Some(label) = content.first_child().and_downcast::<gtk4::Label>() {
+                        label.set_label(&title);
+                    }
+                }
+                card.set_visible(!ranked.is_empty());
+            }
+            if let Some(chart) = imp.talkers_chart.borrow().as_ref() {
+                chart.set_data(&ranked);
+            }
+        }
+
+        // Clear previous rows
+        if let Some(group) = imp.connections_group.borrow().as_ref() {
+            while let Some(child) = group.first_child() {
+                if child.is::<adw::ActionRow>() {
+                    group.remove(&child);
+                } else {
+                    break;
+                }
+            }
+        }
+
+        // Per-host byte totals for enriching each connection row
+        let bytes_by_host: std::collections::HashMap<std::net::IpAddr, u64> = talkers
+            .as_ref()
+            .map(|t| t.iter().map(|tb| (tb.addr, tb.total())).collect())
+            .unwrap_or_default();
+
+        // Group sockets by (process, remote host, port) so one host is one row
+        // with a connection count — no more identical rows repeated per socket.
+        struct ConnGroup {
+            process: String,
+            protocol: &'static str,
+            addr: std::net::IpAddr,
+            port: u16,
+            count: usize,
+        }
+        let mut groups: Vec<ConnGroup> = Vec::new();
+        for conn in &connections {
+            let proc = conn.process_label();
+            if let Some(g) = groups.iter_mut().find(|g| {
+                g.process == proc && g.addr == conn.remote_addr && g.port == conn.remote_port
+            }) {
+                g.count += 1;
+            } else {
+                groups.push(ConnGroup {
+                    process: proc,
+                    protocol: conn.protocol.as_str(),
+                    addr: conn.remote_addr,
+                    port: conn.remote_port,
+                    count: 1,
+                });
+            }
+        }
+        // Highest-traffic hosts first
+        groups.sort_by(|a, b| {
+            let ba = bytes_by_host.get(&a.addr).copied().unwrap_or(0);
+            let bb = bytes_by_host.get(&b.addr).copied().unwrap_or(0);
+            bb.cmp(&ba).then(b.count.cmp(&a.count))
+        });
+
+        let has_any = !groups.is_empty();
+        if let Some(group) = imp.connections_group.borrow().as_ref() {
+            for g in &groups {
+                let title = format!("{} → {}:{}", g.process, g.addr, g.port);
+
+                let mut parts: Vec<String> = vec![g.protocol.to_string()];
+                if g.count > 1 {
+                    parts.push(format!("{} connections", g.count));
+                }
+                if let Some(&total) = bytes_by_host.get(&g.addr) {
+                    parts.push(format_bytes(total));
+                }
+                let subtitle = parts.join(" · ");
+
+                let row = adw::ActionRow::builder()
+                    .title(glib::markup_escape_text(&title).as_str())
+                    .subtitle(glib::markup_escape_text(&subtitle).as_str())
+                    .build();
+                row.add_prefix(&gtk4::Image::from_icon_name("network-transmit-receive-symbolic"));
+
+                // Country flag (offline GeoIP) when the remote resolves
+                if let Some(label) = geo_labels.get(&g.addr) {
+                    let flag = gtk4::Label::builder()
+                        .label(label)
+                        .css_classes(vec!["caption".to_string()])
+                        .valign(gtk4::Align::Center)
+                        .build();
+                    row.add_suffix(&flag);
+                }
+                if let Some(service) = get_service_name(g.port) {
+                    let badge = gtk4::Label::builder()
+                        .label(service)
+                        .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
+                        .valign(gtk4::Align::Center)
+                        .build();
+                    row.add_suffix(&badge);
+                }
+                group.add(&row);
+            }
+            group.set_visible(has_any);
+        }
+        if let Some(header) = imp.connections_header.borrow().as_ref() {
+            header.set_visible(has_any);
+        }
     }
 
     /// Update the UI with scanned endpoints.
@@ -360,7 +578,7 @@ impl NetworkExposurePage {
             endpoint.port.to_string()
         };
 
-        let process_name = endpoint.process_name.clone().unwrap_or_else(|| "Unknown Process".to_string());
+        let process_name = endpoint.process_name.clone().unwrap_or_else(|| gettext("Unknown Process"));
 
         let row = adw::ExpanderRow::builder()
             .title(&port_label)
@@ -409,7 +627,7 @@ impl NetworkExposurePage {
 
         // Details row
         let details_row = adw::ActionRow::builder()
-            .title("Listening Address")
+            .title(&gettext("Listening Address"))
             .subtitle(&format!("{}:{}", endpoint.local_addr, endpoint.port))
             .build();
         row.add_row(&details_row);
@@ -423,7 +641,7 @@ impl NetworkExposurePage {
             }
 
             let process_row = adw::ActionRow::builder()
-                .title("Process")
+                .title(&gettext("Process"))
                 .subtitle(&subtitle)
                 .build();
             row.add_row(&process_row);
@@ -431,7 +649,7 @@ impl NetworkExposurePage {
 
         // Actions row
         let actions_row = adw::ActionRow::builder()
-            .title("Actions")
+            .title(&gettext("Actions"))
             .build();
 
         let button_box = gtk4::Box::builder()
@@ -441,22 +659,28 @@ impl NetworkExposurePage {
             .build();
 
         // Stop service button (if we know the process)
-        if endpoint.process_name.is_some() {
+        if let Some(process_name) = &endpoint.process_name {
             let stop_btn = gtk4::Button::builder()
-                .label("Stop Service")
+                .label(&gettext("Stop Service"))
                 .css_classes(vec!["flat".to_string()])
-                .tooltip_text("Stop the service using this port")
+                .tooltip_text(&gettext("Stop the systemd service using this port"))
                 .build();
 
-            // TODO: Connect to service stop action
+            let unit = format!("{}.service", process_name);
+            let display = process_name.clone();
+            let page_clone = self.clone();
+            stop_btn.connect_clicked(move |btn| {
+                btn.set_sensitive(false);
+                page_clone.confirm_stop_service(&unit, &display, btn.clone());
+            });
             button_box.append(&stop_btn);
         }
 
         // Block port button (red with white text)
         let block_btn = gtk4::Button::builder()
-            .label("Block Port")
+            .label(&gettext("Block Port"))
             .css_classes(vec!["destructive-action".to_string()])
-            .tooltip_text("Add a firewall rule to block this port")
+            .tooltip_text(&gettext("Add a firewall rule to block this port"))
             .build();
 
         // Connect to firewall block action
@@ -474,6 +698,68 @@ impl NetworkExposurePage {
         row.add_row(&actions_row);
 
         row
+    }
+
+    /// Confirm, then stop a systemd service via D-Bus (polkit-authenticated).
+    fn confirm_stop_service(&self, unit: &str, display: &str, btn: gtk4::Button) {
+        let page = self.clone();
+        let unit = unit.to_string();
+        let display = display.to_string();
+
+        let dialog = adw::AlertDialog::builder()
+            .heading(format!("Stop {}?", display))
+            .body(format!(
+                "This stops the systemd unit '{}'. The service will no longer \
+                 listen on this port until it is started again.",
+                unit
+            ))
+            .build();
+        dialog.add_response("cancel", "_Cancel");
+        dialog.add_response("stop", "_Stop Service");
+        dialog.set_response_appearance("stop", adw::ResponseAppearance::Destructive);
+        dialog.set_default_response(Some("cancel"));
+
+        let btn_for_response = btn.clone();
+        dialog.connect_response(None, move |_, response| {
+            if response != "stop" {
+                btn_for_response.set_sensitive(true);
+                return;
+            }
+
+            let page = page.clone();
+            let unit = unit.clone();
+            let display = display.clone();
+            let btn = btn_for_response.clone();
+            glib::spawn_future_local(async move {
+                let unit_clone = unit.clone();
+                let result = gtk4::gio::spawn_blocking(move || {
+                    let mut client = crate::systemd::SystemdClient::new();
+                    client.connect()?;
+                    client.stop_service(&unit_clone)
+                }).await;
+
+                match result {
+                    Ok(Ok(())) => {
+                        page.show_toast(&format!("Stopped {}", display));
+                        page.refresh();
+                    }
+                    Ok(Err(e)) => {
+                        page.show_toast(&format!("Failed to stop {}: {}", display, e));
+                        btn.set_sensitive(true);
+                    }
+                    Err(_) => {
+                        page.show_toast(&format!("Failed to stop {}", display));
+                        btn.set_sensitive(true);
+                    }
+                }
+            });
+        });
+
+        if let Some(root) = self.root() {
+            if let Some(window) = root.downcast_ref::<gtk4::Window>() {
+                dialog.present(Some(window));
+            }
+        }
     }
 
     /// Block a port by adding a reject rich rule.
@@ -500,22 +786,30 @@ impl NetworkExposurePage {
                 let valid_proto = validate_protocol(&protocol_clone)
                     .ok_or_else(|| anyhow::anyhow!("Invalid protocol: {}", protocol_clone))?;
 
-                // Add rich rule to reject connections on this port
+                // Add rich rule to reject connections on this port.
+                // No family attribute so the block covers IPv4 and IPv6.
                 let rule = format!(
-                    "rule family=\"ipv4\" port port=\"{}\" protocol=\"{}\" reject",
+                    "rule port port=\"{}\" protocol=\"{}\" reject",
                     port_clone, valid_proto
                 );
 
-                // Add to both runtime and permanent config
-                client.add_rich_rule(&zone, &rule, false)?;
-                client.add_rich_rule(&zone, &rule, true)?;
+                // Add once with permanent=true: the client writes both runtime
+                // and permanent config in a single call and reports the outcome
+                let outcome = client.add_rich_rule(&zone, &rule, true)?;
 
-                Ok(zone)
+                Ok((zone, outcome.failed()))
             }).await;
 
             match result {
-                Ok(Ok(zone)) => {
-                    page.show_toast(&format!("Port {}/{} blocked in zone '{}'", port_str, protocol, zone));
+                Ok(Ok((zone, permanent_failed))) => {
+                    if permanent_failed {
+                        page.show_toast(&format!(
+                            "Port {}/{} blocked in '{}' for this session only — saving permanently failed",
+                            port_str, protocol, zone
+                        ));
+                    } else {
+                        page.show_toast(&format!("Port {}/{} blocked in zone '{}'", port_str, protocol, zone));
+                    }
                     // Refresh to show updated status
                     page.refresh();
                     // Also refresh main window data so Ports page updates
@@ -523,11 +817,11 @@ impl NetworkExposurePage {
                 }
                 Ok(Err(e)) => {
                     error!("Failed to block port: {}", e);
-                    page.show_toast(&format!("Failed to block port: {}", e));
+                    page.show_toast(&format!("{}: {}", gettext("Failed to block port"), e));
                 }
                 Err(_e) => {
                     error!("Task failed");
-                    page.show_toast("Failed to block port");
+                    page.show_toast(&gettext("Failed to block port"));
                 }
             }
         });
@@ -584,6 +878,22 @@ impl NetworkExposurePage {
     }
 }
 
+/// Format a byte count as a compact human-readable string (B/KB/MB/GB).
+fn format_bytes(bytes: u64) -> String {
+    const UNITS: [&str; 4] = ["B", "KB", "MB", "GB"];
+    let mut value = bytes as f64;
+    let mut unit = 0;
+    while value >= 1024.0 && unit < UNITS.len() - 1 {
+        value /= 1024.0;
+        unit += 1;
+    }
+    if unit == 0 {
+        format!("{} {}", bytes, UNITS[unit])
+    } else {
+        format!("{:.1} {}", value, UNITS[unit])
+    }
+}
+
 mod imp {
     use super::*;
 
@@ -597,6 +907,10 @@ mod imp {
         pub exposed_group: RefCell<Option<adw::PreferencesGroup>>,
         pub local_header: RefCell<Option<gtk4::Box>>,
         pub local_group: RefCell<Option<adw::PreferencesGroup>>,
+        pub connections_header: RefCell<Option<gtk4::Box>>,
+        pub connections_group: RefCell<Option<adw::PreferencesGroup>>,
+        pub talkers_card: RefCell<Option<gtk4::Frame>>,
+        pub talkers_chart: RefCell<Option<BarChart>>,
         pub status_label: RefCell<Option<gtk4::Label>>,
         pub endpoints: RefCell<Vec<ListeningEndpoint>>,
     }

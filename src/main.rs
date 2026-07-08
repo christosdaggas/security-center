@@ -15,6 +15,7 @@ mod application;
 mod autostart;
 mod config;
 mod firewall;
+mod i18n;
 mod models;
 mod stats;
 mod storage;
@@ -27,9 +28,17 @@ use application::Application;
 
 const APP_ID: &str = "com.chrisdaggas.security-center";
 
+/// Translation domain — must match the installed `<domain>.mo` files.
+const GETTEXT_DOMAIN: &str = "security-center";
+
 fn main() -> glib::ExitCode {
     glib::set_prgname(Some("security-center"));
-    glib::set_application_name("Security Center");
+
+    // Wire up gettext so translated .mo catalogs load for the user's locale.
+    // Must run before any translatable string is built.
+    i18n::init(GETTEXT_DOMAIN);
+
+    glib::set_application_name(&i18n::gettext("Security Center"));
 
     // Initialize tracing with a safe default filter.
     // RUST_LOG=trace may log sensitive system information.
@@ -64,7 +73,7 @@ fn load_css() {
     };
 
     let provider = gtk::CssProvider::new();
-    provider.load_from_resource("/org/gnome/SecurityCenterCosmic/style.css");
+    provider.load_from_resource("/com/chrisdaggas/security-center/style.css");
 
     gtk::style_context_add_provider_for_display(
         &display,
@@ -114,5 +123,5 @@ fn load_css() {
 }
 
 fn reload_css_provider(provider: &gtk::CssProvider) {
-    provider.load_from_resource("/org/gnome/SecurityCenterCosmic/style.css");
+    provider.load_from_resource("/com/chrisdaggas/security-center/style.css");
 }

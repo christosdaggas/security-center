@@ -5,13 +5,17 @@
 //! A consolidated port groups the same port number across multiple zones and protocols.
 
 use super::Port;
+use crate::validation::format_port_spec;
 use std::collections::HashMap;
 
-/// A consolidated view of port rules, grouping the same port across zones/protocols.
+/// A consolidated view of port rules, grouping the same port (or range)
+/// across zones/protocols.
 #[derive(Debug, Clone, Default)]
 pub struct ConsolidatedPort {
-    /// The port number.
+    /// The port number (start of range for range rules).
     pub number: u16,
+    /// End of the range (inclusive); `None` for a single port.
+    pub end_number: Option<u16>,
     /// User-given name (if any).
     pub name: Option<String>,
     /// List of protocols (e.g., ["tcp"], ["udp"], or ["tcp", "udp"]).
@@ -22,6 +26,9 @@ pub struct ConsolidatedPort {
     pub action: String,
     /// Whether this is a permanent rule.
     pub is_permanent: bool,
+    /// Exact rich-rule strings this consolidated entry was built from.
+    /// Used to remove blocked rules by their real text rather than a guess.
+    pub raw_rules: Vec<String>,
 }
 
 impl ConsolidatedPort {
@@ -29,19 +36,31 @@ impl ConsolidatedPort {
     pub fn from_port(port: &Port) -> Self {
         Self {
             number: port.number,
+            end_number: port.end_number,
             name: port.name.clone(),
             protocols: vec![port.protocol.clone()],
             zones: port.zone.clone().map(|z| vec![z]).unwrap_or_default(),
             action: port.action.clone(),
             is_permanent: port.is_permanent,
+            raw_rules: port.raw_rule.clone().into_iter().collect(),
         }
     }
 
-    /// Group a list of ports by port number and action, consolidating zones and protocols.
+    /// Whether this rule covers a range of ports.
+    pub fn is_range(&self) -> bool {
+        self.end_number.map_or(false, |end| end > self.number)
+    }
+
+    /// The firewalld port string: "8080" or "10-20".
+    pub fn port_spec(&self) -> String {
+        format_port_spec(self.number, self.end_number.unwrap_or(self.number))
+    }
+
+    /// Group a list of ports by port range and action, consolidating zones and protocols.
     pub fn consolidate(ports: &[Port]) -> Vec<ConsolidatedPort> {
-        // Group by (port_number, action)
-        // Key: (port_number, normalized_action)
-        let mut map: HashMap<(u16, String), ConsolidatedPort> = HashMap::new();
+        // Group by (port_range, action)
+        // Key: (start, end, normalized_action)
+        let mut map: HashMap<(u16, Option<u16>, String), ConsolidatedPort> = HashMap::new();
 
         for port in ports {
             // Normalize action: treat "reject", "drop", "deny" as blocked
@@ -51,7 +70,7 @@ impl ConsolidatedPort {
                 "accept".to_string()
             };
 
-            let key = (port.number, normalized_action.clone());
+            let key = (port.number, port.end_number, normalized_action.clone());
 
             if let Some(existing) = map.get_mut(&key) {
                 // Add protocol if not already present
@@ -68,6 +87,12 @@ impl ConsolidatedPort {
                 if existing.name.is_none() && port.name.is_some() {
                     existing.name = port.name.clone();
                 }
+                // Collect the exact rule text for later removal
+                if let Some(rule) = &port.raw_rule {
+                    if !existing.raw_rules.contains(rule) {
+                        existing.raw_rules.push(rule.clone());
+                    }
+                }
             } else {
                 // Create new consolidated entry
                 let mut consolidated = ConsolidatedPort::from_port(port);
@@ -76,9 +101,9 @@ impl ConsolidatedPort {
             }
         }
 
-        // Collect and sort by port number
+        // Collect and sort by port number (ranges sort by their start)
         let mut result: Vec<ConsolidatedPort> = map.into_values().collect();
-        result.sort_by_key(|p| p.number);
+        result.sort_by_key(|p| (p.number, p.end_number));
 
         // Sort protocols and zones within each entry for consistent display
         for cp in &mut result {
@@ -100,17 +125,16 @@ impl ConsolidatedPort {
         }
     }
 
-    /// Get display title (name or port number).
+    /// Get display title (name, well-known service, or port number/range).
     pub fn display_title(&self) -> String {
         if let Some(name) = &self.name {
-            format!("{} ({})", name, self.number)
+            format!("{} ({})", name, self.port_spec())
+        } else if self.is_range() {
+            format!("Ports {}", self.port_spec())
+        } else if let Some(service) = self.well_known_service() {
+            format!("{} ({})", service, self.number)
         } else {
-            // Try well-known service
-            if let Some(service) = self.well_known_service() {
-                format!("{} ({})", service, self.number)
-            } else {
-                format!("Port {}", self.number)
-            }
+            format!("Port {}", self.number)
         }
     }
 
@@ -121,6 +145,10 @@ impl ConsolidatedPort {
 
     /// Get well-known service name for common ports.
     pub fn well_known_service(&self) -> Option<&'static str> {
+        // Ranges never map to a single well-known service
+        if self.is_range() {
+            return None;
+        }
         // Only return for TCP or if both protocols
         let has_tcp = self.protocols.contains(&"tcp".to_string());
         match self.number {
@@ -172,6 +200,30 @@ mod tests {
         assert_eq!(consolidated.len(), 1);
         assert_eq!(consolidated[0].protocols.len(), 2);
         assert_eq!(consolidated[0].protocol_display(), "TCP/UDP");
+    }
+
+    #[test]
+    fn test_consolidate_ranges() {
+        let ports = vec![
+            Port::range_with_zone(10, 20, "tcp", "public"),
+            Port::range_with_zone(10, 20, "tcp", "home"),
+            // Same start but a single port — must stay a separate entry
+            Port::with_zone(10, "tcp", "public"),
+        ];
+
+        let consolidated = ConsolidatedPort::consolidate(&ports);
+        assert_eq!(consolidated.len(), 2);
+
+        let single = consolidated.iter().find(|p| !p.is_range()).unwrap();
+        let range = consolidated.iter().find(|p| p.is_range()).unwrap();
+        assert_eq!(single.port_spec(), "10");
+        assert_eq!(range.port_spec(), "10-20");
+        assert_eq!(range.zones.len(), 2);
+        assert_eq!(range.display_title(), "Ports 10-20");
+        // A well-known port number at the start of a range must not
+        // be labeled as that service
+        let ssh_range = ConsolidatedPort::from_port(&Port::range_with_zone(22, 30, "tcp", "public"));
+        assert_eq!(ssh_range.well_known_service(), None);
     }
 
     #[test]

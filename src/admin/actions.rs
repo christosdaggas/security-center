@@ -18,7 +18,7 @@ use anyhow::{anyhow, Context, Result};
 use tracing::info;
 use zbus::blocking::Connection;
 
-use crate::validation::{validate_service_name, validate_systemctl_action};
+use crate::systemd::SystemdClient;
 
 /// D-Bus constants for firewalld
 const FIREWALLD_BUS: &str = "org.fedoraproject.FirewallD1";
@@ -165,6 +165,7 @@ pub const QUICK_ACTIONS: &[AdminAction] = &[
 /// Manager for executing quick admin actions.
 pub struct QuickActionsManager {
     connection: Option<Connection>,
+    systemd: Option<SystemdClient>,
 }
 
 impl Default for QuickActionsManager {
@@ -175,7 +176,10 @@ impl Default for QuickActionsManager {
 
 impl QuickActionsManager {
     pub fn new() -> Self {
-        Self { connection: None }
+        Self {
+            connection: None,
+            systemd: None,
+        }
     }
 
     /// Ensure we're connected to D-Bus.
@@ -186,6 +190,22 @@ impl QuickActionsManager {
             self.connection = Some(conn);
         }
         self.connection.as_ref().ok_or_else(|| anyhow!("Not connected"))
+    }
+
+    /// Get a connected systemd client, connecting lazily on first use.
+    fn systemd_client(&mut self) -> Result<&SystemdClient> {
+        if self.systemd.is_none() {
+            let mut client = SystemdClient::new();
+            client.connect()?;
+            self.systemd = Some(client);
+        }
+        self.systemd.as_ref().ok_or_else(|| anyhow!("Not connected to systemd"))
+    }
+
+    /// Run a privileged systemd unit action (delegates to `SystemdClient`,
+    /// which validates parameters and uses polkit interactive authorization).
+    fn systemctl(&mut self, action: &str, service: &str) -> Result<()> {
+        self.systemd_client()?.run_unit_action(action, service)
     }
 
     /// Execute an admin action by ID.
@@ -236,18 +256,18 @@ impl QuickActionsManager {
 
     fn firewall_enable(&mut self) -> Result<String> {
         // Start the service
-        run_systemctl_command("start", "firewalld.service")?;
+        self.systemctl("start", "firewalld.service")?;
         // Enable at boot
-        run_systemctl_command("enable", "firewalld.service")?;
+        self.systemctl("enable", "firewalld.service")?;
 
         Ok("Firewall enabled and started".to_string())
     }
 
     fn firewall_disable(&mut self) -> Result<String> {
         // Stop the service
-        run_systemctl_command("stop", "firewalld.service")?;
+        self.systemctl("stop", "firewalld.service")?;
         // Disable at boot
-        run_systemctl_command("disable", "firewalld.service")?;
+        self.systemctl("disable", "firewalld.service")?;
 
         Ok("Firewall stopped and disabled".to_string())
     }
@@ -301,63 +321,25 @@ impl QuickActionsManager {
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // SERVICE ACTIONS (using pkexec for Polkit authentication)
+    // SERVICE ACTIONS (via systemd D-Bus API with polkit interactive authorization)
     // ═══════════════════════════════════════════════════════════════════════════
 
     fn restart_service(&mut self, service: &str) -> Result<String> {
-        run_systemctl_command("restart", service)?;
+        self.systemctl("restart", service)?;
         Ok(format!("Service {} restarted", service))
     }
 
     fn restart_ssh(&mut self) -> Result<String> {
         // Try sshd.service first (RHEL/Fedora), then ssh.service (Debian/Ubuntu)
-        if run_systemctl_command("restart", "sshd.service").is_ok() {
+        if self.systemctl("restart", "sshd.service").is_ok() {
             return Ok("SSH server restarted".to_string());
         }
-        run_systemctl_command("restart", "ssh.service")?;
+        self.systemctl("restart", "ssh.service")?;
         Ok("SSH server restarted".to_string())
     }
 
     fn reload_systemd(&mut self) -> Result<String> {
-        run_systemctl_command("daemon-reload", "")?;
+        self.systemd_client()?.daemon_reload()?;
         Ok("Systemd configuration reloaded".to_string())
     }
-}
-
-/// Run a systemctl command with pkexec for authentication.
-fn run_systemctl_command(action: &str, service: &str) -> Result<()> {
-    // Validate parameters before invoking privileged command
-    validate_systemctl_action(action)?;
-    validate_service_name(service)?;
-
-    // Check if pkexec is available
-    if std::process::Command::new("which")
-        .arg("pkexec")
-        .output()
-        .map(|o| !o.status.success())
-        .unwrap_or(true)
-    {
-        return Err(anyhow!(
-            "PolicyKit (pkexec) is not installed. Install 'polkit' or 'policykit-1' to perform administrative actions."
-        ));
-    }
-
-    let mut cmd = std::process::Command::new("pkexec");
-    cmd.arg("systemctl").arg(action);
-    if !service.is_empty() {
-        cmd.arg(service);
-    }
-
-    let output = cmd.output()
-        .context(format!("Failed to execute pkexec systemctl {} {}", action, service))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        if stderr.contains("dismissed") || stderr.contains("cancelled") || output.status.code() == Some(126) {
-            return Err(anyhow!("Authentication cancelled"));
-        }
-        return Err(anyhow!("Failed to {} service {}: {}", action, service, stderr));
-    }
-
-    Ok(())
 }

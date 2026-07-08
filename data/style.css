@@ -1,5 +1,47 @@
 /* Security Center - Stylesheet */
 
+/* ============================================================
+ * Sidebar
+ * ============================================================ */
+
+.navigation-sidebar {
+    background-color: transparent;
+}
+
+.sidebar-box {
+    background-color: alpha(@window_fg_color, 0.03);
+}
+
+/* ============================================================
+ * Update banner in sidebar
+ * ============================================================ */
+
+.update-banner {
+    background-color: alpha(#e74c3c, 0.15);
+    border: 1px solid alpha(#e74c3c, 0.3);
+    border-radius: 6px;
+    padding: 6px 10px;
+    margin-bottom: 4px;
+}
+
+.update-banner .update-icon {
+    color: #e74c3c;
+}
+
+.update-banner .update-link {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #e74c3c;
+    padding: 0;
+    min-height: 0;
+}
+
+.update-banner-label {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #e74c3c;
+}
+
 .stat-card {
     padding: 16px;
     border-radius: 12px;
@@ -135,3 +177,77 @@ popover.menu contents {
 .network-graph {
     border-radius: 8px;
 }
+
+/* ============================================================
+ * Overview dashboard widgets
+ * ============================================================ */
+
+/* Tinted icon tiles on the stat cards.
+ * Symmetric padding around the 18px icon centres it in a ~34px tile. */
+.icon-tile {
+    padding: 8px;
+    border-radius: 9px;
+}
+.icon-tile.accent  { background: alpha(@accent_color, 0.13);  color: @accent_color; }
+.icon-tile.error   { background: alpha(@error_color, 0.13);   color: @error_color; }
+.icon-tile.success { background: alpha(@success_color, 0.15); color: @success_color; }
+.icon-tile.purple  { background: alpha(#9141ac, 0.14);        color: #9141ac; }
+
+/* Big stat value */
+.stat-value {
+    font-size: 28px;
+    font-weight: 800;
+}
+
+/* Status pills (System Status card) */
+.pill-ok, .pill-warn, .pill-err {
+    border-radius: 20px;
+    padding: 2px 12px;
+    font-weight: bold;
+}
+.pill-ok   { background: alpha(@success_color, 0.15); color: @success_color; }
+.pill-warn { background: alpha(@warning_color, 0.15); color: @warning_color; }
+.pill-err  { background: alpha(@error_color, 0.15);   color: @error_color; }
+
+/* Connections hub chip */
+.conn-chip {
+    background: alpha(@window_fg_color, 0.06);
+    border-radius: 20px;
+    padding: 3px 11px;
+}
+
+/* Per-application connection tile */
+.conn-tile {
+    background: alpha(@window_fg_color, 0.04);
+    border: 1px solid alpha(@window_fg_color, 0.07);
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+/* App icon tile inside a connection card.
+ * Symmetric padding around the 24px icon centres it in a ~42px tile. */
+.app-icon-tile {
+    padding: 9px;
+    border-radius: 11px;
+    background: alpha(@window_fg_color, 0.07);
+}
+
+/* Green "connected" dot */
+.dot-success {
+    color: @success_color;
+}
+
+/* Monospace address */
+.mono-addr {
+    font-family: monospace;
+}
+
+/* Donut legend swatches */
+.swatch {
+    min-width: 11px;
+    min-height: 11px;
+    border-radius: 3px;
+}
+.sw-success { background: @success_color; }
+.sw-error   { background: @error_color; }
+.sw-idle    { background: alpha(@window_fg_color, 0.42); }

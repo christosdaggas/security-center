@@ -9,9 +9,10 @@ A modern, GTK4/Libadwaita security management application for Linux, providing a
 - **Firewall Management**: View and manage firewalld zones, services, and ports
 - **Port Control**: Open and block custom TCP/UDP ports with rich rules; consolidated view groups same-port entries across zones and protocols
 - **Network Exposure**: Monitor listening ports and correlate with firewall status
+- **Active Connections**: See established connections to remote hosts (process → remote IP), with real per-host traffic via netlink `sock_diag` and offline country flags
 - **System Services**: Manage systemd services with start/stop/enable/disable
 - **Quick Actions**: Common administrative tasks with one click (enable/disable firewall, panic mode, etc.)
-- **Dashboard Overview**: Real-time statistics showing firewall status, connections, and traffic with donut, bar, and line charts
+- **Dashboard Overview**: Real-time statistics — a live per-interface bandwidth graph plus bar and line charts for connections and blocked ports
 - **Three-State Firewall Display**: Dashboard shows Active, Panic Mode, or Inactive states with appropriate indicators
 - **Collapsible Sidebar**: Toggle between expanded and icon-only navigation mode
 - **Update Checker**: Automatic GitHub release check notifies when new versions are available
@@ -21,7 +22,9 @@ A modern, GTK4/Libadwaita security management application for Linux, providing a
 
 ## Screenshots
 
-*Coming soon*
+<img width="1451" height="850" alt="Security Center white theme dashboard" src="https://github.com/user-attachments/assets/9bfe741e-6433-4167-b563-8f30ba901ffa" />
+
+Security Center dashboard in the white theme.
 
 ## Requirements
 
@@ -32,6 +35,21 @@ A modern, GTK4/Libadwaita security management application for Linux, providing a
 - firewalld
 - polkit
 - systemd
+
+### Optional: GeoIP country flags
+
+The Active Connections view shows a country flag next to each remote host when a
+local MaxMind-format country database is present. Lookups are **fully offline** —
+the app never queries an online geolocation service. Install a free database
+(e.g. [DB-IP Lite Country](https://db-ip.com/db/download/ip-to-country-lite),
+CC BY 4.0) to one of:
+
+- `$SECURITY_CENTER_GEOIP_DB` (explicit path), or
+- `/usr/share/GeoIP/dbip-country-lite.mmdb` (also accepts `GeoLite2-Country.mmdb`
+  or `country.mmdb` under `/usr/share/GeoIP`, `/var/lib/GeoIP`, `/usr/share/dbip`).
+
+`scripts/fetch-geoip.sh` downloads the current DB-IP Lite database into
+`/usr/share/GeoIP`. Without a database, connections simply display without flags.
 
 ### Build Dependencies
 
@@ -208,4 +226,3 @@ Security Center is licensed under the [MIT License](LICENSE).
 - [GNOME Human Interface Guidelines](https://developer.gnome.org/hig/)
 - [GTK4 Documentation](https://docs.gtk.org/gtk4/)
 - [Libadwaita Documentation](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/)
-

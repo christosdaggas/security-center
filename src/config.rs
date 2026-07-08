@@ -35,11 +35,15 @@ pub struct AppSettings {
     /// Show system tray icon.
     #[serde(default)]
     pub show_tray_icon: bool,
+    /// Show the live firewall connections overview on the dashboard.
+    #[serde(default = "default_true")]
+    pub show_connections_overview: bool,
 }
 
 fn default_width() -> i32 { 1386 }
 fn default_height() -> i32 { 924 }
 fn default_theme() -> String { "system".to_string() }
+fn default_true() -> bool { true }
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -50,6 +54,7 @@ impl Default for AppSettings {
             theme: default_theme(),
             autostart_on_login: false,
             show_tray_icon: false,
+            show_connections_overview: true,
         }
     }
 }
@@ -210,6 +215,15 @@ impl Settings {
 
     pub fn set_show_tray_icon(&mut self, enabled: bool) {
         self.settings.show_tray_icon = enabled;
+        self.save();
+    }
+
+    pub fn show_connections_overview(&self) -> bool {
+        self.settings.show_connections_overview
+    }
+
+    pub fn set_show_connections_overview(&mut self, enabled: bool) {
+        self.settings.show_connections_overview = enabled;
         self.save();
     }
 }

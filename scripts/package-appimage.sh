@@ -6,7 +6,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-VERSION="1.6.0"
+VERSION="1.7.0"
 APP_NAME="security-center"
 APP_ID="com.chrisdaggas.security-center"
 ARCH="$(uname -m)"
@@ -94,6 +94,20 @@ if [ -d "$SCHEMAS_DIR" ]; then
 fi
 
 echo "[INFO] Bundled $(ls "$APPDIR/usr/lib/"*.so* 2>/dev/null | wc -l) shared libraries"
+
+# Compile and bundle translation catalogs (.mo) into the AppDir prefix,
+# where the app resolves them as <prefix>/share/locale at runtime
+if ! command -v msgfmt &> /dev/null; then
+    echo "[ERROR] msgfmt not found. Install gettext to build translation catalogs."
+    exit 1
+fi
+echo "[INFO] Bundling translation catalogs..."
+while IFS= read -r LANG_CODE; do
+    [ -z "$LANG_CODE" ] && continue
+    mkdir -p "$APPDIR/usr/share/locale/$LANG_CODE/LC_MESSAGES"
+    msgfmt "$PROJECT_DIR/po/$LANG_CODE.po" \
+        -o "$APPDIR/usr/share/locale/$LANG_CODE/LC_MESSAGES/$APP_NAME.mo"
+done < "$PROJECT_DIR/po/LINGUAS"
 
 # Create AppRun script
 cat > "$APPDIR/AppRun" << 'APPRUN_EOF'

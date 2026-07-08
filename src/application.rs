@@ -14,6 +14,7 @@ use libadwaita::prelude::*;
 use tracing::info;
 
 use crate::config::Settings;
+use crate::i18n::gettext;
 use crate::ui::MainWindow;
 
 glib::wrapper! {
@@ -55,19 +56,23 @@ impl Application {
 
     fn show_preferences_dialog(&self) {
         let dialog = adw::PreferencesDialog::builder()
-            .title("Preferences")
+            .title(&gettext("Preferences"))
             .build();
 
         let page = adw::PreferencesPage::new();
-        
+
         let appearance_group = adw::PreferencesGroup::builder()
-            .title("Appearance")
+            .title(&gettext("Appearance"))
             .build();
 
         let theme_row = adw::ComboRow::builder()
-            .title("Theme")
-            .subtitle("Choose the application color scheme")
-            .model(&gtk4::StringList::new(&["System", "Light", "Dark"]))
+            .title(&gettext("Theme"))
+            .subtitle(&gettext("Choose the application color scheme"))
+            .model(&gtk4::StringList::new(&[
+                gettext("System").as_str(),
+                gettext("Light").as_str(),
+                gettext("Dark").as_str(),
+            ]))
             .build();
 
         let settings = self.imp().settings.borrow();
@@ -93,15 +98,15 @@ impl Application {
         page.add(&appearance_group);
 
         let behavior_group = adw::PreferencesGroup::builder()
-            .title("Behavior")
-            .description("Startup and system integration options")
+            .title(&gettext("Behavior"))
+            .description(&gettext("Startup and system integration options"))
             .build();
 
         let autostart_enabled = crate::autostart::is_autostart_enabled();
 
         let autostart_row = adw::SwitchRow::builder()
-            .title("Start on Login")
-            .subtitle("Automatically start Security Center when you log in")
+            .title(&gettext("Start on Login"))
+            .subtitle(&gettext("Automatically start Security Center when you log in"))
             .active(autostart_enabled)
             .build();
 
@@ -114,19 +119,28 @@ impl Application {
 
         behavior_group.add(&autostart_row);
 
-        let tray_row = adw::SwitchRow::builder()
-            .title("Show System Tray Icon")
-            .subtitle("Display an icon in the system tray")
-            .active(false)
+        // Toggle the live firewall connections overview on the dashboard.
+        let connections_enabled = self.imp().settings.borrow().show_connections_overview();
+        let connections_row = adw::SwitchRow::builder()
+            .title(&gettext("Firewall Connections Overview"))
+            .subtitle(&gettext("Show the live per-application connection monitor on the dashboard"))
+            .active(connections_enabled)
             .build();
 
-        tray_row.connect_active_notify(|row| {
+        let app = self.clone();
+        connections_row.connect_active_notify(move |row| {
             let enabled = row.is_active();
-            // TODO: Show/hide tray icon dynamically
-            tracing::info!("System tray icon setting changed to: {}", enabled);
+            app.imp().settings.borrow_mut().set_show_connections_overview(enabled);
+            if let Some(window) = app.imp().window.get() {
+                window.set_connections_overview_visible(enabled);
+            }
         });
+        behavior_group.add(&connections_row);
 
-        behavior_group.add(&tray_row);
+        // Note: no system-tray toggle here. The app has no tray backend, and an
+        // inert switch that silently does nothing erodes trust in every other
+        // control. Reintroduce it together with an actual StatusNotifierItem.
+
         page.add(&behavior_group);
 
         dialog.add(&page);
@@ -173,7 +187,7 @@ impl Application {
 
     fn show_about_dialog(&self) {
         let dialog = adw::AboutDialog::builder()
-            .application_name("Security Center")
+            .application_name(&gettext("Security Center"))
             .application_icon("com.chrisdaggas.security-center")
             .developer_name("Christos A. Daggas")
             .version(env!("CARGO_PKG_VERSION"))
@@ -182,8 +196,15 @@ impl Application {
             .license_type(gtk4::License::MitX11)
             .copyright("© 2024-2026 Christos A. Daggas")
             .developers(vec!["Christos A. Daggas".to_string()])
-            .comments("Manage your system security, firewall and services")
-            .release_notes("<p>Version 1.6.0 - April 2026</p><ul>\
+            .comments(&gettext("Manage your system security, firewall and services"))
+            .release_notes("<p>Version 1.7.0 - July 2026</p><ul>\
+                <li>Redesigned Overview Dashboard - Live per-application firewall connection monitor</li>\
+                <li>Application Connection Cards - Real application icons, throughput sparklines, and remote endpoints</li>\
+                <li>Real-Time Analytics - Connection-state donut, network activity graph, top protocols, and remote countries</li>\
+                <li>Per-Socket Byte Accounting - Netlink-based application data rates without root</li>\
+                <li>Offline GeoIP Labelling - Country labels when a local MaxMind database is present</li>\
+                <li>Firewall Port Ranges - Open contiguous port ranges in a single rule</li>\
+            </ul><p>Version 1.6.0 - April 2026</p><ul>\
                 <li>Dependency Security Updates - Patched bytes, quinn-proto, rustls-webpki, and rand vulnerabilities</li>\
                 <li>Input Validation Hardening - Centralized validators for protocols, port names, systemctl actions, and service names</li>\
                 <li>Firewalld Rich Rule Protection - Protocols are validated before constructing any rich rule string</li>\

@@ -15,6 +15,42 @@ pub fn validate_protocol(s: &str) -> Option<&str> {
     }
 }
 
+/// Parse and validate a port specification: a single port ("8080") or an
+/// inclusive range ("10-20"). Returns `(start, end)` where `end == start`
+/// for a single port. Whitespace around the numbers is tolerated.
+pub fn parse_port_spec(s: &str) -> Option<(u16, u16)> {
+    let trimmed = s.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if let Some((start_str, end_str)) = trimmed.split_once('-') {
+        let start: u16 = start_str.trim().parse().ok()?;
+        let end: u16 = end_str.trim().parse().ok()?;
+        if start >= 1 && end >= start {
+            Some((start, end))
+        } else {
+            None
+        }
+    } else {
+        let port: u16 = trimmed.parse().ok()?;
+        if port >= 1 {
+            Some((port, port))
+        } else {
+            None
+        }
+    }
+}
+
+/// Format a validated `(start, end)` pair as a firewalld port string
+/// ("8080" or "10-20").
+pub fn format_port_spec(start: u16, end: u16) -> String {
+    if end > start {
+        format!("{}-{}", start, end)
+    } else {
+        start.to_string()
+    }
+}
+
 /// Validate and sanitize a user-provided port name.
 /// Returns `Some(String)` if valid, `None` otherwise.
 pub fn validate_port_name(name: &str) -> Option<String> {
@@ -74,12 +110,20 @@ pub fn validate_service_name(name: &str) -> Result<()> {
     Ok(())
 }
 
-/// Validate a zone name.
+/// Validate a firewalld zone name by its real rules rather than a fixed list,
+/// so custom zones (FedoraWorkstation, libvirt, libvirt-routed, nm-shared, …)
+/// are accepted while injection attempts are rejected.
+///
+/// firewalld zone names are non-empty, at most 17 characters, and contain only
+/// ASCII letters, digits, `-` and `_`.
 pub fn validate_zone_name(name: &str) -> Option<&str> {
-    const ALLOWED: &[&str] = &[
-        "drop", "block", "public", "external", "dmz", "work", "home", "internal", "trusted",
-    ];
-    if ALLOWED.contains(&name) {
+    if name.is_empty() || name.len() > 17 {
+        return None;
+    }
+    if name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    {
         Some(name)
     } else {
         None
@@ -117,6 +161,44 @@ mod tests {
         assert_eq!(validate_protocol("Udp"), None);
         assert_eq!(validate_protocol(""), None);
         assert_eq!(validate_protocol("icmp"), None);
+    }
+
+    #[test]
+    fn test_parse_port_spec_single() {
+        assert_eq!(parse_port_spec("80"), Some((80, 80)));
+        assert_eq!(parse_port_spec(" 8080 "), Some((8080, 8080)));
+        assert_eq!(parse_port_spec("65535"), Some((65535, 65535)));
+        assert_eq!(parse_port_spec("1"), Some((1, 1)));
+    }
+
+    #[test]
+    fn test_parse_port_spec_range() {
+        assert_eq!(parse_port_spec("10-20"), Some((10, 20)));
+        assert_eq!(parse_port_spec("10 - 20"), Some((10, 20)));
+        assert_eq!(parse_port_spec("1025-65535"), Some((1025, 65535)));
+        // A degenerate range collapses to a single port
+        assert_eq!(parse_port_spec("42-42"), Some((42, 42)));
+    }
+
+    #[test]
+    fn test_parse_port_spec_invalid() {
+        assert_eq!(parse_port_spec(""), None);
+        assert_eq!(parse_port_spec("0"), None);
+        assert_eq!(parse_port_spec("20-10"), None);
+        assert_eq!(parse_port_spec("0-20"), None);
+        assert_eq!(parse_port_spec("65536"), None);
+        assert_eq!(parse_port_spec("10-65536"), None);
+        assert_eq!(parse_port_spec("abc"), None);
+        assert_eq!(parse_port_spec("10-20-30"), None);
+        assert_eq!(parse_port_spec("10-"), None);
+        assert_eq!(parse_port_spec("-20"), None);
+        assert_eq!(parse_port_spec("80; rm -rf /"), None);
+    }
+
+    #[test]
+    fn test_format_port_spec() {
+        assert_eq!(format_port_spec(80, 80), "80");
+        assert_eq!(format_port_spec(10, 20), "10-20");
     }
 
     #[test]
@@ -173,12 +255,20 @@ mod tests {
     fn test_validate_zone_name_valid() {
         assert_eq!(validate_zone_name("public"), Some("public"));
         assert_eq!(validate_zone_name("home"), Some("home"));
+        // Custom / distro zones must be accepted
+        assert_eq!(validate_zone_name("FedoraWorkstation"), Some("FedoraWorkstation"));
+        assert_eq!(validate_zone_name("libvirt-routed"), Some("libvirt-routed"));
+        assert_eq!(validate_zone_name("nm-shared"), Some("nm-shared"));
     }
 
     #[test]
     fn test_validate_zone_name_invalid() {
         assert_eq!(validate_zone_name("public\"); drop"), None);
         assert_eq!(validate_zone_name("../../etc"), None);
+        assert_eq!(validate_zone_name(""), None);
+        assert_eq!(validate_zone_name("zone with spaces"), None);
+        // Over the 17-char firewalld limit
+        assert_eq!(validate_zone_name("thisnameiswaytoolongforzone"), None);
     }
 
     #[test]

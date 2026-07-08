@@ -9,6 +9,8 @@ use gtk4::prelude::*;
 use gtk4::glib;
 use gtk4::subclass::prelude::*;
 
+use crate::i18n::gettext;
+
 mod imp {
     use super::*;
 
@@ -54,12 +56,12 @@ impl HelpPage {
         header_box.set_margin_top(24);
         header_box.set_margin_bottom(12);
 
-        let title = gtk::Label::new(Some("Help"));
+        let title = gtk::Label::new(Some(gettext("Help").as_str()));
         title.add_css_class("title-1");
         title.set_halign(gtk::Align::Start);
         header_box.append(&title);
 
-        let subtitle = gtk::Label::new(Some("Learn how to use Security Center"));
+        let subtitle = gtk::Label::new(Some(gettext("Learn how to use Security Center").as_str()));
         subtitle.add_css_class("dim-label");
         subtitle.set_halign(gtk::Align::Start);
         header_box.append(&subtitle);
@@ -80,87 +82,87 @@ impl HelpPage {
 
         // About section
         content_box.append(&self.create_section(
-            "About Security Center",
-            "Security Center is a comprehensive firewall and network security management tool for Linux. \
+            &gettext("About Security Center"),
+            &gettext("Security Center is a comprehensive firewall and network security management tool for Linux. \
              It provides a graphical interface for managing firewalld zones, services, ports, and network \
-             exposure settings. Monitor your system's security posture and quickly apply security configurations."
+             exposure settings. Monitor your system's security posture and quickly apply security configurations.")
         ));
 
         // Overview section
         content_box.append(&self.create_section(
-            "Overview",
-            "The Overview page provides a summary of your system's security status. \
+            &gettext("Overview"),
+            &gettext("The Overview page provides a summary of your system's security status. \
              It displays the current firewall state, active zone, number of open ports, \
              and running services. Use this page to get a quick assessment of your \
-             system's security configuration and identify potential issues."
+             system's security configuration and identify potential issues.")
         ));
 
         // Zones section
         content_box.append(&self.create_section(
-            "Zones",
-            "Firewall zones define trust levels for network connections. \
+            &gettext("Zones"),
+            &gettext("Firewall zones define trust levels for network connections. \
              The Zones page lets you view and manage firewalld zones such as public, home, work, and trusted. \
              Assign network interfaces to zones, configure default zones, and create custom zones \
-             for specific security requirements. Each zone has its own set of allowed services and ports."
+             for specific security requirements. Each zone has its own set of allowed services and ports.")
         ));
 
         // Services section
         content_box.append(&self.create_section(
-            "Services",
-            "The Services page manages firewall service definitions. \
+            &gettext("Services"),
+            &gettext("The Services page manages firewall service definitions. \
              Services are predefined combinations of ports and protocols (like HTTP, SSH, or DNS). \
              Enable or disable services for specific zones, view service details, \
              and add custom service definitions. Using services is easier and more maintainable \
-             than managing individual port rules."
+             than managing individual port rules.")
         ));
 
         // Ports section
         content_box.append(&self.create_section(
-            "Ports",
-            "The Ports page allows direct management of open ports. \
+            &gettext("Ports"),
+            &gettext("The Ports page allows direct management of open ports. \
              Add or remove port rules for specific zones, specify TCP or UDP protocols, \
              and set port ranges. View all currently open ports and their associated zones. \
              Use this page when you need to open ports for applications that don't have \
-             predefined service definitions."
+             predefined service definitions.")
         ));
 
         // System Services section
         content_box.append(&self.create_section(
-            "System Services",
-            "The System Services page shows network-related system services. \
+            &gettext("System Services"),
+            &gettext("The System Services page shows network-related system services. \
              Monitor the status of services like firewalld, NetworkManager, and other \
              security-related daemons. Start, stop, enable, or disable services directly \
              from this interface. Ensure critical security services are running and \
-             configured to start at boot."
+             configured to start at boot.")
         ));
 
         // Network Exposure section
         content_box.append(&self.create_section(
-            "Network Exposure",
-            "The Network Exposure page analyzes your system's network attack surface. \
+            &gettext("Network Exposure"),
+            &gettext("The Network Exposure page analyzes your system's network attack surface. \
              View listening ports and their associated processes, identify potentially \
              unnecessary exposed services, and get recommendations for reducing your \
              network footprint. This helps you understand what services are accessible \
-             from the network and minimize security risks."
+             from the network and minimize security risks.")
         ));
 
         // Quick Actions section
         content_box.append(&self.create_section(
-            "Quick Actions",
-            "Quick Actions provides one-click security operations for common tasks. \
+            &gettext("Quick Actions"),
+            &gettext("Quick Actions provides one-click security operations for common tasks. \
              Enable panic mode to immediately block all network traffic, toggle the firewall, \
              apply preset security profiles, or reset to default settings. \
-             Use these actions for emergency situations or quick configuration changes."
+             Use these actions for emergency situations or quick configuration changes.")
         ));
 
         // Tips section
         content_box.append(&self.create_section(
-            "Tips",
-            "• Always use the most restrictive zone that allows your applications to work.\n\
+            &gettext("Tips"),
+            &gettext("• Always use the most restrictive zone that allows your applications to work.\n\
              • Prefer services over individual port rules for better maintainability.\n\
              • Regularly review open ports and disable unnecessary services.\n\
              • Keep firewalld running and enabled at boot for continuous protection.\n\
-             • Use Network Exposure to audit your system's security periodically."
+             • Use Network Exposure to audit your system's security periodically.")
         ));
 
         scroll.set_child(Some(&content_box));

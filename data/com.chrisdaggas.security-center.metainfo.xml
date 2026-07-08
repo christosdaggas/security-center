@@ -47,6 +47,19 @@
   <content_rating type="oars-1.1" />
   
   <releases>
+    <release version="1.7.0" date="2026-07-07">
+      <description>
+        <p>What's New in 1.7.0:</p>
+        <ul>
+          <li>Redesigned overview dashboard with a live firewall connection monitor</li>
+          <li>Per-application connection cards showing real application icons, live throughput sparklines, and remote endpoints</li>
+          <li>Real-time analytics — connection-state donut, network activity graph, top protocols, and remote countries</li>
+          <li>Per-socket byte accounting via netlink for accurate per-application data rates</li>
+          <li>Offline GeoIP country labelling when a MaxMind database is present</li>
+          <li>Firewall port-range support — open a contiguous range of ports in a single rule</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.6.0" date="2026-04-24">
       <description>
         <p>What's New in 1.6.0:</p>

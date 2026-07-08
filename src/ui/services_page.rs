@@ -14,6 +14,7 @@ use libadwaita as adw;
 use libadwaita::prelude::*;
 
 use crate::firewall::FirewallClient;
+use crate::i18n::gettext;
 use crate::models::Service;
 
 glib::wrapper! {
@@ -60,13 +61,13 @@ impl ServicesPage {
             .build();
 
         let title = gtk4::Label::builder()
-            .label("Services")
+            .label(&gettext("Services"))
             .css_classes(vec!["title-1".to_string()])
             .halign(gtk4::Align::Start)
             .build();
 
         let subtitle = gtk4::Label::builder()
-            .label("Enable or disable network services in the firewall")
+            .label(&gettext("Enable or disable network services in the firewall"))
             .css_classes(vec!["dim-label".to_string()])
             .halign(gtk4::Align::Start)
             .build();
@@ -98,63 +99,141 @@ impl ServicesPage {
 
         // Info banner about authentication
         let info_banner = adw::Banner::builder()
-            .title("Authentication may be required to modify services")
+            .title(&gettext("Authentication may be required to modify services"))
             .revealed(true)
             .build();
         content.append(&info_banner);
 
+        // Zone selector — enable/disable applies to the chosen zone
+        let zone_group = adw::PreferencesGroup::builder().build();
+        let zone_dropdown = adw::ComboRow::builder()
+            .title(&gettext("Zone"))
+            .subtitle(&gettext("Services are enabled or disabled in this zone"))
+            .model(&gtk4::StringList::new(&[]))
+            .build();
+        zone_dropdown.add_prefix(&gtk4::Image::from_icon_name("network-server-symbolic"));
+        let page_for_zone = self.clone();
+        zone_dropdown.connect_selected_notify(move |row| {
+            if let Some(model) = row.model() {
+                if let Some(item) = model.item(row.selected()) {
+                    if let Some(s) = item.downcast_ref::<gtk4::StringObject>() {
+                        page_for_zone.imp().selected_zone.replace(s.string().to_string());
+                        // Re-render so enabled state reflects the selected zone
+                        let services = page_for_zone.imp().services.borrow().clone();
+                        page_for_zone.render_services(&services);
+                    }
+                }
+            }
+        });
+        zone_group.add(&zone_dropdown);
+        content.append(&zone_group);
+        imp.zone_dropdown.replace(Some(zone_dropdown));
+
+        // Search filter over the full service list
+        let search_entry = gtk4::SearchEntry::builder()
+            .placeholder_text(&gettext("Search services (e.g. postgresql, wireguard, mosh)"))
+            .hexpand(true)
+            .build();
+        let page_for_search = self.clone();
+        search_entry.connect_search_changed(move |entry| {
+            page_for_search.imp().search_text.replace(entry.text().to_string().to_lowercase());
+            let services = page_for_search.imp().services.borrow().clone();
+            page_for_search.render_services(&services);
+        });
+        content.append(&search_entry);
+
         // Enabled services group
-        content.append(&Self::create_section_header("preferences-system-symbolic", "Enabled Services"));
+        content.append(&Self::create_section_header("preferences-system-symbolic", &gettext("Enabled Services")));
         let enabled_group = adw::PreferencesGroup::builder()
-            .description("Services allowing traffic through the firewall")
+            .description(&gettext("Services allowing traffic through the firewall"))
             .build();
         content.append(&enabled_group);
         imp.enabled_group.replace(Some(enabled_group));
 
-        // Common services group (for quick enable)
-        content.append(&Self::create_section_header("starred-symbolic", "Common Services"));
-        let common_group = adw::PreferencesGroup::builder()
-            .description("Frequently used network services")
+        // All services group — every firewalld service definition
+        content.append(&Self::create_section_header("view-list-symbolic", &gettext("All Services")));
+        let all_group = adw::PreferencesGroup::builder()
+            .description(&gettext("Every service firewalld knows about"))
             .build();
-        content.append(&common_group);
-        imp.common_group.replace(Some(common_group));
+        content.append(&all_group);
+        imp.all_group.replace(Some(all_group));
     }
 
     /// Set the default zone for operations.
     pub fn set_default_zone(&self, zone: &str) {
-        self.imp().default_zone.replace(zone.to_string());
+        let imp = self.imp();
+        imp.default_zone.replace(zone.to_string());
+        // Adopt the default as the selected zone until the user changes it
+        if imp.selected_zone.borrow().is_empty() {
+            imp.selected_zone.replace(zone.to_string());
+        }
     }
 
-    /// Update the page with service data.
+    /// Provide the available zones for the zone selector.
+    pub fn set_available_zones(&self, zones: &[String]) {
+        let imp = self.imp();
+        imp.available_zones.replace(zones.to_vec());
+
+        if let Some(dropdown) = imp.zone_dropdown.borrow().as_ref() {
+            let model = gtk4::StringList::new(
+                &zones.iter().map(|z| z.as_str()).collect::<Vec<_>>(),
+            );
+            dropdown.set_model(Some(&model));
+            // Select the currently targeted zone
+            let target = imp.selected_zone.borrow().clone();
+            if let Some(pos) = zones.iter().position(|z| z == &target) {
+                dropdown.set_selected(pos as u32);
+            }
+        }
+    }
+
+    /// Provide the per-zone enabled-service lists so the page can show the
+    /// correct state for whichever zone is selected.
+    pub fn set_zone_services(&self, zone_services: std::collections::HashMap<String, Vec<String>>) {
+        self.imp().zone_enabled.replace(zone_services);
+    }
+
+    /// Update the page with the full service list, then render.
     pub fn set_services(&self, services: &[Service]) {
+        self.imp().services.replace(services.to_vec());
+        self.render_services(services);
+    }
+
+    /// Render the enabled and all-services groups for the selected zone,
+    /// honoring the current search filter.
+    fn render_services(&self, services: &[Service]) {
         let imp = self.imp();
 
-        // Clear ALL existing rows from both groups using helper
         Self::clear_preferences_group(imp.enabled_group.borrow().as_ref());
-        Self::clear_preferences_group(imp.common_group.borrow().as_ref());
+        Self::clear_preferences_group(imp.all_group.borrow().as_ref());
 
-        // Common service names to highlight
-        let common_names = [
-            "ssh", "http", "https", "dns", "dhcp", "samba", 
-            "ftp", "nfs", "mdns", "cockpit", "vnc-server", "rdp"
-        ];
+        let selected_zone = imp.selected_zone.borrow().clone();
+        let zone_enabled = imp.zone_enabled.borrow();
+        let enabled_in_zone: std::collections::HashSet<&str> = zone_enabled
+            .get(&selected_zone)
+            .map(|v| v.iter().map(|s| s.as_str()).collect())
+            .unwrap_or_default();
 
-        let mut enabled_services: Vec<_> = services.iter()
-            .filter(|s| s.is_enabled)
+        let search = imp.search_text.borrow().clone();
+        let matches = |name: &str| search.is_empty() || name.to_lowercase().contains(&search);
+
+        // Enabled services (in the selected zone)
+        let mut enabled_services: Vec<&Service> = services.iter()
+            .filter(|s| enabled_in_zone.contains(s.name.as_str()) && matches(&s.name))
             .collect();
         enabled_services.sort_by(|a, b| a.name.cmp(&b.name));
 
-        let mut common_services: Vec<_> = services.iter()
-            .filter(|s| !s.is_enabled && common_names.contains(&s.name.as_str()))
+        // Every other service, filtered by search
+        let mut all_services: Vec<&Service> = services.iter()
+            .filter(|s| !enabled_in_zone.contains(s.name.as_str()) && matches(&s.name))
             .collect();
-        common_services.sort_by(|a, b| a.name.cmp(&b.name));
+        all_services.sort_by(|a, b| a.name.cmp(&b.name));
 
-        // Add enabled services
         if enabled_services.is_empty() {
             if let Some(group) = imp.enabled_group.borrow().as_ref() {
                 let placeholder = adw::ActionRow::builder()
-                    .title("No services enabled")
-                    .subtitle("Enable services to allow specific traffic")
+                    .title(gettext("No services enabled in '%s'").replace("%s", &selected_zone))
+                    .subtitle(&gettext("Enable services below to allow specific traffic"))
                     .sensitive(false)
                     .build();
                 group.add(&placeholder);
@@ -165,9 +244,18 @@ impl ServicesPage {
             }
         }
 
-        // Add common services (limited to 10)
-        for service in common_services.into_iter().take(10) {
-            self.add_service_row(service, false);
+        if all_services.is_empty() {
+            if let Some(group) = imp.all_group.borrow().as_ref() {
+                let placeholder = adw::ActionRow::builder()
+                    .title(if search.is_empty() { gettext("No services available") } else { gettext("No matching services") })
+                    .sensitive(false)
+                    .build();
+                group.add(&placeholder);
+            }
+        } else {
+            for service in all_services {
+                self.add_service_row(service, false);
+            }
         }
     }
 
@@ -217,13 +305,14 @@ impl ServicesPage {
         let group = if enabled {
             imp.enabled_group.borrow()
         } else {
-            imp.common_group.borrow()
+            imp.all_group.borrow()
         };
 
         if let Some(group) = group.as_ref() {
+            // Escape defensively: AdwActionRow renders title/subtitle as markup
             let row = adw::ActionRow::builder()
-                .title(&service.name)
-                .subtitle(service.human_description())
+                .title(glib::markup_escape_text(&service.name).as_str())
+                .subtitle(glib::markup_escape_text(service.human_description()).as_str())
                 .build();
 
             // Service icon
@@ -245,7 +334,7 @@ impl ServicesPage {
             let switch = gtk4::Switch::builder()
                 .active(enabled)
                 .valign(gtk4::Align::Center)
-                .tooltip_text(if enabled { "Disable service" } else { "Enable service" })
+                .tooltip_text(if enabled { gettext("Disable service") } else { gettext("Enable service") })
                 .build();
 
             let service_name = service.name.clone();
@@ -299,7 +388,7 @@ impl ServicesPage {
     /// Enable a service.
     fn enable_service(&self, name: &str, switch: gtk4::Switch) {
         let imp = self.imp();
-        let zone = imp.default_zone.borrow().clone();
+        let zone = imp.selected_zone.borrow().clone();
         let service_name = name.to_string();
         let page = self.clone();
         
@@ -315,17 +404,24 @@ impl ServicesPage {
             }).await;
 
             match result {
-                Ok(Ok(())) => {
-                    page.show_toast(&format!("Service '{}' enabled", service_name));
+                Ok(Ok(outcome)) => {
+                    if outcome.failed() {
+                        page.show_toast(&format!(
+                            "Service '{}' enabled for this session only — saving permanently failed",
+                            service_name
+                        ));
+                    } else {
+                        page.show_toast(&gettext("Service '%s' enabled").replace("%s", &service_name));
+                    }
                     page.request_refresh();
                 }
                 Ok(Err(e)) => {
                     switch.set_active(false);
-                    page.show_toast(&format!("Failed to enable service: {}", e));
+                    page.show_toast(&format!("{}: {}", gettext("Failed to enable service"), e));
                 }
                 Err(_) => {
                     switch.set_active(false);
-                    page.show_toast("Failed to enable service");
+                    page.show_toast(&gettext("Failed to enable service"));
                 }
             }
             switch.set_sensitive(true);
@@ -335,7 +431,7 @@ impl ServicesPage {
     /// Disable a service.
     fn disable_service(&self, name: &str, switch: gtk4::Switch) {
         let imp = self.imp();
-        let zone = imp.default_zone.borrow().clone();
+        let zone = imp.selected_zone.borrow().clone();
         let service_name = name.to_string();
         let page = self.clone();
         
@@ -351,17 +447,24 @@ impl ServicesPage {
             }).await;
 
             match result {
-                Ok(Ok(())) => {
-                    page.show_toast(&format!("Service '{}' disabled", service_name));
+                Ok(Ok(outcome)) => {
+                    if outcome.failed() {
+                        page.show_toast(&format!(
+                            "Service '{}' disabled for this session only — saving permanently failed",
+                            service_name
+                        ));
+                    } else {
+                        page.show_toast(&gettext("Service '%s' disabled").replace("%s", &service_name));
+                    }
                     page.request_refresh();
                 }
                 Ok(Err(e)) => {
                     switch.set_active(true);
-                    page.show_toast(&format!("Failed to disable service: {}", e));
+                    page.show_toast(&format!("{}: {}", gettext("Failed to disable service"), e));
                 }
                 Err(_) => {
                     switch.set_active(true);
-                    page.show_toast("Failed to disable service");
+                    page.show_toast(&gettext("Failed to disable service"));
                 }
             }
             switch.set_sensitive(true);
@@ -427,9 +530,19 @@ mod imp {
     #[derive(Default)]
     pub struct ServicesPage {
         pub enabled_group: RefCell<Option<adw::PreferencesGroup>>,
-        pub common_group: RefCell<Option<adw::PreferencesGroup>>,
+        pub all_group: RefCell<Option<adw::PreferencesGroup>>,
         pub default_zone: RefCell<String>,
         pub client: RefCell<Option<Rc<RefCell<FirewallClient>>>>,
+        // The zone currently targeted by enable/disable (defaults to the
+        // firewalld default zone, overridable via the selector).
+        pub selected_zone: RefCell<String>,
+        pub available_zones: RefCell<Vec<String>>,
+        // Per-zone enabled service names, so state reflects the selected zone.
+        pub zone_enabled: RefCell<std::collections::HashMap<String, Vec<String>>>,
+        // Cache of the last service list so search re-filters without a D-Bus round-trip.
+        pub services: RefCell<Vec<Service>>,
+        pub search_text: RefCell<String>,
+        pub zone_dropdown: RefCell<Option<adw::ComboRow>>,
     }
 
     #[glib::object_subclass]

@@ -4,10 +4,15 @@
 
 //! Firewall port model.
 
-/// A firewall port rule.
+use crate::validation::{format_port_spec, parse_port_spec};
+
+/// A firewall port rule covering a single port or an inclusive range.
 #[derive(Debug, Clone, Default)]
 pub struct Port {
+    /// The port number (start of range for range rules).
     pub number: u16,
+    /// End of the range (inclusive); `None` for a single port.
+    pub end_number: Option<u16>,
     pub protocol: String,
     pub zone: Option<String>,
     pub name: Option<String>,
@@ -15,6 +20,10 @@ pub struct Port {
     pub direction: String,
     pub action: String,
     pub is_permanent: bool,
+    /// The exact rich-rule string this port was parsed from, if any.
+    /// Kept so blocked ports can be removed by their real rule text instead
+    /// of a reconstructed guess (which may differ in family or verb).
+    pub raw_rule: Option<String>,
 }
 
 impl Port {
@@ -41,12 +50,32 @@ impl Port {
         }
     }
 
+    /// Create a port range with zone info. A degenerate range (end <= start)
+    /// collapses to a single port.
+    pub fn range_with_zone(start: u16, end: u16, protocol: &str, zone: &str) -> Self {
+        let mut port = Self::with_zone(start, protocol, zone);
+        if end > start {
+            port.end_number = Some(end);
+        }
+        port
+    }
+
+    /// Whether this rule covers a range of ports.
+    pub fn is_range(&self) -> bool {
+        self.end_number.map_or(false, |end| end > self.number)
+    }
+
+    /// The firewalld port string: "8080" or "10-20".
+    pub fn port_spec(&self) -> String {
+        format_port_spec(self.number, self.end_number.unwrap_or(self.number))
+    }
+
     /// Get the display string for the port.
     pub fn display_string(&self) -> String {
         if let Some(name) = &self.name {
-            format!("{} ({}/{})", name, self.number, self.protocol)
+            format!("{} ({}/{})", name, self.port_spec(), self.protocol)
         } else {
-            format!("{}/{}", self.number, self.protocol)
+            format!("{}/{}", self.port_spec(), self.protocol)
         }
     }
 
@@ -71,53 +100,28 @@ impl Port {
         }
     }
 
-    /// Parse a port string like "8080/tcp".
+    /// Parse a port string like "8080/tcp" or "10-20/tcp".
     pub fn parse(s: &str) -> Option<Self> {
-        let parts: Vec<&str> = s.split('/').collect();
-        if parts.len() == 2 {
-            if let Ok(number) = parts[0].parse() {
-                return Some(Self::new(number, parts[1]));
-            }
+        let (port_part, proto) = s.split_once('/')?;
+        let (start, end) = parse_port_spec(port_part)?;
+        let mut port = Self::new(start, proto);
+        if end > start {
+            port.end_number = Some(end);
         }
-        None
+        Some(port)
     }
 
-    /// Parse a port string with zone like "8080/tcp" from zone "public".
-    /// Also handles port ranges like "1025-65535/tcp" by taking the start of range.
+    /// Parse a port string with zone like "8080/tcp" or "10-20/tcp"
+    /// from zone "public". Ranges are preserved as ranges.
     pub fn parse_with_zone(s: &str, zone: &str) -> Option<Self> {
-        let parts: Vec<&str> = s.split('/').collect();
-        if parts.len() == 2 {
-            let port_part = parts[0];
-            let proto = parts[1];
-            
-            // Check if it's a range like "1025-65535"
-            if port_part.contains('-') {
-                // It's a range - skip it for now (system default ports)
-                // Or take the start of the range
-                let range_parts: Vec<&str> = port_part.split('-').collect();
-                if range_parts.len() == 2 {
-                    // Skip large ranges (system defaults like 1025-65535)
-                    if let (Ok(start), Ok(end)) = (range_parts[0].parse::<u16>(), range_parts[1].parse::<u16>()) {
-                        if end - start > 100 {
-                            // Skip large ranges
-                            return None;
-                        }
-                        // For small ranges, create entry for start port
-                        return Some(Self::with_zone(start, proto, zone));
-                    }
-                }
-                return None;
-            }
-            
-            if let Ok(number) = port_part.parse() {
-                return Some(Self::with_zone(number, proto, zone));
-            }
-        }
-        None
+        let (port_part, proto) = s.split_once('/')?;
+        let (start, end) = parse_port_spec(port_part)?;
+        Some(Self::range_with_zone(start, end, proto, zone))
     }
 
     /// Parse a blocked port from a rich rule string.
     /// Example: `rule family="ipv4" port port="80" protocol="tcp" reject`
+    /// Port ranges like port="10-20" are also supported.
     /// Returns Some(Port) if this is a port reject/drop rule, None otherwise.
     pub fn parse_from_rich_rule(rule: &str, zone: &str) -> Option<Self> {
         // Check if this is a port reject or drop rule
@@ -125,13 +129,13 @@ impl Port {
             return None;
         }
 
-        // Extract port number: port="80" or port="443"
+        // Extract port spec: port="80" or port="10-20"
         let port_start = rule.find("port port=\"")?;
         let port_value_start = port_start + 11; // length of 'port port="'
         let remaining = &rule[port_value_start..];
         let port_end = remaining.find('"')?;
         let port_str = &remaining[..port_end];
-        let port_number: u16 = port_str.parse().ok()?;
+        let (range_start, range_end) = parse_port_spec(port_str)?;
 
         // Extract protocol: protocol="tcp" or protocol="udp"
         let proto_start = rule.find("protocol=\"")?;
@@ -148,7 +152,8 @@ impl Port {
         };
 
         Some(Self {
-            number: port_number,
+            number: range_start,
+            end_number: (range_end > range_start).then_some(range_end),
             protocol: protocol.to_string(),
             zone: Some(zone.to_string()),
             name: None,
@@ -156,6 +161,7 @@ impl Port {
             direction: "in".to_string(),
             action: action.to_string(),
             is_permanent: true,
+            raw_rule: Some(rule.to_string()),
         })
     }
 }

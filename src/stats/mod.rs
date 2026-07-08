@@ -3,6 +3,11 @@
 // SPDX-License-Identifier: MIT
 
 //! Traffic statistics collection and aggregation.
+//!
+//! Retained for reuse: the overview dashboard now drives its live view from
+//! netlink/procfs directly rather than these cached collectors, so nothing
+//! constructs them at the moment.
+#![allow(dead_code, unused_imports)]
 
 mod cache;
 mod collectors;

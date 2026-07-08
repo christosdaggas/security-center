@@ -23,7 +23,7 @@
 //! Listening Socket → Process (via inode) → Firewall Rule → Zone
 //! ```
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
@@ -31,6 +31,7 @@ use std::path::Path;
 use anyhow::{Context, Result};
 
 use crate::firewall::FirewallClient;
+use crate::validation::parse_port_spec;
 
 /// Protocol type for a listening endpoint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -134,6 +135,39 @@ impl ListeningEndpoint {
     }
 }
 
+/// An established network connection to or from a remote host.
+#[derive(Debug, Clone)]
+pub struct ActiveConnection {
+    // Parsed from the socket table; not shown in the grouped UI but kept as
+    // part of the connection model for detail views and tests.
+    #[allow(dead_code)]
+    pub local_addr: IpAddr,
+    #[allow(dead_code)]
+    pub local_port: u16,
+    pub remote_addr: IpAddr,
+    pub remote_port: u16,
+    pub protocol: Protocol,
+    pub inode: u64,
+    pub pid: Option<u32>,
+    pub process_name: Option<String>,
+}
+
+impl ActiveConnection {
+    /// True if the remote peer is outside the local machine (not loopback).
+    pub fn is_remote(&self) -> bool {
+        !self.remote_addr.is_loopback() && !self.remote_addr.is_unspecified()
+    }
+
+    /// Process label, falling back to the PID or "unknown".
+    pub fn process_label(&self) -> String {
+        match (&self.process_name, self.pid) {
+            (Some(name), _) => name.clone(),
+            (None, Some(pid)) => format!("pid {}", pid),
+            _ => "unknown".to_string(),
+        }
+    }
+}
+
 /// Network exposure analyzer.
 ///
 /// This struct reads network state from procfs and correlates it with
@@ -225,24 +259,25 @@ impl NetworkExposure {
             Err(_) => return,
         };
 
-        // Build a set of blocked ports (port, protocol) from rich rules
-        let mut blocked_ports: HashSet<(u16, String)> = HashSet::new();
-        let mut allowed_ports: HashMap<(u16, String), String> = HashMap::new(); // (port, protocol) -> zone
+        // Collect blocked and allowed port ranges (single ports are
+        // degenerate ranges) so range rules like "10-20/tcp" match too
+        let mut blocked_ranges: Vec<(u16, u16, String)> = Vec::new(); // (start, end, protocol)
+        let mut allowed_ranges: Vec<(u16, u16, String, String)> = Vec::new(); // (start, end, protocol, zone)
 
         for zone in &zones {
             // Check rich rules for reject/drop rules
             for rule in &zone.rich_rules {
-                if let Some(port_info) = parse_rich_rule_port(rule) {
+                if let Some(((start, end), protocol)) = parse_rich_rule_port(rule) {
                     if rule.contains("reject") || rule.contains("drop") {
-                        blocked_ports.insert(port_info);
+                        blocked_ranges.push((start, end, protocol));
                     }
                 }
             }
 
             // Check allowed ports in the zone
             for port_str in &zone.ports {
-                if let Some((port, protocol)) = parse_port_string(port_str) {
-                    allowed_ports.insert((port, protocol), zone.name.clone());
+                if let Some(((start, end), protocol)) = parse_port_string(port_str) {
+                    allowed_ranges.push((start, end, protocol, zone.name.clone()));
                 }
             }
         }
@@ -250,11 +285,13 @@ impl NetworkExposure {
         // Update each endpoint's firewall status
         for endpoint in endpoints.iter_mut() {
             let protocol = endpoint.protocol.as_str().to_lowercase();
-            let key = (endpoint.port, protocol.clone());
+            let port = endpoint.port;
 
-            if blocked_ports.contains(&key) {
+            if blocked_ranges.iter().any(|(start, end, p)| *p == protocol && (*start..=*end).contains(&port)) {
                 endpoint.firewall_status = FirewallStatus::Blocked;
-            } else if let Some(zone) = allowed_ports.get(&key) {
+            } else if let Some((_, _, _, zone)) = allowed_ranges.iter()
+                .find(|(start, end, p, _)| *p == protocol && (*start..=*end).contains(&port))
+            {
                 endpoint.firewall_status = FirewallStatus::Allowed { zone: zone.clone() };
             }
             // Otherwise, keep as Unknown (default)
@@ -311,6 +348,77 @@ impl NetworkExposure {
         }
 
         Ok(())
+    }
+
+    /// Scan established (ESTABLISHED) TCP connections and their remote peers.
+    ///
+    /// Returns connections to remote hosts (loopback peers are filtered out),
+    /// sorted by remote address then port. Uses the same inode→PID map as the
+    /// listening-socket scan — no privileges or new dependencies required.
+    pub fn scan_connections(&mut self) -> Result<Vec<ActiveConnection>> {
+        self.build_inode_map()?;
+
+        let mut connections = Vec::new();
+        for (path, ipv6) in [("/proc/net/tcp", false), ("/proc/net/tcp6", true)] {
+            if let Ok(file) = fs::File::open(path) {
+                for (idx, line) in BufReader::new(file).lines().enumerate() {
+                    if idx == 0 {
+                        continue; // header
+                    }
+                    let line = match line {
+                        Ok(l) => l,
+                        Err(_) => continue,
+                    };
+                    if let Some(conn) = self.parse_connection_line(&line, ipv6) {
+                        if conn.is_remote() {
+                            connections.push(conn);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Enrich with process info
+        for conn in &mut connections {
+            if let Some(&pid) = self.inode_to_pid.get(&conn.inode) {
+                conn.pid = Some(pid);
+                if let Some((name, _)) = self.pid_info.get(&pid) {
+                    conn.process_name = Some(name.clone());
+                }
+            }
+        }
+
+        connections.sort_by_key(|c| (c.remote_addr, c.remote_port));
+        Ok(connections)
+    }
+
+    /// Parse an ESTABLISHED TCP row, extracting both local and remote peers.
+    fn parse_connection_line(&self, line: &str, ipv6: bool) -> Option<ActiveConnection> {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() < 10 {
+            return None;
+        }
+
+        // Only ESTABLISHED (0x01) connections
+        let state = u8::from_str_radix(parts[3], 16).ok()?;
+        if state != 0x01 {
+            return None;
+        }
+
+        let (local_addr, local_port) = parse_addr_port(parts[1], ipv6)?;
+        let (remote_addr, remote_port) = parse_addr_port(parts[2], ipv6)?;
+        let inode = parts[9].parse::<u64>().ok()?;
+
+        Some(ActiveConnection {
+            local_addr,
+            local_port,
+            remote_addr,
+            remote_port,
+            protocol: Protocol::Tcp,
+            inode,
+            pid: None,
+            process_name: None,
+        })
     }
 
     /// Read a process's command name.
@@ -406,6 +514,18 @@ impl NetworkExposure {
     }
 }
 
+/// Parse a "HEXADDR:HEXPORT" field from /proc/net/tcp into (IpAddr, port).
+fn parse_addr_port(field: &str, ipv6: bool) -> Option<(IpAddr, u16)> {
+    let (addr_hex, port_hex) = field.split_once(':')?;
+    let addr = if ipv6 {
+        parse_ipv6_hex(addr_hex)?
+    } else {
+        IpAddr::V4(parse_ipv4_hex(addr_hex)?)
+    };
+    let port = u16::from_str_radix(port_hex, 16).ok()?;
+    Some((addr, port))
+}
+
 /// Parse an IPv4 address from hex format (little-endian).
 fn parse_ipv4_hex(hex: &str) -> Option<Ipv4Addr> {
     if hex.len() != 8 {
@@ -462,22 +582,22 @@ pub fn get_service_name(port: u16) -> Option<&'static str> {
     }
 }
 
-/// Parse a port and protocol from a rich rule string.
+/// Parse a port (or range) and protocol from a rich rule string.
 /// Example: `rule family="ipv4" port port="80" protocol="tcp" reject`
-/// Returns Some((port, protocol)) if found.
-fn parse_rich_rule_port(rule: &str) -> Option<(u16, String)> {
+/// Ranges like port="10-20" are also supported.
+/// Returns Some(((start, end), protocol)) if found; end == start for a single port.
+fn parse_rich_rule_port(rule: &str) -> Option<((u16, u16), String)> {
     // Check if this is a port rule
     if !rule.contains("port port=") {
         return None;
     }
 
-    // Extract port number: port="80" or port="443"
+    // Extract port spec: port="80" or port="10-20"
     let port_start = rule.find("port port=\"")?;
     let port_value_start = port_start + 11; // length of 'port port="'
     let remaining = &rule[port_value_start..];
     let port_end = remaining.find('"')?;
-    let port_str = &remaining[..port_end];
-    let port_number: u16 = port_str.parse().ok()?;
+    let range = parse_port_spec(&remaining[..port_end])?;
 
     // Extract protocol: protocol="tcp" or protocol="udp"
     let proto_start = rule.find("protocol=\"")?;
@@ -486,20 +606,21 @@ fn parse_rich_rule_port(rule: &str) -> Option<(u16, String)> {
     let proto_end = remaining.find('"')?;
     let protocol = remaining[..proto_end].to_lowercase();
 
-    Some((port_number, protocol))
+    Some((range, protocol))
 }
 
-/// Parse a port string like "80/tcp" into (port, protocol).
-fn parse_port_string(port_str: &str) -> Option<(u16, String)> {
-    let parts: Vec<&str> = port_str.split('/').collect();
-    if parts.len() != 2 {
+/// Parse a port string like "80/tcp" or "10-20/tcp" into ((start, end), protocol).
+/// end == start for a single port.
+fn parse_port_string(port_str: &str) -> Option<((u16, u16), String)> {
+    let (port_part, proto_part) = port_str.split_once('/')?;
+    if proto_part.contains('/') {
         return None;
     }
-    
-    let port: u16 = parts[0].parse().ok()?;
-    let protocol = parts[1].to_lowercase();
-    
-    Some((port, protocol))
+
+    let range = parse_port_spec(port_part)?;
+    let protocol = proto_part.to_lowercase();
+
+    Some((range, protocol))
 }
 
 #[cfg(test)]
@@ -512,6 +633,32 @@ mod tests {
         assert_eq!(parse_ipv4_hex("00000000"), Some(Ipv4Addr::new(0, 0, 0, 0)));
         // 127.0.0.1 in little-endian hex
         assert_eq!(parse_ipv4_hex("0100007F"), Some(Ipv4Addr::new(127, 0, 0, 1)));
+    }
+
+    #[test]
+    fn test_parse_addr_port() {
+        // 192.168.1.10:443 — little-endian addr, big-endian port hex
+        let (addr, port) = parse_addr_port("0A01A8C0:01BB", false).unwrap();
+        assert_eq!(addr, IpAddr::V4(Ipv4Addr::new(192, 168, 1, 10)));
+        assert_eq!(port, 443);
+        assert_eq!(parse_addr_port("nocolon", false), None);
+    }
+
+    #[test]
+    fn test_parse_connection_line() {
+        let scanner = NetworkExposure::new();
+        // ESTABLISHED (state 01), remote 192.168.1.10:443
+        let line = "   0: 0100007F:8080 0A01A8C0:01BB 01 00000000:00000000 00:00000000 00000000  1000        0 987654 1 0000000000000000";
+        let conn = scanner.parse_connection_line(line, false).expect("should parse");
+        assert_eq!(conn.remote_addr, IpAddr::V4(Ipv4Addr::new(192, 168, 1, 10)));
+        assert_eq!(conn.remote_port, 443);
+        assert_eq!(conn.local_port, 0x8080);
+        assert_eq!(conn.inode, 987654);
+        assert!(conn.is_remote());
+
+        // LISTEN (state 0A) must be rejected — not an active connection
+        let listen = "   0: 0100007F:8080 00000000:0000 0A 00000000:00000000 00:00000000 00000000  1000        0 111 1 0000000000000000";
+        assert!(scanner.parse_connection_line(listen, false).is_none());
     }
 
     #[test]
@@ -539,8 +686,9 @@ mod tests {
 
     #[test]
     fn test_parse_port_string() {
-        assert_eq!(parse_port_string("80/tcp"), Some((80, "tcp".to_string())));
-        assert_eq!(parse_port_string("53/udp"), Some((53, "udp".to_string())));
+        assert_eq!(parse_port_string("80/tcp"), Some(((80, 80), "tcp".to_string())));
+        assert_eq!(parse_port_string("53/udp"), Some(((53, 53), "udp".to_string())));
+        assert_eq!(parse_port_string("10-20/tcp"), Some(((10, 20), "tcp".to_string())));
         assert_eq!(parse_port_string("invalid"), None);
         assert_eq!(parse_port_string("80/tcp/udp"), None);
     }
@@ -549,11 +697,15 @@ mod tests {
     fn test_parse_rich_rule_port() {
         assert_eq!(
             parse_rich_rule_port("rule family=\"ipv4\" port port=\"80\" protocol=\"tcp\" reject"),
-            Some((80, "tcp".to_string()))
+            Some(((80, 80), "tcp".to_string()))
         );
         assert_eq!(
             parse_rich_rule_port("rule family=\"ipv4\" port port=\"53\" protocol=\"udp\" drop"),
-            Some((53, "udp".to_string()))
+            Some(((53, 53), "udp".to_string()))
+        );
+        assert_eq!(
+            parse_rich_rule_port("rule family=\"ipv4\" port port=\"8000-9000\" protocol=\"tcp\" reject"),
+            Some(((8000, 9000), "tcp".to_string()))
         );
         assert_eq!(parse_rich_rule_port("not a port rule"), None);
     }

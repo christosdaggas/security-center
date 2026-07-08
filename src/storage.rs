@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
-use crate::validation::validate_protocol;
+use crate::validation::{validate_port_name, validate_protocol};
 
 const MAX_STORAGE_FILE_SIZE: u64 = 1_048_576; // 1 MB
 
@@ -32,6 +32,15 @@ pub struct PortMetadata {
     pub protocol: String,
     #[serde(default)]
     pub port: u16,
+    /// End of a port range (inclusive); 0 for a single port.
+    /// Skipped when 0 so files without ranges stay readable by older
+    /// releases, whose `deny_unknown_fields` rejects unknown keys.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub end_port: u16,
+}
+
+fn is_zero(value: &u16) -> bool {
+    *value == 0
 }
 
 impl PortMetadata {
@@ -45,6 +54,7 @@ impl PortMetadata {
             zone: String::new(),
             protocol: String::new(),
             port: 0,
+            end_port: 0,
         }
     }
 
@@ -58,21 +68,10 @@ impl PortMetadata {
             zone: String::new(),
             protocol: String::new(),
             port: 0,
+            end_port: 0,
         }
     }
     
-    pub fn deny_rule(port: u16, protocol: &str, zone: &str, incoming: &str, outgoing: &str, name: &str) -> Self {
-        Self {
-            name: name.to_string(),
-            description: String::new(),
-            created_at: chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-            incoming_action: incoming.to_string(),
-            outgoing_action: outgoing.to_string(),
-            zone: zone.to_string(),
-            protocol: protocol.to_string(),
-            port,
-        }
-    }
 }
 
 /// Storage for port metadata.
@@ -142,9 +141,24 @@ impl PortStorage {
                 warn!("Discarding port metadata entry with port 0 and non-empty protocol");
                 continue;
             }
-            // Sanitize name length
-            if meta.name.len() > 64 {
-                meta.name.truncate(64);
+            // Normalize a nonsensical range end (must be greater than start)
+            if meta.end_port != 0 && meta.end_port <= meta.port {
+                meta.end_port = 0;
+            }
+            // Sanitize the name through the same charset rules as user input.
+            // The metadata file is untrusted (SECURITY.md), and names are shown
+            // in row titles; an unsanitized name could inject Pango markup.
+            // Truncate over-long names first so only the charset can reject.
+            // Cut on a char boundary so multibyte names cannot panic.
+            if meta.name.chars().count() > 64 {
+                meta.name = meta.name.chars().take(64).collect();
+            }
+            match validate_port_name(&meta.name) {
+                Some(clean) => meta.name = clean,
+                None => {
+                    warn!("Discarding port metadata entry with unsafe name");
+                    continue;
+                }
             }
             sanitized.insert(key, meta);
         }
@@ -221,25 +235,15 @@ impl PortStorage {
         self.data.keys().cloned().collect()
     }
 
-    pub fn get_deny_rules(&mut self) -> Vec<PortMetadata> {
-        self.ensure_loaded();
-        self.data.values()
-            .filter(|m| m.incoming_action == "deny" || m.outgoing_action == "deny")
-            .cloned()
-            .collect()
-    }
-
     pub fn get_all(&mut self) -> Vec<PortMetadata> {
         self.ensure_loaded();
         self.data.values().cloned().collect()
     }
 
-    pub fn make_key(port: u16, protocol: &str, zone: &str) -> String {
-        format!("{}/{}/{}", port, protocol, zone)
-    }
-
-    pub fn make_simple_key(port: u16, protocol: &str) -> String {
-        format!("{}/{}", port, protocol)
+    /// Build a storage key from a port spec ("80" or "10-20"), protocol and zone.
+    /// Single-port keys keep the historical "80/tcp/public" format.
+    pub fn make_key(port_spec: &str, protocol: &str, zone: &str) -> String {
+        format!("{}/{}/{}", port_spec, protocol, zone)
     }
 }
 
@@ -263,6 +267,7 @@ mod tests {
                 zone: "public".to_string(),
                 protocol: "tcp\" reject".to_string(),
                 port: 80,
+                end_port: 0,
             },
         );
         let sanitized = PortStorage::sanitize_data(data);
@@ -283,6 +288,7 @@ mod tests {
                 zone: "public".to_string(),
                 protocol: "tcp".to_string(),
                 port: 80,
+                end_port: 0,
             },
         );
         let sanitized = PortStorage::sanitize_data(data);
@@ -304,6 +310,7 @@ mod tests {
                 zone: "public".to_string(),
                 protocol: "tcp".to_string(),
                 port: 0,
+                end_port: 0,
             },
         );
         let sanitized = PortStorage::sanitize_data(data);
@@ -325,6 +332,7 @@ mod tests {
                 zone: "public".to_string(),
                 protocol: "tcp".to_string(),
                 port: 80,
+                end_port: 0,
             },
         );
         let sanitized = PortStorage::sanitize_data(data);

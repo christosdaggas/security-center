@@ -1,5 +1,5 @@
 Name:           security-center
-Version:        1.6.0
+Version:        1.7.0
 Release:        1%{?dist}
 Summary:        A modern GTK4 security center for Linux
 
@@ -69,6 +69,13 @@ update-desktop-database -q %{_datadir}/applications || :
 appstreamcli refresh-cache || :
 
 %changelog
+* Tue Jul 07 2026 Christos Daggas <chrisdaggas@example.com> - 1.7.0-1
+- Redesigned overview dashboard: live per-application firewall connection monitor
+- Per-app connection cards with real application icons, throughput sparklines, and remote endpoints
+- Real-time analytics: connection-state donut, network activity, top protocols, and remote countries
+- Per-socket byte accounting via netlink; offline GeoIP country labelling
+- Firewall port-range support
+
 * Thu Apr 24 2026 Christos Daggas <chrisdaggas@example.com> - 1.6.0-1
 - Security hardening release: dependency updates, input validation, pkexec parameter allowlisting,
   config file sanitization, semver parsing, CI/CD pipeline, test expansion, accessibility improvements,

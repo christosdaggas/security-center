@@ -27,13 +27,15 @@ fn main() -> Result<(), String> {
         Ok(s) if s.success() => {
             println!("cargo:rerun-if-changed=data/com.chrisdaggas.security-center.gresource.xml");
             println!("cargo:rerun-if-changed=data/style.css");
+            Ok(())
         }
-        _ => {
-            // Create a minimal empty gresource if compilation fails
-            std::fs::write(&output, include_bytes!("data/style.css")).ok();
-            eprintln!("Warning: glib-compile-resources not available, using fallback");
-        }
+        Ok(s) => Err(format!(
+            "glib-compile-resources failed with status {}. Install the glib2 development tools.",
+            s
+        )),
+        Err(e) => Err(format!(
+            "Failed to run glib-compile-resources: {}. Install the glib2 development tools.",
+            e
+        )),
     }
-
-    Ok(())
 }

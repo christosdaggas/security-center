@@ -6,7 +6,6 @@
 //! Styled to match Network Manager's network activity graph.
 
 use std::cell::RefCell;
-use std::rc::Rc;
 
 use gtk4::prelude::*;
 use gtk4::subclass::prelude::*;
@@ -67,16 +66,39 @@ impl NetworkActivityChart {
         self.imp().outbound_data.borrow().last().copied().unwrap_or(0.0)
     }
 
-    /// Start live data collection.
+    /// Limit sampling to a single interface. `None` sums all non-loopback
+    /// interfaces. Resets the running baseline so switching does not spike.
+    pub fn set_interface(&self, iface: Option<String>) {
+        let imp = self.imp();
+        *imp.selected_iface.borrow_mut() = iface;
+        // Drop the baseline so the next tick computes a fresh delta
+        *imp.prev_stats.borrow_mut() = None;
+        // Clear the visible history so the graph reflects the new interface
+        *imp.inbound_data.borrow_mut() = vec![0.0; imp.max_points.get()];
+        *imp.outbound_data.borrow_mut() = vec![0.0; imp.max_points.get()];
+        self.queue_draw();
+    }
+
+    /// Register a callback invoked each tick with the latest (in, out) KB/s,
+    /// so the caller can update rate labels.
+    pub fn connect_rate_updated<F: Fn(f64, f64) + 'static>(&self, f: F) {
+        *self.imp().rate_callback.borrow_mut() = Some(Box::new(f));
+    }
+
+    /// Start live data collection (idempotent — only one timer per widget).
     pub fn start_live_collection(&self) {
+        let imp = self.imp();
+        if imp.collecting.get() {
+            return;
+        }
+        imp.collecting.set(true);
+
         let chart = self.clone();
-        let prev_stats: Rc<RefCell<Option<(u64, u64)>>> = Rc::new(RefCell::new(None));
-        
         glib::timeout_add_local(std::time::Duration::from_millis(1000), move || {
-            // Read real network stats from /proc/net/dev
-            let (rx_bytes, tx_bytes) = read_network_stats();
-            
-            let mut prev = prev_stats.borrow_mut();
+            let iface = chart.imp().selected_iface.borrow().clone();
+            let (rx_bytes, tx_bytes) = read_network_stats(iface.as_deref());
+
+            let mut prev = chart.imp().prev_stats.borrow_mut();
             let (in_rate, out_rate) = if let Some((prev_rx, prev_tx)) = *prev {
                 let in_bytes = rx_bytes.saturating_sub(prev_rx) as f64;
                 let out_bytes = tx_bytes.saturating_sub(prev_tx) as f64;
@@ -86,12 +108,32 @@ impl NetworkActivityChart {
             };
             *prev = Some((rx_bytes, tx_bytes));
             drop(prev);
-            
+
             chart.push_values(in_rate, out_rate);
-            
+            if let Some(cb) = chart.imp().rate_callback.borrow().as_ref() {
+                cb(in_rate, out_rate);
+            }
+
             glib::ControlFlow::Continue
         });
     }
+}
+
+/// List non-loopback interface names from /proc/net/dev, sorted.
+pub fn list_interfaces() -> Vec<String> {
+    let mut names = Vec::new();
+    if let Ok(content) = std::fs::read_to_string("/proc/net/dev") {
+        for line in content.lines().skip(2) {
+            if let Some((iface, _)) = line.split_once(':') {
+                let iface = iface.trim();
+                if iface != "lo" && !iface.is_empty() {
+                    names.push(iface.to_string());
+                }
+            }
+        }
+    }
+    names.sort();
+    names
 }
 
 impl Default for NetworkActivityChart {
@@ -100,19 +142,23 @@ impl Default for NetworkActivityChart {
     }
 }
 
-/// Read network stats from /proc/net/dev.
-fn read_network_stats() -> (u64, u64) {
+/// Read cumulative (rx, tx) byte counters from /proc/net/dev.
+///
+/// `only` limits the sum to a single interface; `None` sums every
+/// non-loopback interface.
+fn read_network_stats(only: Option<&str>) -> (u64, u64) {
     let mut rx_total: u64 = 0;
     let mut tx_total: u64 = 0;
-    
+
     if let Ok(content) = std::fs::read_to_string("/proc/net/dev") {
         for line in content.lines().skip(2) {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() >= 10 {
                 let iface = parts[0].trim_end_matches(':');
-                // Skip loopback interface
-                if iface == "lo" {
-                    continue;
+                match only {
+                    Some(want) if want != iface => continue,
+                    None if iface == "lo" => continue,
+                    _ => {}
                 }
                 // Parse receive bytes (column 1) and transmit bytes (column 9)
                 if let (Ok(rx), Ok(tx)) = (
@@ -125,7 +171,7 @@ fn read_network_stats() -> (u64, u64) {
             }
         }
     }
-    
+
     (rx_total, tx_total)
 }
 
@@ -138,6 +184,12 @@ mod imp {
         pub inbound_data: RefCell<Vec<f64>>,
         pub outbound_data: RefCell<Vec<f64>>,
         pub max_points: Cell<usize>,
+        // Live-collection state
+        pub selected_iface: RefCell<Option<String>>,
+        pub prev_stats: RefCell<Option<(u64, u64)>>,
+        pub collecting: Cell<bool>,
+        #[allow(clippy::type_complexity)]
+        pub rate_callback: RefCell<Option<Box<dyn Fn(f64, f64)>>>,
     }
 
     #[glib::object_subclass]

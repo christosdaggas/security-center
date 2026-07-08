@@ -6,7 +6,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-VERSION="1.6.0"
+VERSION="1.7.0"
 APP_NAME="security-center"
 
 cd "$PROJECT_DIR"
@@ -24,6 +24,20 @@ if [ ! -f "$PROJECT_DIR/target/release/$APP_NAME" ]; then
     echo "[INFO] Building release binary..."
     cargo build --release
 fi
+
+# Compile translation catalogs (.mo) so cargo-deb can package them.
+# The paths are listed in [package.metadata.deb].assets in Cargo.toml.
+if ! command -v msgfmt &> /dev/null; then
+    echo "[ERROR] msgfmt not found. Install gettext to build translation catalogs."
+    exit 1
+fi
+echo "[INFO] Compiling translation catalogs..."
+while IFS= read -r LANG_CODE; do
+    [ -z "$LANG_CODE" ] && continue
+    mkdir -p "$PROJECT_DIR/target/locale/$LANG_CODE/LC_MESSAGES"
+    msgfmt "$PROJECT_DIR/po/$LANG_CODE.po" \
+        -o "$PROJECT_DIR/target/locale/$LANG_CODE/LC_MESSAGES/$APP_NAME.mo"
+done < "$PROJECT_DIR/po/LINGUAS"
 
 # Build DEB package
 cargo deb --no-build

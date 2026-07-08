@@ -6,7 +6,8 @@
 
 use anyhow::{anyhow, Context, Result};
 use tracing::info;
-use zbus::blocking::Connection;
+use zbus::blocking::{Connection, Proxy};
+use zbus::proxy::MethodFlags;
 use zbus::zvariant::OwnedObjectPath;
 
 use crate::validation::{validate_service_name, validate_systemctl_action};
@@ -317,75 +318,157 @@ impl SystemdClient {
         Ok(v)
     }
 
-    /// Start a service (uses pkexec for authentication).
+    /// Start a service (polkit prompts for authorization via D-Bus).
     pub fn start_service(&self, name: &str) -> Result<()> {
-        run_systemctl_command("start", name)?;
+        self.run_unit_action("start", name)?;
         info!("Started service: {}", name);
         Ok(())
     }
 
-    /// Stop a service (uses pkexec for authentication).
+    /// Stop a service (polkit prompts for authorization via D-Bus).
     pub fn stop_service(&self, name: &str) -> Result<()> {
-        run_systemctl_command("stop", name)?;
+        self.run_unit_action("stop", name)?;
         info!("Stopped service: {}", name);
         Ok(())
     }
 
-    /// Restart a service (uses pkexec for authentication).
+    /// Restart a service (polkit prompts for authorization via D-Bus).
     pub fn restart_service(&self, name: &str) -> Result<()> {
-        run_systemctl_command("restart", name)?;
+        self.run_unit_action("restart", name)?;
         info!("Restarted service: {}", name);
         Ok(())
     }
 
-    /// Enable a service (start on boot, uses pkexec for authentication).
+    /// Enable a service (start on boot, polkit prompts for authorization via D-Bus).
     pub fn enable_service(&self, name: &str) -> Result<()> {
-        run_systemctl_command("enable", name)?;
+        self.run_unit_action("enable", name)?;
         info!("Enabled service: {}", name);
         Ok(())
     }
 
-    /// Disable a service (don't start on boot, uses pkexec for authentication).
+    /// Disable a service (don't start on boot, polkit prompts for authorization via D-Bus).
     pub fn disable_service(&self, name: &str) -> Result<()> {
-        run_systemctl_command("disable", name)?;
+        self.run_unit_action("disable", name)?;
         info!("Disabled service: {}", name);
         Ok(())
     }
+
+    /// Reload the systemd daemon configuration (equivalent of `systemctl daemon-reload`).
+    pub fn daemon_reload(&self) -> Result<()> {
+        self.run_unit_action("daemon-reload", "")?;
+        info!("Reloaded systemd daemon configuration");
+        Ok(())
+    }
+
+    /// Perform a privileged unit operation via the systemd Manager D-Bus API.
+    ///
+    /// This is the single entry point for all privileged systemd operations.
+    /// Authorization is handled by polkit: every call sets the D-Bus
+    /// `ALLOW_INTERACTIVE_AUTHORIZATION` flag so the polkit agent can prompt
+    /// the user for credentials when needed.
+    ///
+    /// Supported actions: `start`, `stop`, `restart`, `enable`, `disable`,
+    /// and `daemon-reload` (which ignores `unit`).
+    pub fn run_unit_action(&self, action: &str, unit: &str) -> Result<()> {
+        // Validate parameters before invoking privileged operations
+        validate_systemctl_action(action)?;
+        validate_service_name(unit)?;
+
+        if action != "daemon-reload" && unit.is_empty() {
+            return Err(anyhow!("A unit name is required for '{}'", action));
+        }
+
+        match action {
+            "start" => {
+                let _job: OwnedObjectPath =
+                    self.call_manager_interactive("StartUnit", &(unit, "replace"))?;
+            }
+            "stop" => {
+                let _job: OwnedObjectPath =
+                    self.call_manager_interactive("StopUnit", &(unit, "replace"))?;
+            }
+            "restart" => {
+                let _job: OwnedObjectPath =
+                    self.call_manager_interactive("RestartUnit", &(unit, "replace"))?;
+            }
+            "enable" => {
+                // EnableUnitFiles(files, runtime, force) -> (carries_install_info, changes)
+                let _changes: (bool, Vec<(String, String, String)>) = self
+                    .call_manager_interactive(
+                        "EnableUnitFiles",
+                        &(&[unit] as &[&str], false, true),
+                    )?;
+                // Make systemd pick up the changed unit files
+                let _: () = self.call_manager_interactive("Reload", &())?;
+            }
+            "disable" => {
+                // DisableUnitFiles(files, runtime) -> changes
+                let _changes: Vec<(String, String, String)> = self
+                    .call_manager_interactive("DisableUnitFiles", &(&[unit] as &[&str], false))?;
+                // Make systemd pick up the changed unit files
+                let _: () = self.call_manager_interactive("Reload", &())?;
+            }
+            "daemon-reload" => {
+                let _: () = self.call_manager_interactive("Reload", &())?;
+            }
+            // validate_systemctl_action() only accepts the actions above
+            _ => unreachable!("validated action"),
+        }
+
+        Ok(())
+    }
+
+    /// Get a proxy for the systemd Manager interface.
+    fn manager_proxy(&self) -> Result<Proxy<'_>> {
+        let conn = self.connection.as_ref()
+            .ok_or_else(|| anyhow!("Not connected to systemd"))?;
+
+        Proxy::new(conn, SYSTEMD_BUS, SYSTEMD_PATH, MANAGER_INTERFACE)
+            .context("Failed to create systemd manager proxy")
+    }
+
+    /// Call a method on the systemd Manager interface with the
+    /// `ALLOW_INTERACTIVE_AUTHORIZATION` flag set, so polkit can prompt the
+    /// user for credentials if the operation requires privileges.
+    fn call_manager_interactive<B, R>(&self, method: &str, body: &B) -> Result<R>
+    where
+        B: serde::ser::Serialize + zbus::zvariant::DynamicType,
+        R: for<'d> zbus::zvariant::DynamicDeserialize<'d>,
+    {
+        let proxy = self.manager_proxy()?;
+
+        let reply: Option<R> = proxy
+            .call_with_flags(method, MethodFlags::AllowInteractiveAuth.into(), body)
+            .map_err(|e| map_dbus_error(e, method))?;
+
+        reply.ok_or_else(|| anyhow!("No reply received for systemd {} call", method))
+    }
 }
 
-/// Run a systemctl command with pkexec for authentication.
-fn run_systemctl_command(action: &str, service: &str) -> Result<()> {
-    // Validate parameters before invoking privileged command
-    validate_systemctl_action(action)?;
-    validate_service_name(service)?;
-
-    // Check if pkexec is available
-    if std::process::Command::new("which")
-        .arg("pkexec")
-        .output()
-        .map(|o| !o.status.success())
-        .unwrap_or(true)
-    {
-        return Err(anyhow!(
-            "PolicyKit (pkexec) is not installed. Install 'polkit' or 'policykit-1' to perform administrative actions."
-        ));
-    }
-
-    let output = std::process::Command::new("pkexec")
-        .args(["systemctl", action, service])
-        .output()
-        .context(format!("Failed to execute pkexec systemctl {} {}", action, service))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        // Check if user cancelled the authentication dialog
-        if stderr.contains("dismissed") || stderr.contains("cancelled") || output.status.code() == Some(126) {
-            return Err(anyhow!("Authentication cancelled"));
+/// Map a zbus error to a user-friendly anyhow error.
+fn map_dbus_error(err: zbus::Error, method: &str) -> anyhow::Error {
+    if let zbus::Error::MethodError(ref name, ref detail, _) = err {
+        let detail = detail.as_deref().unwrap_or("no details");
+        match name.as_str() {
+            "org.freedesktop.DBus.Error.InteractiveAuthorizationRequired" => {
+                return anyhow!(
+                    "Authorization is required for this action, but no polkit \
+                     authentication agent is available to prompt for credentials ({})",
+                    detail
+                );
+            }
+            "org.freedesktop.DBus.Error.AccessDenied" => {
+                return anyhow!(
+                    "Access denied: authorization was not granted \
+                     (the authentication dialog may have been cancelled) ({})",
+                    detail
+                );
+            }
+            _ => {}
         }
-        return Err(anyhow!("Failed to {} service {}: {}", action, service, stderr));
     }
 
-    Ok(())
+    anyhow::Error::new(err).context(format!("systemd {} call failed", method))
 }
 
 impl Default for SystemdClient {

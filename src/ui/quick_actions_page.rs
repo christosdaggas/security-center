@@ -26,6 +26,7 @@ use libadwaita::prelude::*;
 use tracing::{error, info};
 
 use crate::admin::{AdminAction, AdminActionResult, QuickActionsManager, ActionCategory, QUICK_ACTIONS};
+use crate::i18n::gettext;
 
 glib::wrapper! {
     /// Page with quick one-click admin actions.
@@ -70,13 +71,13 @@ impl QuickActionsPage {
             .build();
 
         let title = gtk4::Label::builder()
-            .label("Quick Actions")
+            .label(&gettext("Quick Actions"))
             .css_classes(vec!["title-1".to_string()])
             .halign(gtk4::Align::Start)
             .build();
 
         let subtitle = gtk4::Label::builder()
-            .label("One-click administrative operations")
+            .label(&gettext("One-click administrative operations"))
             .css_classes(vec!["dim-label".to_string()])
             .halign(gtk4::Align::Start)
             .build();
@@ -110,22 +111,22 @@ impl QuickActionsPage {
 
         // Warning banner (same style as Services page)
         let warning_banner = adw::Banner::builder()
-            .title("These actions may affect system security and stability")
+            .title(&gettext("These actions may affect system security and stability"))
             .revealed(true)
             .build();
         content.append(&warning_banner);
 
         // Build action groups by category
         let firewall_group = adw::PreferencesGroup::builder()
-            .description("Manage firewalld service and rules")
+            .description(&gettext("Manage firewalld service and rules"))
             .build();
 
         let network_group = adw::PreferencesGroup::builder()
-            .description("Network service management")
+            .description(&gettext("Network service management"))
             .build();
 
         let services_group = adw::PreferencesGroup::builder()
-            .description("Manage system services")
+            .description(&gettext("Manage system services"))
             .build();
 
         for action in QUICK_ACTIONS.iter() {
@@ -138,11 +139,11 @@ impl QuickActionsPage {
             }
         }
 
-        content.append(&Self::create_section_header("security-high-symbolic", "Firewall"));
+        content.append(&Self::create_section_header("security-high-symbolic", &gettext("Firewall")));
         content.append(&firewall_group);
-        content.append(&Self::create_section_header("network-wired-symbolic", "Network"));
+        content.append(&Self::create_section_header("network-wired-symbolic", &gettext("Network")));
         content.append(&network_group);
-        content.append(&Self::create_section_header("emblem-system-symbolic", "Services"));
+        content.append(&Self::create_section_header("emblem-system-symbolic", &gettext("Services")));
         content.append(&services_group);
 
         scrolled.set_child(Some(&content));
@@ -161,7 +162,7 @@ impl QuickActionsPage {
             .build();
 
         let status_label = gtk4::Label::builder()
-            .label("Ready to execute actions")
+            .label(&gettext("Ready to execute actions"))
             .css_classes(vec!["dim-label".to_string()])
             .halign(gtk4::Align::Center)
             .hexpand(false)
@@ -175,8 +176,8 @@ impl QuickActionsPage {
     /// Create an action row for a quick action.
     fn create_action_row(&self, action: &AdminAction) -> adw::ActionRow {
         let row = adw::ActionRow::builder()
-            .title(action.title)
-            .subtitle(action.description)
+            .title(&gettext(action.title))
+            .subtitle(&gettext(action.description))
             .activatable(true)
             .build();
 
@@ -188,7 +189,7 @@ impl QuickActionsPage {
 
         // Execute button
         let execute_btn = gtk4::Button::builder()
-            .label("Execute")
+            .label(&gettext("Execute"))
             .valign(gtk4::Align::Center)
             .build();
 
@@ -239,7 +240,7 @@ impl QuickActionsPage {
     /// Show confirmation dialog for destructive actions.
     fn show_confirmation_dialog(&self, action_id: &str, action_title: &str, button: &gtk4::Button) {
         let dialog = adw::AlertDialog::builder()
-            .heading("Confirm Action")
+            .heading(&gettext("Confirm Action"))
             .body(&format!(
                 "Are you sure you want to execute \"{}\"?\n\nThis action may affect system security or stability.",
                 action_title
@@ -247,8 +248,8 @@ impl QuickActionsPage {
             .build();
 
         dialog.add_responses(&[
-            ("cancel", "Cancel"),
-            ("confirm", "Execute"),
+            ("cancel", gettext("Cancel").as_str()),
+            ("confirm", gettext("Execute").as_str()),
         ]);
         dialog.set_response_appearance("confirm", adw::ResponseAppearance::Destructive);
         dialog.set_default_response(Some("cancel"));
@@ -280,11 +281,11 @@ impl QuickActionsPage {
 
         // Disable button during execution
         button.set_sensitive(false);
-        button.set_label("Running...");
+        button.set_label(&gettext("Running..."));
 
         // Update status
         if let Some(label) = self.imp().status_label.borrow().as_ref() {
-            label.set_label("⏳ Executing...");
+            label.set_label(&format!("⏳ {}", gettext("Executing...")));
             label.remove_css_class("success");
             label.remove_css_class("error");
             label.add_css_class("dim-label");
@@ -308,13 +309,13 @@ impl QuickActionsPage {
                 }
                 Err(e) => {
                     error!("Task execution failed: {:?}", e);
-                    page.show_toast("Failed to execute action", true);
+                    page.show_toast(&gettext("Failed to execute action"), true);
                 }
             }
 
             // Re-enable button
             button_clone.set_sensitive(true);
-            button_clone.set_label("Execute");
+            button_clone.set_label(&gettext("Execute"));
         });
     }
 

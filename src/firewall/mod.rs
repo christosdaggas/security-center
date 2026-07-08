@@ -8,6 +8,11 @@ mod client;
 
 pub use client::FirewallClient;
 
+// Part of the public client API; callers use the returned value's methods
+// without naming the type, so the re-export can read as unused.
+#[allow(unused_imports)]
+pub use client::PermanentOutcome;
+
 // Keep FirewallEvent for future use (event-based architecture)
 #[allow(unused_imports)]
 pub use client::FirewallEvent;

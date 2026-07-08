@@ -114,7 +114,7 @@ msgid "Available Zones"
 msgstr "可用区域"
 
 msgid "Click 'Set Default' to change the default zone"
-msgstr "点击"设为默认"更改默认区域"
+msgstr "点击\"设为默认\"更改默认区域"
 
 msgid "Default"
 msgstr "默认"
@@ -157,7 +157,7 @@ msgid "No port rules configured"
 msgstr "未配置端口规则"
 
 msgid "Click 'Add Port' to create a rule"
-msgstr "点击"添加端口"创建规则"
+msgstr "点击\"添加端口\"创建规则"
 
 msgid "TCP Ports"
 msgstr "TCP 端口"
@@ -218,7 +218,7 @@ msgid "Block (Reject Connections)"
 msgstr "阻止（拒绝连接）"
 
 msgid "Allow opens the port, Block rejects connections"
-msgstr ""允许"打开端口，"阻止"拒绝连接"
+msgstr "\"允许\"打开端口，\"阻止\"拒绝连接"
 
 msgid "Options"
 msgstr "选项"

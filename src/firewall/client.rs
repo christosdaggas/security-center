@@ -9,12 +9,14 @@ use std::sync::{Arc, RwLock};
 
 use anyhow::{anyhow, Context, Result};
 use tokio::sync::broadcast;
-use tracing::info;
-use zbus::blocking::Connection;
+use tracing::{info, warn};
+use zbus::blocking::{Connection, Proxy};
+use zbus::proxy::MethodFlags;
 use zbus::zvariant::{ObjectPath, OwnedObjectPath};
 
 use super::{interfaces, paths, zone_description, BUS_NAME};
 use crate::models::{Interface, Service, Zone};
+use crate::validation::validate_zone_name;
 
 /// Events emitted by the firewall client.
 #[derive(Debug, Clone)]
@@ -23,6 +25,28 @@ pub enum FirewallEvent {
     Disconnected,
     StateChanged,
     Error(String),
+}
+
+/// Outcome of the permanent-config half of a firewall change.
+///
+/// The runtime half is reported through `Result`: an `Err` means the change
+/// did not happen at all. This enum tells the caller whether the change will
+/// also survive a reboot, so the UI can stop claiming success when it won't.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PermanentOutcome {
+    /// The caller did not ask for a permanent change.
+    NotRequested,
+    /// The permanent configuration was updated (or already matched).
+    Applied,
+    /// The runtime change went through but the permanent write failed.
+    Failed(String),
+}
+
+impl PermanentOutcome {
+    /// True when a requested permanent change did not stick.
+    pub fn failed(&self) -> bool {
+        matches!(self, PermanentOutcome::Failed(_))
+    }
 }
 
 /// Client for interacting with firewalld via D-Bus.
@@ -81,6 +105,33 @@ impl FirewallClient {
         self.connection.is_some()
     }
 
+    /// Call a firewalld method allowing polkit to prompt interactively.
+    ///
+    /// Without the ALLOW_INTERACTIVE_AUTHORIZATION flag, systems whose polkit
+    /// policy requires authentication fail with a bare AccessDenied instead
+    /// of showing an authentication dialog.
+    fn call_interactive<B, R>(
+        &self,
+        path: ObjectPath<'_>,
+        interface: &str,
+        method: &str,
+        body: &B,
+    ) -> Result<Option<R>>
+    where
+        B: serde::ser::Serialize + zbus::zvariant::DynamicType,
+        R: for<'d> zbus::zvariant::DynamicDeserialize<'d>,
+    {
+        let conn = self.connection.as_ref()
+            .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
+
+        let proxy = Proxy::new(conn, BUS_NAME, path, interface)
+            .context("Failed to create firewalld proxy")?;
+
+        proxy
+            .call_with_flags(method, MethodFlags::AllowInteractiveAuth.into(), body)
+            .map_err(|e| anyhow!(friendly_dbus_error(&e)))
+    }
+
     /// Get the default zone name.
     pub fn get_default_zone(&self) -> Result<String> {
         let conn = self.connection.as_ref()
@@ -102,13 +153,10 @@ impl FirewallClient {
 
     /// Set the default zone.
     pub fn set_default_zone(&self, zone: &str) -> Result<()> {
-        let conn = self.connection.as_ref()
-            .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
-
-        conn.call_method(
-            Some(BUS_NAME),
-            paths::ROOT,
-            Some(interfaces::MAIN),
+        validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
+        let _: Option<()> = self.call_interactive(
+            ObjectPath::try_from(paths::ROOT)?,
+            interfaces::MAIN,
             "setDefaultZone",
             &(zone,),
         )?;
@@ -296,18 +344,16 @@ impl FirewallClient {
         Ok(services)
     }
 
-    /// Add a port to a zone.
-    pub fn add_port(&self, zone: &str, port: &str, protocol: &str, permanent: bool) -> Result<()> {
+    /// Add a port to a zone. Runtime failure is an `Err`; the returned
+    /// outcome reports whether the permanent half also succeeded.
+    pub fn add_port(&self, zone: &str, port: &str, protocol: &str, permanent: bool) -> Result<PermanentOutcome> {
+        validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
         info!("add_port called: zone={}, port={}, protocol={}, permanent={}", zone, port, protocol, permanent);
-        
-        let conn = self.connection.as_ref()
-            .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
 
         // Add to runtime config
-        let result = conn.call_method(
-            Some(BUS_NAME),
-            paths::ROOT,
-            Some(interfaces::ZONE),
+        let result: Result<Option<String>> = self.call_interactive(
+            ObjectPath::try_from(paths::ROOT)?,
+            interfaces::ZONE,
             "addPort",
             &(zone, port, protocol, 0i32),
         );
@@ -317,147 +363,139 @@ impl FirewallClient {
             Err(e) if e.to_string().contains("ALREADY_ENABLED") => {
                 info!("Port {}/{} already enabled in zone {}", port, protocol, zone);
             },
-            Err(e) => return Err(e.into()),
+            Err(e) => return Err(e),
         }
 
-        // Add to permanent config if requested
-        if permanent {
-            info!("Attempting to add port to permanent config...");
-            match self.get_zone_config_path(zone) {
-                Ok(config_path) => {
-                    info!("Got zone config path: {}", config_path);
-                    let perm_result = conn.call_method(
-                        Some(BUS_NAME),
-                        ObjectPath::try_from(config_path.as_str())?,
-                        Some(interfaces::CONFIG_ZONE),
-                        "addPort",
-                        &(port, protocol),
-                    );
-                    match perm_result {
-                        Ok(_) => info!("Added port {}/{} to zone {} (permanent)", port, protocol, zone),
-                        Err(e) if e.to_string().contains("ALREADY_ENABLED") => {
-                            info!("Port {}/{} already enabled in zone {} permanent config", port, protocol, zone);
-                        },
-                        Err(e) => {
-                            info!("Failed to add port to permanent config: {}", e);
-                            // Don't fail - runtime config was added successfully
-                        }
-                    }
-                }
-                Err(e) => {
-                    info!("Failed to get zone config path for permanent config: {}", e);
-                }
-            }
+        let outcome = if permanent {
+            self.apply_permanent(zone, "addPort", &(port, protocol))
         } else {
-            info!("permanent=false, skipping permanent config");
-        }
+            PermanentOutcome::NotRequested
+        };
 
         let _ = self.event_sender.send(FirewallEvent::StateChanged);
-        Ok(())
+        Ok(outcome)
     }
 
-    /// Remove a port from a zone.
-    pub fn remove_port(&self, zone: &str, port: &str, protocol: &str, permanent: bool) -> Result<()> {
-        let conn = self.connection.as_ref()
-            .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
-
+    /// Remove a port from a zone. Runtime failure is an `Err` unless the
+    /// port was already gone; the outcome reports the permanent half.
+    pub fn remove_port(&self, zone: &str, port: &str, protocol: &str, permanent: bool) -> Result<PermanentOutcome> {
+        validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
         // Remove from runtime
-        let _ = conn.call_method(
-            Some(BUS_NAME),
-            paths::ROOT,
-            Some(interfaces::ZONE),
+        let result: Result<Option<String>> = self.call_interactive(
+            ObjectPath::try_from(paths::ROOT)?,
+            interfaces::ZONE,
             "removePort",
             &(zone, port, protocol),
         );
 
-        // Remove from permanent config
-        if permanent {
-            if let Ok(config_path) = self.get_zone_config_path(zone) {
-                let _ = conn.call_method(
-                    Some(BUS_NAME),
-                    ObjectPath::try_from(config_path.as_str())?,
-                    Some(interfaces::CONFIG_ZONE),
-                    "removePort",
-                    &(port, protocol),
-                );
-            }
+        match result {
+            Ok(_) => info!("Removed port {}/{} from zone {} (runtime)", port, protocol, zone),
+            Err(e) if e.to_string().contains("NOT_ENABLED") => {},
+            Err(e) => return Err(e),
         }
 
-        info!("Removed port {}/{} from zone {}", port, protocol, zone);
+        let outcome = if permanent {
+            self.apply_permanent(zone, "removePort", &(port, protocol))
+        } else {
+            PermanentOutcome::NotRequested
+        };
+
         let _ = self.event_sender.send(FirewallEvent::StateChanged);
-        Ok(())
+        Ok(outcome)
+    }
+
+    /// Apply a change to a zone's permanent configuration, reporting the
+    /// outcome instead of silently swallowing failures.
+    fn apply_permanent<B>(&self, zone: &str, method: &str, body: &B) -> PermanentOutcome
+    where
+        B: serde::ser::Serialize + zbus::zvariant::DynamicType,
+    {
+        let config_path = match self.get_zone_config_path(zone) {
+            Ok(path) => path,
+            Err(e) => {
+                warn!("No permanent config path for zone {}: {}", zone, e);
+                return PermanentOutcome::Failed(format!("zone lookup failed: {}", e));
+            }
+        };
+
+        let path = match ObjectPath::try_from(config_path.as_str()) {
+            Ok(path) => path,
+            Err(e) => return PermanentOutcome::Failed(e.to_string()),
+        };
+
+        let result: Result<Option<()>> =
+            self.call_interactive(path, interfaces::CONFIG_ZONE, method, body);
+
+        match result {
+            Ok(_) => PermanentOutcome::Applied,
+            // Already matching permanent config counts as applied
+            Err(e) if e.to_string().contains("ALREADY_ENABLED")
+                || e.to_string().contains("NOT_ENABLED") => PermanentOutcome::Applied,
+            Err(e) => {
+                warn!("Permanent {} failed for zone {}: {}", method, zone, e);
+                PermanentOutcome::Failed(e.to_string())
+            }
+        }
     }
 
     /// Enable a service in a zone.
-    pub fn enable_service(&self, zone: &str, service: &str, permanent: bool) -> Result<()> {
-        let conn = self.connection.as_ref()
-            .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
-
-        conn.call_method(
-            Some(BUS_NAME),
-            paths::ROOT,
-            Some(interfaces::ZONE),
+    pub fn enable_service(&self, zone: &str, service: &str, permanent: bool) -> Result<PermanentOutcome> {
+        validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
+        let result: Result<Option<String>> = self.call_interactive(
+            ObjectPath::try_from(paths::ROOT)?,
+            interfaces::ZONE,
             "addService",
             &(zone, service, 0i32),
-        )?;
+        );
 
-        if permanent {
-            if let Ok(config_path) = self.get_zone_config_path(zone) {
-                let _ = conn.call_method(
-                    Some(BUS_NAME),
-                    ObjectPath::try_from(config_path.as_str())?,
-                    Some(interfaces::CONFIG_ZONE),
-                    "addService",
-                    &(service,),
-                );
-            }
+        match result {
+            Ok(_) => info!("Enabled service {} in zone {} (runtime)", service, zone),
+            Err(e) if e.to_string().contains("ALREADY_ENABLED") => {},
+            Err(e) => return Err(e),
         }
 
-        info!("Enabled service {} in zone {}", service, zone);
+        let outcome = if permanent {
+            self.apply_permanent(zone, "addService", &(service,))
+        } else {
+            PermanentOutcome::NotRequested
+        };
+
         let _ = self.event_sender.send(FirewallEvent::StateChanged);
-        Ok(())
+        Ok(outcome)
     }
 
     /// Disable a service in a zone.
-    pub fn disable_service(&self, zone: &str, service: &str, permanent: bool) -> Result<()> {
-        let conn = self.connection.as_ref()
-            .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
-
-        let _ = conn.call_method(
-            Some(BUS_NAME),
-            paths::ROOT,
-            Some(interfaces::ZONE),
+    pub fn disable_service(&self, zone: &str, service: &str, permanent: bool) -> Result<PermanentOutcome> {
+        validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
+        let result: Result<Option<String>> = self.call_interactive(
+            ObjectPath::try_from(paths::ROOT)?,
+            interfaces::ZONE,
             "removeService",
             &(zone, service),
         );
 
-        if permanent {
-            if let Ok(config_path) = self.get_zone_config_path(zone) {
-                let _ = conn.call_method(
-                    Some(BUS_NAME),
-                    ObjectPath::try_from(config_path.as_str())?,
-                    Some(interfaces::CONFIG_ZONE),
-                    "removeService",
-                    &(service,),
-                );
-            }
+        match result {
+            Ok(_) => info!("Disabled service {} in zone {} (runtime)", service, zone),
+            Err(e) if e.to_string().contains("NOT_ENABLED") => {},
+            Err(e) => return Err(e),
         }
 
-        info!("Disabled service {} in zone {}", service, zone);
+        let outcome = if permanent {
+            self.apply_permanent(zone, "removeService", &(service,))
+        } else {
+            PermanentOutcome::NotRequested
+        };
+
         let _ = self.event_sender.send(FirewallEvent::StateChanged);
-        Ok(())
+        Ok(outcome)
     }
 
     /// Add a rich rule to a zone.
-    pub fn add_rich_rule(&self, zone: &str, rule: &str, permanent: bool) -> Result<()> {
-        let conn = self.connection.as_ref()
-            .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
-
-        // Add to runtime config
-        let result = conn.call_method(
-            Some(BUS_NAME),
-            paths::ROOT,
-            Some(interfaces::ZONE),
+    pub fn add_rich_rule(&self, zone: &str, rule: &str, permanent: bool) -> Result<PermanentOutcome> {
+        validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
+        let result: Result<Option<String>> = self.call_interactive(
+            ObjectPath::try_from(paths::ROOT)?,
+            interfaces::ZONE,
             "addRichRule",
             &(zone, rule, 0i32),
         );
@@ -465,36 +503,25 @@ impl FirewallClient {
         match result {
             Ok(_) => info!("Added rich rule to zone {}: {}", zone, rule),
             Err(e) if e.to_string().contains("ALREADY_ENABLED") => {},
-            Err(e) => return Err(e.into()),
+            Err(e) => return Err(e),
         }
 
-        // Add to permanent config if requested
-        if permanent {
-            if let Ok(config_path) = self.get_zone_config_path(zone) {
-                let _ = conn.call_method(
-                    Some(BUS_NAME),
-                    ObjectPath::try_from(config_path.as_str())?,
-                    Some(interfaces::CONFIG_ZONE),
-                    "addRichRule",
-                    &(rule,),
-                );
-            }
-        }
+        let outcome = if permanent {
+            self.apply_permanent(zone, "addRichRule", &(rule,))
+        } else {
+            PermanentOutcome::NotRequested
+        };
 
         let _ = self.event_sender.send(FirewallEvent::StateChanged);
-        Ok(())
+        Ok(outcome)
     }
 
     /// Remove a rich rule from a zone.
-    pub fn remove_rich_rule(&self, zone: &str, rule: &str, permanent: bool) -> Result<()> {
-        let conn = self.connection.as_ref()
-            .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
-
-        // Remove from runtime config
-        let result = conn.call_method(
-            Some(BUS_NAME),
-            paths::ROOT,
-            Some(interfaces::ZONE),
+    pub fn remove_rich_rule(&self, zone: &str, rule: &str, permanent: bool) -> Result<PermanentOutcome> {
+        validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
+        let result: Result<Option<String>> = self.call_interactive(
+            ObjectPath::try_from(paths::ROOT)?,
+            interfaces::ZONE,
             "removeRichRule",
             &(zone, rule),
         );
@@ -502,24 +529,17 @@ impl FirewallClient {
         match result {
             Ok(_) => info!("Removed rich rule from zone {}: {}", zone, rule),
             Err(e) if e.to_string().contains("NOT_ENABLED") => {},
-            Err(e) => return Err(e.into()),
+            Err(e) => return Err(e),
         }
 
-        // Remove from permanent config if requested
-        if permanent {
-            if let Ok(config_path) = self.get_zone_config_path(zone) {
-                let _ = conn.call_method(
-                    Some(BUS_NAME),
-                    ObjectPath::try_from(config_path.as_str())?,
-                    Some(interfaces::CONFIG_ZONE),
-                    "removeRichRule",
-                    &(rule,),
-                );
-            }
-        }
+        let outcome = if permanent {
+            self.apply_permanent(zone, "removeRichRule", &(rule,))
+        } else {
+            PermanentOutcome::NotRequested
+        };
 
         let _ = self.event_sender.send(FirewallEvent::StateChanged);
-        Ok(())
+        Ok(outcome)
     }
 
     /// Get the D-Bus path for a zone's permanent config.
@@ -576,13 +596,9 @@ impl FirewallClient {
 
     /// Reload firewalld configuration.
     pub fn reload(&self) -> Result<()> {
-        let conn = self.connection.as_ref()
-            .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
-
-        conn.call_method(
-            Some(BUS_NAME),
-            paths::ROOT,
-            Some(interfaces::MAIN),
+        let _: Option<()> = self.call_interactive(
+            ObjectPath::try_from(paths::ROOT)?,
+            interfaces::MAIN,
             "reload",
             &(),
         )?;
@@ -594,13 +610,9 @@ impl FirewallClient {
 
     /// Enable panic mode - blocks all traffic.
     pub fn enable_panic_mode(&self) -> Result<()> {
-        let conn = self.connection.as_ref()
-            .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
-
-        conn.call_method(
-            Some(BUS_NAME),
-            paths::ROOT,
-            Some(interfaces::MAIN),
+        let _: Option<()> = self.call_interactive(
+            ObjectPath::try_from(paths::ROOT)?,
+            interfaces::MAIN,
             "enablePanicMode",
             &(),
         )?;
@@ -612,13 +624,9 @@ impl FirewallClient {
 
     /// Disable panic mode - restore normal operation.
     pub fn disable_panic_mode(&self) -> Result<()> {
-        let conn = self.connection.as_ref()
-            .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
-
-        conn.call_method(
-            Some(BUS_NAME),
-            paths::ROOT,
-            Some(interfaces::MAIN),
+        let _: Option<()> = self.call_interactive(
+            ObjectPath::try_from(paths::ROOT)?,
+            interfaces::MAIN,
             "disablePanicMode",
             &(),
         )?;
@@ -651,5 +659,17 @@ impl FirewallClient {
 impl Default for FirewallClient {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Map raw D-Bus/polkit errors to messages a user can act on.
+fn friendly_dbus_error(e: &zbus::Error) -> String {
+    let text = e.to_string();
+    if text.contains("AccessDenied") || text.contains("NotAuthorized") {
+        format!("Authorization denied: {}", text)
+    } else if text.contains("InteractiveAuthorizationRequired") {
+        format!("Administrator authentication required: {}", text)
+    } else {
+        text
     }
 }

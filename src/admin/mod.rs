@@ -20,6 +20,10 @@
 
 mod network;
 mod actions;
+mod sock_diag;
+mod geoip;
 
-pub use network::{ListeningEndpoint, NetworkExposure, FirewallStatus, get_service_name};
+pub use network::{ActiveConnection, ListeningEndpoint, NetworkExposure, FirewallStatus, get_service_name};
+pub use sock_diag::{collect_socket_bytes, collect_top_talkers, TalkerBytes};
+pub use geoip::GeoIp;
 pub use actions::{AdminAction, AdminActionResult, QuickActionsManager, ActionCategory, QUICK_ACTIONS};
