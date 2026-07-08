@@ -54,11 +54,8 @@ impl GeoIp {
         if is_private(&addr) {
             return None;
         }
-        let country: geoip2::Country = reader.lookup(addr).ok()?;
-        country
-            .country
-            .and_then(|c| c.iso_code)
-            .map(|s| s.to_uppercase())
+        let country: geoip2::Country = reader.lookup(addr).ok()?.decode().ok()??;
+        country.country.iso_code.map(|s| s.to_uppercase())
     }
 
     /// Look up a display label: "🇩🇪 DE" when the database resolves a country,

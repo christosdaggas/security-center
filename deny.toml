@@ -9,10 +9,11 @@ db-urls = ["https://github.com/rustsec/advisory-db"]
 # With version = 2, vulnerabilities and unsound advisories are always denied.
 yanked = "warn"
 
-# Ignore specific advisories if needed (add with justification)
-# ignore = [
-#     "RUSTSEC-XXXX-YYYY",  # Reason for ignoring
-# ]
+# Transitive through netlink-packet-utils. The advisory is unmaintained-only,
+# has no safe upgrade, and the dependency is needed for sock_diag support.
+ignore = [
+    "RUSTSEC-2024-0436",
+]
 
 [licenses]
 version = 2

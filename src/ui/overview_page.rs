@@ -189,17 +189,15 @@ impl OverviewPage {
             .hexpand(true)
             .build();
 
-        // === FIRST PANEL: status card (kept from the current design) ===
-        content.append(&self.build_status_card());
-
-        // === NEW: stat cards row ===
-        content.append(&self.build_stat_cards());
-
-        // === NEW: analytics row ===
+        // Lead with the live firewall overview, matching the original dashboard
+        // composition. The analytics cards belong underneath it.
+        content.append(&self.build_connections_hub());
         content.append(&self.build_analytics());
 
-        // === NEW: firewall connections hub (full list, last) ===
-        content.append(&self.build_connections_hub());
+        // Keep the classic status controls and summary cards available below
+        // the dashboard without pushing the live overview out of first view.
+        content.append(&self.build_status_card());
+        content.append(&self.build_stat_cards());
 
         // Honour the saved "show connections overview" preference.
         self.set_connections_visible(crate::config::Settings::new().show_connections_overview());
@@ -484,13 +482,33 @@ impl OverviewPage {
         );
         header.append(&titles);
 
-        let conn_chip = gtk4::Label::builder()
-            .label(gettext("No connections"))
-            .css_classes(vec!["caption".to_string(), "conn-chip".to_string()])
+        let conn_chip_box = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Horizontal)
+            .spacing(6)
+            .css_classes(vec!["conn-chip".to_string()])
             .valign(gtk4::Align::Center)
             .build();
+        conn_chip_box.append(
+            &gtk4::Label::builder()
+                .label("●")
+                .css_classes(vec!["dot-success".to_string()])
+                .build(),
+        );
+        let conn_chip = gtk4::Label::builder()
+            .label("0 connected")
+            .css_classes(vec!["caption".to_string()])
+            .build();
         imp.conn_chip.replace(Some(conn_chip.clone()));
-        header.append(&conn_chip);
+        conn_chip_box.append(&conn_chip);
+        header.append(&conn_chip_box);
+
+        header.append(
+            &gtk4::Label::builder()
+                .label(gettext("Updated just now"))
+                .css_classes(vec!["caption".to_string(), "conn-chip".to_string()])
+                .valign(gtk4::Align::Center)
+                .build(),
+        );
 
         outer.append(&header);
         outer.append(&gtk4::Separator::new(gtk4::Orientation::Horizontal));
@@ -803,9 +821,9 @@ impl OverviewPage {
         // --- Connections hub chip ---
         if let Some(chip) = imp.conn_chip.borrow().as_ref() {
             if apps.is_empty() {
-                chip.set_label(&gettext("No connections"));
+                chip.set_label("0 connected");
             } else {
-                chip.set_label(&format!("{} {}", apps.len(), gettext("apps connected")));
+                chip.set_label(&format!("{} {}", apps.len(), gettext("connected")));
             }
         }
 
@@ -861,7 +879,7 @@ impl OverviewPage {
         }
 
         let mut seen: HashSet<String> = HashSet::new();
-        for app in app_list.iter().take(8) {
+        for app in app_list.iter().take(6) {
             seen.insert(app.process.clone());
 
             let down_kbs = (app.interval_in as f64 / INTERVAL_SECS) / 1024.0;
@@ -1058,8 +1076,9 @@ fn build_app_card(d: AppCardData) -> gtk4::Box {
     // come from the FlowBox row/column spacing.
     let tile = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Horizontal)
-        .spacing(13)
+        .spacing(12)
         .css_classes(vec!["conn-tile".to_string()])
+        .height_request(88)
         .build();
 
     // App icon in a neutral rounded tile. Symmetric CSS padding around the
@@ -1086,7 +1105,7 @@ fn build_app_card(d: AppCardData) -> gtk4::Box {
         .build();
     name_row.append(
         &gtk4::Label::builder()
-            .label(glib::markup_escape_text(&d.process).as_str())
+            .label(display_process_name(&d.process))
             .css_classes(vec!["heading".to_string()])
             .halign(gtk4::Align::Start)
             .hexpand(true)
@@ -1106,8 +1125,8 @@ fn build_app_card(d: AppCardData) -> gtk4::Box {
     );
     status.append(
         &gtk4::Label::builder()
-            .label(gettext("Connected"))
-            .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
+            .label(gettext("CONNECTED"))
+            .css_classes(vec!["caption".to_string(), "conn-status".to_string()])
             .build(),
     );
     name_row.append(&status);
@@ -1338,6 +1357,22 @@ fn color_error() -> (f64, f64, f64) {
 }
 fn color_idle() -> (f64, f64, f64) {
     (0.55, 0.55, 0.58)
+}
+
+/// Convert process executable names into friendlier card titles.
+fn display_process_name(process: &str) -> String {
+    process
+        .split(['-', '_', ' '])
+        .filter(|part| !part.is_empty())
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().chain(chars).collect::<String>(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Resolve the best themed icon name for a process: a real application icon
