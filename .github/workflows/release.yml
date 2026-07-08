@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish assets to"
+        required: true
+        default: "v1.7.0"
 
 permissions:
   contents: read
@@ -110,6 +116,7 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
           files: |
             dist/*.deb
             dist/*.rpm
