@@ -2,29 +2,24 @@
 
 A modern, GTK4/Libadwaita security management application for Linux, providing a clean interface to **firewalld**, **systemd**, and system security monitoring.
 
-<img width="1451" height="850" alt="security-center-white" src="https://github.com/user-attachments/assets/9bfe741e-6433-4167-b563-8f30ba901ffa" />
+![Security Center light theme dashboard](docs/screenshots/security-center-overview-light.png)
 
 ## Features
 
 - **Firewall Management**: View and manage firewalld zones, services, and ports
 - **Port Control**: Open and block custom TCP/UDP ports with rich rules; consolidated view groups same-port entries across zones and protocols
-- **Network Exposure**: Monitor listening ports and correlate with firewall status
-- **Active Connections**: See established connections to remote hosts (process → remote IP), with real per-host traffic via netlink `sock_diag` and offline country flags
+- **Network Exposure**: Monitor listening ports, established remote connections, country labels, and traffic visibility
+- **Active Connections**: See established connections by application, remote IP, country, port, and real per-socket upload/download rates via netlink `sock_diag`
 - **System Services**: Manage systemd services with start/stop/enable/disable
 - **Quick Actions**: Common administrative tasks with one click (enable/disable firewall, panic mode, etc.)
-- **Dashboard Overview**: Real-time statistics — a live per-interface bandwidth graph plus bar and line charts for connections and blocked ports
+- **Dashboard Overview**: Real-time firewall status, active connection counts, live bandwidth, top protocols, remote countries, and per-application connection cards
+- **Automatic GeoIP Database**: Downloads the free DB-IP Lite Country database on first use, then performs all country lookups locally
 - **Three-State Firewall Display**: Dashboard shows Active, Panic Mode, or Inactive states with appropriate indicators
 - **Collapsible Sidebar**: Toggle between expanded and icon-only navigation mode
 - **Update Checker**: Automatic GitHub release check notifies when new versions are available
 - **GNOME Integration**: Native look and feel with Libadwaita, dark mode support
 - **Safe by Default**: Read-only mode with Polkit authentication for changes
 - **Internationalization**: Translations for Arabic, German, Greek, Spanish, French, Hindi, Italian, Portuguese, Russian, and Chinese
-
-## Screenshots
-
-<img width="1451" height="850" alt="Security Center white theme dashboard" src="https://github.com/user-attachments/assets/9bfe741e-6433-4167-b563-8f30ba901ffa" />
-
-Security Center dashboard in the white theme.
 
 ## Requirements
 
@@ -36,40 +31,46 @@ Security Center dashboard in the white theme.
 - polkit
 - systemd
 
-### Optional: GeoIP country flags
+### GeoIP country labels
 
-The Active Connections view shows a country flag next to each remote host when a
-local MaxMind-format country database is present. Lookups are **fully offline** —
-the app never queries an online geolocation service. Install a free database
-(e.g. [DB-IP Lite Country](https://db-ip.com/db/download/ip-to-country-lite),
-CC BY 4.0) to one of:
+Security Center shows a country flag and country name next to public remote IPs in
+the dashboard and Network Exposure views. On first use, if no local database is
+already installed, the app downloads the free
+[DB-IP Lite Country](https://db-ip.com/db/download/ip-to-country-lite) database
+(CC BY 4.0) to:
 
-- `$SECURITY_CENTER_GEOIP_DB` (explicit path), or
-- `/usr/share/GeoIP/dbip-country-lite.mmdb` (also accepts `GeoLite2-Country.mmdb`
-  or `country.mmdb` under `/usr/share/GeoIP`, `/var/lib/GeoIP`, `/usr/share/dbip`).
+- `~/.local/share/security-center/GeoIP/dbip-country-lite.mmdb`
 
-`scripts/fetch-geoip.sh` downloads the current DB-IP Lite database into
-`/usr/share/GeoIP`. Without a database, connections simply display without flags.
+After that initial database download, IP-to-country lookups are fully local. The
+app never sends individual remote IPs to an online geolocation API.
+
+Advanced users can override the database with `$SECURITY_CENTER_GEOIP_DB` or
+install `dbip-country-lite.mmdb`, `GeoLite2-Country.mmdb`, or `country.mmdb` under
+`/usr/share/GeoIP`, `/var/lib/GeoIP`, `/usr/share/dbip`, or
+`/usr/local/share/GeoIP`. `scripts/fetch-geoip.sh` is still available for manual
+system-wide installation.
 
 ### Build Dependencies
 
 - Rust 1.70+
 - GTK4 development libraries
 - Libadwaita development libraries
+- GLib resource compiler
+- gettext tools
 
 **Fedora:**
 ```bash
-sudo dnf install gtk4-devel libadwaita-devel glib2-devel dbus-devel
+sudo dnf install gtk4-devel libadwaita-devel glib2-devel dbus-devel gettext
 ```
 
 **Ubuntu/Debian:**
 ```bash
-sudo apt install libgtk-4-dev libadwaita-1-dev libglib2.0-dev libdbus-1-dev
+sudo apt install libgtk-4-dev libadwaita-1-dev libglib2.0-dev libdbus-1-dev gettext
 ```
 
 **Arch Linux:**
 ```bash
-sudo pacman -S gtk4 libadwaita glib2 dbus
+sudo pacman -S gtk4 libadwaita glib2 dbus gettext
 ```
 
 ## Building
@@ -124,7 +125,8 @@ sudo -E cargo run --release
 - **Privilege Model**: Write operations use `pkexec` for Polkit authentication; no direct root execution.
 - **File Permissions**: Config and metadata files are created with `0o600` permissions.
 - **Input Validation**: Port names, protocols, zone names, and systemctl parameters are validated against allowlists.
-- **Update Check**: Outbound HTTPS requests are made only to `api.github.com`.
+- **Update Check**: Outbound HTTPS requests are made to `api.github.com` for release checks.
+- **GeoIP Download**: Outbound HTTPS to `download.db-ip.com` is used only to fetch the offline country database when it is missing.
 - **Logging**: `RUST_LOG=trace` may log sensitive system information. Default log level is `info`.
 - See [SECURITY.md](SECURITY.md) for the full security policy and threat model.
 
@@ -133,15 +135,17 @@ sudo -E cargo run --release
 ```
 security-center/
 ├── src/
-│   ├── main.rs              # Entry point, CSS loading
+│   ├── main.rs              # Entry point and resource registration
 │   ├── application.rs       # GTK Application lifecycle
 │   ├── config.rs            # Application settings
 │   ├── autostart.rs         # Desktop autostart management
 │   ├── storage.rs           # Port metadata persistence
 │   ├── version_check.rs     # GitHub release update checker
-│   ├── admin/               # Administrative actions
+│   ├── admin/               # Administrative actions and network introspection
 │   │   ├── actions.rs       # Quick action definitions
-│   │   └── network.rs       # Network exposure scanner
+│   │   ├── geoip.rs         # DB-IP/MaxMind country database download and lookup
+│   │   ├── network.rs       # Network exposure scanner
+│   │   └── sock_diag.rs     # Per-socket byte accounting via netlink
 │   ├── firewall/            # firewalld D-Bus client
 │   │   └── client.rs        # Zone, port, service management
 │   ├── systemd/             # systemd D-Bus client
@@ -158,7 +162,7 @@ security-center/
 │   │   └── models.rs        # Stats data models
 │   └── ui/                  # GTK4/Adw widgets and pages
 │       ├── main_window.rs   # Main window with collapsible sidebar
-│       ├── overview_page.rs # Dashboard with charts and status
+│       ├── overview_page.rs # Dashboard with live connections and analytics
 │       ├── zones_page.rs    # Zone management
 │       ├── ports_page.rs    # Port rules with consolidated view
 │       ├── services_page.rs # Firewall services
@@ -182,9 +186,10 @@ security-center/
 ### Key Design Decisions
 
 1. **D-Bus Only**: All firewalld/systemd communication uses D-Bus. No shell commands.
-2. **Pure Rust**: Network introspection via procfs without external tools.
-3. **Read-Only by Default**: Write operations require Polkit authentication.
-4. **GNOME HIG Compliance**: Follows GNOME Human Interface Guidelines.
+2. **Local Network Introspection**: Connections are read from procfs and netlink `sock_diag` without external tools.
+3. **Offline GeoIP Lookups**: The country database is downloaded once when missing; individual IP lookups stay local.
+4. **Read-Only by Default**: Write operations require Polkit authentication.
+5. **GNOME HIG Compliance**: Follows GNOME Human Interface Guidelines.
 
 ## Packaging
 

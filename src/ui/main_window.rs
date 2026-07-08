@@ -29,13 +29,18 @@ glib::wrapper! {
 impl MainWindow {
     /// Create a new main window.
     pub fn new(app: &impl IsA<gtk4::Application>) -> Self {
+        let settings = crate::config::Settings::new();
         let window: Self = glib::Object::builder()
             .property("application", app)
             .property("title", gettext("Security Center").as_str())
-            .property("default-width", 1200)
-            .property("default-height", 740)
+            .property("default-width", settings.window_width())
+            .property("default-height", settings.window_height())
             .property("icon-name", "com.chrisdaggas.security-center")
             .build();
+
+        if settings.is_maximized() {
+            window.maximize();
+        }
 
         window.setup_ui();
         window.setup_actions();

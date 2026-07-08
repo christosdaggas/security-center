@@ -189,15 +189,12 @@ impl OverviewPage {
             .hexpand(true)
             .build();
 
-        // Lead with the live firewall overview, matching the original dashboard
-        // composition. The analytics cards belong underneath it.
-        content.append(&self.build_connections_hub());
-        content.append(&self.build_analytics());
-
-        // Keep the classic status controls and summary cards available below
-        // the dashboard without pushing the live overview out of first view.
+        // Top controls and cards come first; the live connections overview
+        // belongs at the bottom of the dashboard.
         content.append(&self.build_status_card());
         content.append(&self.build_stat_cards());
+        content.append(&self.build_analytics());
+        content.append(&self.build_connections_hub());
 
         // Honour the saved "show connections overview" preference.
         self.set_connections_visible(crate::config::Settings::new().show_connections_overview());
@@ -444,6 +441,7 @@ impl OverviewPage {
 
         let frame = gtk4::Frame::new(None);
         frame.add_css_class("card");
+        frame.add_css_class("dashboard-card");
 
         let outer = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
@@ -535,7 +533,7 @@ impl OverviewPage {
         frame
     }
 
-    /// Build the analytics row: donut, network activity, protocols, countries.
+    /// Build the analytics row: network activity, protocols, countries, connection state.
     fn build_analytics(&self) -> gtk4::FlowBox {
         let flow = gtk4::FlowBox::builder()
             .orientation(gtk4::Orientation::Horizontal)
@@ -547,10 +545,10 @@ impl OverviewPage {
             .selection_mode(gtk4::SelectionMode::None)
             .build();
 
-        flow.append(&self.build_donut_panel());
         flow.append(&self.create_network_activity_card());
         flow.append(&self.build_protocols_panel());
         flow.append(&self.build_countries_panel());
+        flow.append(&self.build_donut_panel());
 
         flow
     }
@@ -803,10 +801,7 @@ impl OverviewPage {
             *proto_counts
                 .entry(protocol_of(conn.remote_port))
                 .or_insert(0) += 1;
-            let key = geo_labels
-                .get(&conn.remote_addr)
-                .cloned()
-                .unwrap_or_else(|| conn.remote_addr.to_string());
+            let key = endpoint_label(conn.remote_addr, &geo_labels);
             *dest_counts.entry(key).or_insert(0) += 1;
         }
 
@@ -1000,7 +995,7 @@ impl OverviewPage {
             top.append(
                 &gtk4::Label::builder()
                     .label(&name)
-                    .css_classes(vec!["caption".to_string()])
+                    .css_classes(vec!["caption".to_string(), "conn-meta".to_string()])
                     .halign(gtk4::Align::Start)
                     .hexpand(true)
                     .ellipsize(gtk4::pango::EllipsizeMode::End)
@@ -1011,7 +1006,7 @@ impl OverviewPage {
                     .label(count.to_string())
                     .css_classes(vec![
                         "caption".to_string(),
-                        "dim-label".to_string(),
+                        "conn-meta".to_string(),
                         "numeric".to_string(),
                     ])
                     .halign(gtk4::Align::End)
@@ -1145,7 +1140,7 @@ fn build_app_card(d: AppCardData) -> gtk4::Box {
             .label(addr_parts.join("  ·  "))
             .css_classes(vec![
                 "caption".to_string(),
-                "dim-label".to_string(),
+                "conn-meta".to_string(),
                 "mono-addr".to_string(),
             ])
             .halign(gtk4::Align::Start)
@@ -1180,7 +1175,7 @@ fn build_app_card(d: AppCardData) -> gtk4::Box {
             .label(format!("↓{:.0} ↑{:.0}", d.down_kbs, d.up_kbs))
             .css_classes(vec![
                 "caption".to_string(),
-                "dim-label".to_string(),
+                "conn-meta".to_string(),
                 "numeric".to_string(),
             ])
             .halign(gtk4::Align::End)
@@ -1239,6 +1234,7 @@ fn stat_card(icon: &str, tile_class: &str, caption: &str) -> (gtk4::Frame, gtk4:
 fn panel_card(title: &str, hint: &str) -> (gtk4::Frame, gtk4::Box) {
     let frame = gtk4::Frame::new(None);
     frame.add_css_class("card");
+    frame.add_css_class("dashboard-card");
 
     let content = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
@@ -1319,6 +1315,15 @@ fn placeholder(list: &gtk4::Box, text: &str) {
 fn set_label(cell: &RefCell<Option<gtk4::Label>>, text: &str) {
     if let Some(label) = cell.borrow().as_ref() {
         label.set_label(text);
+    }
+}
+
+/// Display a remote endpoint while keeping the IP visible. Offline GeoIP adds
+/// `flag + country`; unresolved hosts fall back to the raw IP.
+fn endpoint_label(addr: IpAddr, geo_labels: &HashMap<IpAddr, String>) -> String {
+    match geo_labels.get(&addr) {
+        Some(country) => format!("{} · {}", country, addr),
+        None => addr.to_string(),
     }
 }
 

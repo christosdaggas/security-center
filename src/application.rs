@@ -209,7 +209,7 @@ impl Application {
                 <li>Application Connection Cards - Real application icons, throughput sparklines, and remote endpoints</li>\
                 <li>Real-Time Analytics - Connection-state donut, network activity graph, top protocols, and remote countries</li>\
                 <li>Per-Socket Byte Accounting - Netlink-based application data rates without root</li>\
-                <li>Offline GeoIP Labelling - Country labels when a local MaxMind database is present</li>\
+                <li>Automatic Offline GeoIP Labelling - Downloads DB-IP Lite on first use, then resolves countries locally</li>\
                 <li>Firewall Port Ranges - Open contiguous port ranges in a single rule</li>\
             </ul><p>Version 1.6.0 - April 2026</p><ul>\
                 <li>Dependency Security Updates - Patched bytes, quinn-proto, rustls-webpki, and rand vulnerabilities</li>\
