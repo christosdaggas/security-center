@@ -105,8 +105,7 @@ impl SystemdClient {
     pub fn connect(&mut self) -> Result<()> {
         info!("Connecting to systemd...");
 
-        let conn = Connection::system()
-            .context("Failed to connect to system D-Bus")?;
+        let conn = Connection::system().context("Failed to connect to system D-Bus")?;
 
         // Test connection by getting systemd version
         let value: zbus::zvariant::OwnedValue = conn
@@ -119,7 +118,7 @@ impl SystemdClient {
             )?
             .body()
             .deserialize()?;
-        
+
         // Value is a variant containing a string
         let _version: String = value.try_into().unwrap_or_default();
 
@@ -169,7 +168,7 @@ impl SystemdClient {
         ];
 
         let mut services = Vec::new();
-        
+
         for service_name in security_services {
             if let Ok(info) = self.get_service_info(service_name) {
                 services.push(info);
@@ -184,7 +183,8 @@ impl SystemdClient {
                 ServiceState::Stopped => 2,
                 ServiceState::Unknown => 3,
             };
-            state_order(&a.state).cmp(&state_order(&b.state))
+            state_order(&a.state)
+                .cmp(&state_order(&b.state))
                 .then(a.display_name.cmp(&b.display_name))
         });
 
@@ -193,7 +193,9 @@ impl SystemdClient {
 
     /// Get information about a specific service.
     pub fn get_service_info(&self, name: &str) -> Result<ServiceInfo> {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to systemd"))?;
 
         // Get unit path
@@ -241,7 +243,7 @@ impl SystemdClient {
             if let Ok(pid) = self.get_unit_property_u32(&unit_path, "MainPID") {
                 info.main_pid = pid;
             }
-            
+
             // Get MemoryCurrent
             if let Ok(mem) = self.get_unit_property_u64(&unit_path, "MemoryCurrent") {
                 // u64::MAX means not available
@@ -256,7 +258,9 @@ impl SystemdClient {
 
     /// Get a property from a unit.
     fn get_unit_property(&self, unit_path: &OwnedObjectPath, property: &str) -> Result<String> {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to systemd"))?;
 
         let value: zbus::zvariant::OwnedValue = conn
@@ -271,14 +275,17 @@ impl SystemdClient {
             .deserialize()?;
 
         // Try to extract string value from the variant
-        let s: String = value.try_into()
+        let s: String = value
+            .try_into()
             .map_err(|_| anyhow!("Property is not a string"))?;
         Ok(s)
     }
 
     /// Get a u32 property from a unit (for MainPID).
     fn get_unit_property_u32(&self, unit_path: &OwnedObjectPath, property: &str) -> Result<u32> {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to systemd"))?;
 
         let value: zbus::zvariant::OwnedValue = conn
@@ -292,14 +299,17 @@ impl SystemdClient {
             .body()
             .deserialize()?;
 
-        let v: u32 = value.try_into()
+        let v: u32 = value
+            .try_into()
             .map_err(|_| anyhow!("Property is not a u32"))?;
         Ok(v)
     }
 
     /// Get a u64 property from a unit (for MemoryCurrent).
     fn get_unit_property_u64(&self, unit_path: &OwnedObjectPath, property: &str) -> Result<u64> {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to systemd"))?;
 
         let value: zbus::zvariant::OwnedValue = conn
@@ -313,7 +323,8 @@ impl SystemdClient {
             .body()
             .deserialize()?;
 
-        let v: u64 = value.try_into()
+        let v: u64 = value
+            .try_into()
             .map_err(|_| anyhow!("Property is not a u64"))?;
         Ok(v)
     }
@@ -420,7 +431,9 @@ impl SystemdClient {
 
     /// Get a proxy for the systemd Manager interface.
     fn manager_proxy(&self) -> Result<Proxy<'_>> {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to systemd"))?;
 
         Proxy::new(conn, SYSTEMD_BUS, SYSTEMD_PATH, MANAGER_INTERFACE)

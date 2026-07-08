@@ -73,7 +73,14 @@ pub fn validate_port_name(name: &str) -> Option<String> {
 
 /// Validate a systemctl action.
 pub fn validate_systemctl_action(action: &str) -> Result<()> {
-    const ALLOWED: &[&str] = &["start", "stop", "restart", "enable", "disable", "daemon-reload"];
+    const ALLOWED: &[&str] = &[
+        "start",
+        "stop",
+        "restart",
+        "enable",
+        "disable",
+        "daemon-reload",
+    ];
     if ALLOWED.contains(&action) {
         Ok(())
     } else {
@@ -204,8 +211,14 @@ mod tests {
     #[test]
     fn test_validate_port_name_valid() {
         assert_eq!(validate_port_name("HTTP"), Some("HTTP".to_string()));
-        assert_eq!(validate_port_name("My Service"), Some("My Service".to_string()));
-        assert_eq!(validate_port_name("web-server"), Some("web-server".to_string()));
+        assert_eq!(
+            validate_port_name("My Service"),
+            Some("My Service".to_string())
+        );
+        assert_eq!(
+            validate_port_name("web-server"),
+            Some("web-server".to_string())
+        );
         assert_eq!(validate_port_name("  spaced  "), Some("spaced".to_string()));
         assert_eq!(validate_port_name(""), Some("".to_string()));
     }
@@ -256,7 +269,10 @@ mod tests {
         assert_eq!(validate_zone_name("public"), Some("public"));
         assert_eq!(validate_zone_name("home"), Some("home"));
         // Custom / distro zones must be accepted
-        assert_eq!(validate_zone_name("FedoraWorkstation"), Some("FedoraWorkstation"));
+        assert_eq!(
+            validate_zone_name("FedoraWorkstation"),
+            Some("FedoraWorkstation")
+        );
         assert_eq!(validate_zone_name("libvirt-routed"), Some("libvirt-routed"));
         assert_eq!(validate_zone_name("nm-shared"), Some("nm-shared"));
     }

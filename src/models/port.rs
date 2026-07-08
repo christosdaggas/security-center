@@ -62,7 +62,7 @@ impl Port {
 
     /// Whether this rule covers a range of ports.
     pub fn is_range(&self) -> bool {
-        self.end_number.map_or(false, |end| end > self.number)
+        self.end_number.is_some_and(|end| end > self.number)
     }
 
     /// The firewalld port string: "8080" or "10-20".

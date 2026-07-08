@@ -6,6 +6,6 @@
 
 mod client;
 
-pub use client::SystemdClient;
 pub use client::ServiceInfo;
 pub use client::ServiceState;
+pub use client::SystemdClient;

@@ -132,7 +132,7 @@ pub const QUICK_ACTIONS: &[AdminAction] = &[
         destructive: true,
         category: ActionCategory::Firewall,
     },
-    
+
     // Network actions
     AdminAction {
         id: "restart_networkmanager",
@@ -142,7 +142,7 @@ pub const QUICK_ACTIONS: &[AdminAction] = &[
         destructive: false,
         category: ActionCategory::Network,
     },
-    
+
     // Service actions
     AdminAction {
         id: "restart_sshd",
@@ -185,11 +185,12 @@ impl QuickActionsManager {
     /// Ensure we're connected to D-Bus.
     fn ensure_connected(&mut self) -> Result<&Connection> {
         if self.connection.is_none() {
-            let conn = Connection::system()
-                .context("Failed to connect to system D-Bus")?;
+            let conn = Connection::system().context("Failed to connect to system D-Bus")?;
             self.connection = Some(conn);
         }
-        self.connection.as_ref().ok_or_else(|| anyhow!("Not connected"))
+        self.connection
+            .as_ref()
+            .ok_or_else(|| anyhow!("Not connected"))
     }
 
     /// Get a connected systemd client, connecting lazily on first use.
@@ -199,7 +200,9 @@ impl QuickActionsManager {
             client.connect()?;
             self.systemd = Some(client);
         }
-        self.systemd.as_ref().ok_or_else(|| anyhow!("Not connected to systemd"))
+        self.systemd
+            .as_ref()
+            .ok_or_else(|| anyhow!("Not connected to systemd"))
     }
 
     /// Run a privileged systemd unit action (delegates to `SystemdClient`,
@@ -249,7 +252,8 @@ impl QuickActionsManager {
             Some(FIREWALLD_INTERFACE),
             "reload",
             &(),
-        ).context("Failed to reload firewall. Is firewalld running?")?;
+        )
+        .context("Failed to reload firewall. Is firewalld running?")?;
 
         Ok("Firewall reloaded successfully".to_string())
     }
@@ -281,7 +285,8 @@ impl QuickActionsManager {
             Some(FIREWALLD_INTERFACE),
             "enablePanicMode",
             &(),
-        ).context("Failed to enable panic mode")?;
+        )
+        .context("Failed to enable panic mode")?;
 
         Ok("Panic mode enabled - all traffic blocked".to_string())
     }
@@ -295,7 +300,8 @@ impl QuickActionsManager {
             Some(FIREWALLD_INTERFACE),
             "disablePanicMode",
             &(),
-        ).context("Failed to disable panic mode")?;
+        )
+        .context("Failed to disable panic mode")?;
 
         Ok("Panic mode disabled - normal operation restored".to_string())
     }
@@ -309,7 +315,8 @@ impl QuickActionsManager {
             Some(FIREWALLD_INTERFACE),
             "runtimeToPermanent",
             &(),
-        ).context("Failed to save runtime rules")?;
+        )
+        .context("Failed to save runtime rules")?;
 
         Ok("Runtime rules saved to permanent configuration".to_string())
     }

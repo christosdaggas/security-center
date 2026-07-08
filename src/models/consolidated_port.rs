@@ -48,7 +48,7 @@ impl ConsolidatedPort {
 
     /// Whether this rule covers a range of ports.
     pub fn is_range(&self) -> bool {
-        self.end_number.map_or(false, |end| end > self.number)
+        self.end_number.is_some_and(|end| end > self.number)
     }
 
     /// The firewalld port string: "8080" or "10-20".
@@ -64,11 +64,12 @@ impl ConsolidatedPort {
 
         for port in ports {
             // Normalize action: treat "reject", "drop", "deny" as blocked
-            let normalized_action = if port.action == "reject" || port.action == "drop" || port.action == "deny" {
-                "deny".to_string()
-            } else {
-                "accept".to_string()
-            };
+            let normalized_action =
+                if port.action == "reject" || port.action == "drop" || port.action == "deny" {
+                    "deny".to_string()
+                } else {
+                    "accept".to_string()
+                };
 
             let key = (port.number, port.end_number, normalized_action.clone());
 
@@ -222,7 +223,8 @@ mod tests {
         assert_eq!(range.display_title(), "Ports 10-20");
         // A well-known port number at the start of a range must not
         // be labeled as that service
-        let ssh_range = ConsolidatedPort::from_port(&Port::range_with_zone(22, 30, "tcp", "public"));
+        let ssh_range =
+            ConsolidatedPort::from_port(&Port::range_with_zone(22, 30, "tcp", "public"));
         assert_eq!(ssh_range.well_known_service(), None);
     }
 

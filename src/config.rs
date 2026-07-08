@@ -4,9 +4,9 @@
 
 //! Application settings management using a local JSON file.
 
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::validation::{clamp_window_dimension, validate_theme};
@@ -40,10 +40,18 @@ pub struct AppSettings {
     pub show_connections_overview: bool,
 }
 
-fn default_width() -> i32 { 1386 }
-fn default_height() -> i32 { 924 }
-fn default_theme() -> String { "system".to_string() }
-fn default_true() -> bool { true }
+fn default_width() -> i32 {
+    1386
+}
+fn default_height() -> i32 {
+    924
+}
+fn default_theme() -> String {
+    "system".to_string()
+}
+fn default_true() -> bool {
+    true
+}
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -74,8 +82,7 @@ impl Default for Settings {
 
 impl Settings {
     pub fn new() -> Self {
-        let config_base = dirs::config_dir()
-            .unwrap_or_else(|| PathBuf::from("."));
+        let config_base = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
 
         let new_dir = config_base.join("security-center");
         let path = new_dir.join("settings.json");
@@ -92,7 +99,10 @@ impl Settings {
             let metadata = fs::metadata(&path);
             if let Ok(m) = metadata {
                 if m.len() > MAX_CONFIG_FILE_SIZE {
-                    warn!("Settings file too large ({} bytes), using defaults", m.len());
+                    warn!(
+                        "Settings file too large ({} bytes), using defaults",
+                        m.len()
+                    );
                     AppSettings::default()
                 } else {
                     match fs::read_to_string(&path) {
@@ -101,7 +111,10 @@ impl Settings {
                                 Ok(mut s) => {
                                     // Validate fields
                                     if validate_theme(&s.theme).is_none() {
-                                        warn!("Invalid theme '{}' in settings, resetting to system", s.theme);
+                                        warn!(
+                                            "Invalid theme '{}' in settings, resetting to system",
+                                            s.theme
+                                        );
                                         s.theme = "system".to_string();
                                     }
                                     s.window_width = clamp_window_dimension(s.window_width);
@@ -140,24 +153,22 @@ impl Settings {
         }
 
         match serde_json::to_string_pretty(&self.settings) {
-            Ok(content) => {
-                match fs::File::create(&self.path) {
-                    Ok(mut file) => {
-                        #[cfg(unix)]
-                        {
-                            if let Err(e) = file.set_permissions(fs::Permissions::from_mode(0o600)) {
-                                warn!("Failed to set file permissions: {}", e);
-                            }
-                        }
-                        if let Err(e) = file.write_all(content.as_bytes()) {
-                            warn!("Failed to save settings: {}", e);
+            Ok(content) => match fs::File::create(&self.path) {
+                Ok(mut file) => {
+                    #[cfg(unix)]
+                    {
+                        if let Err(e) = file.set_permissions(fs::Permissions::from_mode(0o600)) {
+                            warn!("Failed to set file permissions: {}", e);
                         }
                     }
-                    Err(e) => {
-                        warn!("Failed to create settings file: {}", e);
+                    if let Err(e) = file.write_all(content.as_bytes()) {
+                        warn!("Failed to save settings: {}", e);
                     }
                 }
-            }
+                Err(e) => {
+                    warn!("Failed to create settings file: {}", e);
+                }
+            },
             Err(e) => {
                 warn!("Failed to serialize settings: {}", e);
             }

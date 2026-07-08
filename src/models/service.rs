@@ -9,7 +9,7 @@
 pub struct Service {
     pub name: String,
     pub description: String,
-    pub ports: Vec<(String, String)>,  // (port, protocol)
+    pub ports: Vec<(String, String)>, // (port, protocol)
     pub is_enabled: bool,
 }
 
@@ -59,12 +59,14 @@ impl Service {
         if self.ports.is_empty() {
             return String::new();
         }
-        
-        let port_strs: Vec<String> = self.ports.iter()
+
+        let port_strs: Vec<String> = self
+            .ports
+            .iter()
             .take(3)
             .map(|(port, proto)| format!("{}/{}", port, proto))
             .collect();
-        
+
         if self.ports.len() > 3 {
             format!("{} +{}", port_strs.join(", "), self.ports.len() - 3)
         } else {

@@ -84,7 +84,11 @@ mod imp {
 
             // Accent-ish blue that reads on both themes
             let is_dark = adw::StyleManager::default().is_dark();
-            let (r, g, b) = if is_dark { (0.45, 0.62, 0.95) } else { (0.21, 0.52, 0.89) };
+            let (r, g, b) = if is_dark {
+                (0.45, 0.62, 0.95)
+            } else {
+                (0.21, 0.52, 0.89)
+            };
 
             let max = true_max.max(1.0);
             let step = width / (values.len() as f64 - 1.0);

@@ -7,15 +7,15 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4::subclass::prelude::*;
-use gtk4::glib;
 use libadwaita as adw;
 use libadwaita::prelude::*;
 
 use crate::firewall::FirewallClient;
 use crate::i18n::gettext;
-use crate::models::{Port, ConsolidatedPort};
+use crate::models::{ConsolidatedPort, Port};
 use crate::storage::{PortMetadata, PortStorage};
 use crate::validation::{format_port_spec, parse_port_spec, validate_port_name, validate_protocol};
 
@@ -91,13 +91,13 @@ impl PortsPage {
             .build();
 
         let title = gtk4::Label::builder()
-            .label(&gettext("Ports"))
+            .label(gettext("Ports"))
             .css_classes(vec!["title-1".to_string()])
             .halign(gtk4::Align::Start)
             .build();
 
         let subtitle = gtk4::Label::builder()
-            .label(&gettext("Manage open and blocked ports in the firewall"))
+            .label(gettext("Manage open and blocked ports in the firewall"))
             .css_classes(vec!["dim-label".to_string()])
             .halign(gtk4::Align::Start)
             .build();
@@ -107,7 +107,7 @@ impl PortsPage {
         header_box.append(&title_box);
 
         let add_button = gtk4::Button::builder()
-            .label(&gettext("Add Port"))
+            .label(gettext("Add Port"))
             .css_classes(vec!["suggested-action".to_string()])
             .valign(gtk4::Align::Center)
             .build();
@@ -140,25 +140,33 @@ impl PortsPage {
         scrolled.set_child(Some(&content));
 
         // Ports group
-        content.append(&Self::create_section_header("network-transmit-symbolic", &gettext("Open Ports")));
+        content.append(&Self::create_section_header(
+            "network-transmit-symbolic",
+            &gettext("Open Ports"),
+        ));
         let ports_group = adw::PreferencesGroup::builder()
-            .description(&gettext("Custom ports opened in the firewall"))
+            .description(gettext("Custom ports opened in the firewall"))
             .build();
         content.append(&ports_group);
         imp.ports_group.replace(Some(ports_group));
 
         // Blocked ports group
-        content.append(&Self::create_section_header("action-unavailable-symbolic", &gettext("Blocked Ports")));
+        content.append(&Self::create_section_header(
+            "action-unavailable-symbolic",
+            &gettext("Blocked Ports"),
+        ));
         let blocked_ports_group = adw::PreferencesGroup::builder()
-            .description(&gettext("Ports explicitly blocked via rich rules"))
+            .description(gettext("Ports explicitly blocked via rich rules"))
             .build();
         content.append(&blocked_ports_group);
         imp.blocked_ports_group.replace(Some(blocked_ports_group));
 
         // Summary group
-        content.append(&Self::create_section_header("view-list-symbolic", &gettext("Summary")));
-        let summary_group = adw::PreferencesGroup::builder()
-            .build();
+        content.append(&Self::create_section_header(
+            "view-list-symbolic",
+            &gettext("Summary"),
+        ));
+        let summary_group = adw::PreferencesGroup::builder().build();
         content.append(&summary_group);
         imp.summary_group.replace(Some(summary_group));
     }
@@ -179,7 +187,10 @@ impl PortsPage {
 
         // Clear existing rows from all groups using tracked rows
         Self::clear_preferences_group_rows(imp.ports_group.borrow().as_ref(), &imp.ports_rows);
-        Self::clear_preferences_group_rows(imp.blocked_ports_group.borrow().as_ref(), &imp.blocked_rows);
+        Self::clear_preferences_group_rows(
+            imp.blocked_ports_group.borrow().as_ref(),
+            &imp.blocked_rows,
+        );
         Self::clear_preferences_group_rows(imp.summary_group.borrow().as_ref(), &imp.summary_rows);
 
         let mut tcp_count = 0;
@@ -194,9 +205,16 @@ impl PortsPage {
         {
             // Single ports present in this refresh — a legacy start-port key may
             // belong to one of these, so range migration must not claim it
-            let single_keys: std::collections::HashSet<(u16, String, String)> = all_ports.iter()
+            let single_keys: std::collections::HashSet<(u16, String, String)> = all_ports
+                .iter()
                 .filter(|p| !p.is_range())
-                .map(|p| (p.number, p.protocol.clone(), p.zone.clone().unwrap_or_default()))
+                .map(|p| {
+                    (
+                        p.number,
+                        p.protocol.clone(),
+                        p.zone.clone().unwrap_or_default(),
+                    )
+                })
                 .collect();
 
             let mut storage = imp.storage.borrow_mut();
@@ -209,11 +227,16 @@ impl PortsPage {
                             port.name = Some(metadata.name.clone());
                         }
                     } else if port.is_range()
-                        && !single_keys.contains(&(port.number, port.protocol.clone(), zone.to_string()))
+                        && !single_keys.contains(&(
+                            port.number,
+                            port.protocol.clone(),
+                            zone.to_string(),
+                        ))
                     {
                         // Older releases collapsed small firewalld ranges to their
                         // start port; migrate such legacy entries to the range key
-                        let legacy_key = PortStorage::make_key(&port.number.to_string(), &port.protocol, zone);
+                        let legacy_key =
+                            PortStorage::make_key(&port.number.to_string(), &port.protocol, zone);
                         if let Some(mut metadata) = storage.get(&legacy_key) {
                             if metadata.end_port == 0 {
                                 metadata.end_port = port.end_number.unwrap_or(0);
@@ -241,12 +264,15 @@ impl PortsPage {
         // lingering for one refresh cycle.
         if !all_ports.is_empty() {
             let mut storage = imp.storage.borrow_mut();
-            let live_keys: std::collections::HashSet<String> = all_ports.iter()
-                .map(|p| PortStorage::make_key(
-                    &p.port_spec(),
-                    &p.protocol,
-                    p.zone.as_deref().unwrap_or(""),
-                ))
+            let live_keys: std::collections::HashSet<String> = all_ports
+                .iter()
+                .map(|p| {
+                    PortStorage::make_key(
+                        &p.port_spec(),
+                        &p.protocol,
+                        p.zone.as_deref().unwrap_or(""),
+                    )
+                })
                 .collect();
             for key in storage.keys() {
                 if !live_keys.contains(&key) {
@@ -258,8 +284,8 @@ impl PortsPage {
         if all_ports.is_empty() {
             if let Some(group) = imp.ports_group.borrow().as_ref() {
                 let placeholder = adw::ActionRow::builder()
-                    .title(&gettext("No port rules configured"))
-                    .subtitle(&gettext("Click 'Add Port' to create a rule"))
+                    .title(gettext("No port rules configured"))
+                    .subtitle(gettext("Click 'Add Port' to create a rule"))
                     .sensitive(false)
                     .build();
                 group.add(&placeholder);
@@ -268,11 +294,20 @@ impl PortsPage {
         } else {
             // Count stats before consolidation
             for port in &all_ports {
-                let is_blocked = port.action == "deny" || port.action == "reject" || port.action == "drop";
+                let is_blocked =
+                    port.action == "deny" || port.action == "reject" || port.action == "drop";
                 if port.protocol == "tcp" {
-                    if is_blocked { tcp_deny_count += 1; } else { tcp_count += 1; }
+                    if is_blocked {
+                        tcp_deny_count += 1;
+                    } else {
+                        tcp_count += 1;
+                    }
                 } else {
-                    if is_blocked { udp_deny_count += 1; } else { udp_count += 1; }
+                    if is_blocked {
+                        udp_deny_count += 1;
+                    } else {
+                        udp_count += 1;
+                    }
                 }
             }
 
@@ -296,8 +331,8 @@ impl PortsPage {
             if !has_open {
                 if let Some(group) = imp.ports_group.borrow().as_ref() {
                     let placeholder = adw::ActionRow::builder()
-                        .title(&gettext("No open ports"))
-                        .subtitle(&gettext("Click 'Add Port' to allow traffic on a port"))
+                        .title(gettext("No open ports"))
+                        .subtitle(gettext("Click 'Add Port' to allow traffic on a port"))
                         .sensitive(false)
                         .build();
                     group.add(&placeholder);
@@ -309,8 +344,8 @@ impl PortsPage {
             if !has_blocked {
                 if let Some(group) = imp.blocked_ports_group.borrow().as_ref() {
                     let placeholder = adw::ActionRow::builder()
-                        .title(&gettext("No blocked ports"))
-                        .subtitle(&gettext("No ports are explicitly blocked via rules"))
+                        .title(gettext("No blocked ports"))
+                        .subtitle(gettext("No ports are explicitly blocked via rules"))
                         .sensitive(false)
                         .build();
                     group.add(&placeholder);
@@ -322,20 +357,24 @@ impl PortsPage {
         // Update summary
         if let Some(group) = imp.summary_group.borrow().as_ref() {
             let tcp_row = adw::ActionRow::builder()
-                .title(&gettext("TCP Ports"))
-                .subtitle(&gettext("%d allowed, %d blocked")
-                    .replacen("%d", &tcp_count.to_string(), 1)
-                    .replacen("%d", &tcp_deny_count.to_string(), 1))
+                .title(gettext("TCP Ports"))
+                .subtitle(
+                    gettext("%d allowed, %d blocked")
+                        .replacen("%d", &tcp_count.to_string(), 1)
+                        .replacen("%d", &tcp_deny_count.to_string(), 1),
+                )
                 .build();
             tcp_row.add_prefix(&gtk4::Image::from_icon_name("network-transmit-symbolic"));
             group.add(&tcp_row);
             imp.summary_rows.borrow_mut().push(tcp_row);
 
             let udp_row = adw::ActionRow::builder()
-                .title(&gettext("UDP Ports"))
-                .subtitle(&gettext("%d allowed, %d blocked")
-                    .replacen("%d", &udp_count.to_string(), 1)
-                    .replacen("%d", &udp_deny_count.to_string(), 1))
+                .title(gettext("UDP Ports"))
+                .subtitle(
+                    gettext("%d allowed, %d blocked")
+                        .replacen("%d", &udp_count.to_string(), 1)
+                        .replacen("%d", &udp_deny_count.to_string(), 1),
+                )
                 .build();
             udp_row.add_prefix(&gtk4::Image::from_icon_name("network-receive-symbolic"));
             group.add(&udp_row);
@@ -423,9 +462,9 @@ impl PortsPage {
             // Collapse the remaining zones into a single "+N" badge
             if port.zones.len() > MAX_ZONE_BADGES {
                 let more_label = gtk4::Label::builder()
-                    .label(&format!("+{}", port.zones.len() - MAX_ZONE_BADGES))
+                    .label(format!("+{}", port.zones.len() - MAX_ZONE_BADGES))
                     .css_classes(vec!["caption".to_string(), "card".to_string()])
-                    .tooltip_text(&port.zones[MAX_ZONE_BADGES..].join(", "))
+                    .tooltip_text(port.zones[MAX_ZONE_BADGES..].join(", "))
                     .build();
                 more_label.add_css_class("dim-label");
                 suffix_box.append(&more_label);
@@ -435,7 +474,7 @@ impl PortsPage {
 
             // Protocol badge
             let proto_label = gtk4::Label::builder()
-                .label(&port.protocol_display())
+                .label(port.protocol_display())
                 .css_classes(vec!["caption".to_string()])
                 .valign(gtk4::Align::Center)
                 .build();
@@ -444,7 +483,7 @@ impl PortsPage {
             }
             proto_label.set_margin_end(8);
             row.add_suffix(&proto_label);
-            
+
             let port_clone = port.clone();
             let page_clone = self.clone();
 
@@ -453,9 +492,9 @@ impl PortsPage {
                 .icon_name("document-edit-symbolic")
                 .css_classes(vec!["flat".to_string()])
                 .valign(gtk4::Align::Center)
-                .tooltip_text(&gettext("Edit rule"))
+                .tooltip_text(gettext("Edit rule"))
                 .build();
-            
+
             let p_clone = port.clone();
             let page_c = self.clone();
             edit_button.connect_clicked(move |_| {
@@ -468,7 +507,7 @@ impl PortsPage {
                 .icon_name("user-trash-symbolic")
                 .css_classes(vec!["flat".to_string(), "error".to_string()])
                 .valign(gtk4::Align::Center)
-                .tooltip_text(&gettext("Delete this port rule"))
+                .tooltip_text(gettext("Delete this port rule"))
                 .build();
 
             let row_clone = row.clone();
@@ -526,7 +565,7 @@ impl PortsPage {
     fn delete_consolidated_port(&self, port: &ConsolidatedPort) {
         let port_data = port.clone();
         let page = self.clone();
-        
+
         glib::spawn_future_local(async move {
             let port_spec = port_data.port_spec();
             let protocols = port_data.protocols.clone();
@@ -571,11 +610,16 @@ impl PortsPage {
                 }
 
                 Ok(())
-            }).await;
+            })
+            .await;
 
             match result {
                 Ok(Ok(())) => {
-                    page.show_toast(&format!("Port {} deleted from {} zone(s)", port_spec_after, zones_after.len()));
+                    page.show_toast(&format!(
+                        "Port {} deleted from {} zone(s)",
+                        port_spec_after,
+                        zones_after.len()
+                    ));
 
                     // Update storage
                     let mut storage = page.imp().storage.borrow_mut();
@@ -623,7 +667,10 @@ impl PortsPage {
 
     /// Helper to clear all rows from a PreferencesGroup.
     /// Stores row references in the imp module for safe removal.
-    fn clear_preferences_group_rows(group: Option<&adw::PreferencesGroup>, stored_rows: &RefCell<Vec<adw::ActionRow>>) {
+    fn clear_preferences_group_rows(
+        group: Option<&adw::PreferencesGroup>,
+        stored_rows: &RefCell<Vec<adw::ActionRow>>,
+    ) {
         if let Some(group) = group {
             // Remove only the rows we previously added and tracked
             let rows = stored_rows.borrow();
@@ -643,10 +690,14 @@ impl PortsPage {
         let imp = self.imp();
 
         let current_zone = imp.current_zone.borrow().clone();
-        let default_zone = if current_zone.is_empty() { "public".to_string() } else { current_zone };
+        let default_zone = if current_zone.is_empty() {
+            "public".to_string()
+        } else {
+            current_zone
+        };
 
         let dialog = adw::AlertDialog::builder()
-            .heading(&gettext("Add Port Rule"))
+            .heading(gettext("Add Port Rule"))
             .build();
 
         // Create form content
@@ -661,24 +712,24 @@ impl PortsPage {
 
         // === Port Details Section ===
         let details_group = adw::PreferencesGroup::builder()
-            .title(&gettext("Port Details"))
+            .title(gettext("Port Details"))
             .build();
 
         // Name entry (optional, for user reference)
         let name_entry = adw::EntryRow::builder()
-            .title(&gettext("Name (optional)"))
+            .title(gettext("Name (optional)"))
             .build();
         details_group.add(&name_entry);
 
         // Port number entry — accepts a single port or a range like "10-20"
         let port_entry = adw::EntryRow::builder()
-            .title(&gettext("Port or Range (e.g. 8080 or 10-20)"))
+            .title(gettext("Port or Range (e.g. 8080 or 10-20)"))
             .build();
         details_group.add(&port_entry);
 
         // Protocol selection
         let protocol_row = adw::ComboRow::builder()
-            .title(&gettext("Protocol"))
+            .title(gettext("Protocol"))
             .model(&gtk4::StringList::new(&[
                 gettext("TCP").as_str(),
                 gettext("UDP").as_str(),
@@ -692,14 +743,16 @@ impl PortsPage {
 
         // === Rule Action Section ===
         let action_group = adw::PreferencesGroup::builder()
-            .title(&gettext("Firewall Action"))
-            .description(&gettext("How the firewall should handle incoming traffic on this port"))
+            .title(gettext("Firewall Action"))
+            .description(gettext(
+                "How the firewall should handle incoming traffic on this port",
+            ))
             .build();
 
         // Action selection (Allow or Block)
         let action_row = adw::ComboRow::builder()
-            .title(&gettext("Action"))
-            .subtitle(&gettext("Allow opens the port, Block rejects connections"))
+            .title(gettext("Action"))
+            .subtitle(gettext("Allow opens the port, Block rejects connections"))
             .model(&gtk4::StringList::new(&[
                 gettext("Allow (Open Port)").as_str(),
                 gettext("Block (Reject Connections)").as_str(),
@@ -713,40 +766,41 @@ impl PortsPage {
 
         // === Zone Selection Section (Multi-select) ===
         let zones_group = adw::PreferencesGroup::builder()
-            .title(&gettext("Zones"))
-            .description(&gettext("Select one or more zones to apply this rule"))
+            .title(gettext("Zones"))
+            .description(gettext("Select one or more zones to apply this rule"))
             .build();
 
         // Zone list - fetch available zones
         let cached_zones = imp.cached_zones.borrow().clone();
         let default_zone_list = vec![
-            "public".to_string(), 
-            "home".to_string(), 
-            "work".to_string(), 
-            "internal".to_string(), 
-            "external".to_string(), 
-            "dmz".to_string(), 
-            "block".to_string(), 
-            "drop".to_string(), 
-            "trusted".to_string()
+            "public".to_string(),
+            "home".to_string(),
+            "work".to_string(),
+            "internal".to_string(),
+            "external".to_string(),
+            "dmz".to_string(),
+            "block".to_string(),
+            "drop".to_string(),
+            "trusted".to_string(),
         ];
-        
+
         // Use cached zones if available, otherwise use defaults
         let zone_names: Vec<String> = if cached_zones.is_empty() {
             default_zone_list
         } else {
             cached_zones
         };
-        
+
         // Create a switch row for each zone
-        let zone_switches: Rc<RefCell<Vec<(String, adw::SwitchRow)>>> = Rc::new(RefCell::new(Vec::new()));
-        
+        let zone_switches: Rc<RefCell<Vec<(String, adw::SwitchRow)>>> =
+            Rc::new(RefCell::new(Vec::new()));
+
         for zone_name in &zone_names {
             let switch_row = adw::SwitchRow::builder()
                 .title(zone_name)
-                .active(zone_name == &default_zone)  // Pre-select current zone
+                .active(zone_name == &default_zone) // Pre-select current zone
                 .build();
-            
+
             // Add appropriate icon based on zone type
             let icon_name = match zone_name.as_str() {
                 "public" => "network-wireless-symbolic",
@@ -758,22 +812,24 @@ impl PortsPage {
                 _ => "network-wired-symbolic",
             };
             switch_row.add_prefix(&gtk4::Image::from_icon_name(icon_name));
-            
+
             zones_group.add(&switch_row);
-            zone_switches.borrow_mut().push((zone_name.clone(), switch_row));
+            zone_switches
+                .borrow_mut()
+                .push((zone_name.clone(), switch_row));
         }
-        
+
         content.append(&zones_group);
 
         // === Options Section ===
         let options_group = adw::PreferencesGroup::builder()
-            .title(&gettext("Options"))
+            .title(gettext("Options"))
             .build();
 
         // Permanent switch
         let permanent_row = adw::SwitchRow::builder()
-            .title(&gettext("Make Permanent"))
-            .subtitle(&gettext("Rule persists after reboot"))
+            .title(gettext("Make Permanent"))
+            .subtitle(gettext("Rule persists after reboot"))
             .active(true)
             .build();
         options_group.add(&permanent_row);
@@ -900,23 +956,31 @@ impl PortsPage {
     }
 
     /// Add a port rule (Allow or Block incoming traffic).
-    fn add_port_rule(&self, zone: &str, port: &str, protocol: &str, action: u32, permanent: bool, name: Option<String>) {
+    fn add_port_rule(
+        &self,
+        zone: &str,
+        port: &str,
+        protocol: &str,
+        action: u32,
+        permanent: bool,
+        name: Option<String>,
+    ) {
         let zone = zone.to_string();
         let port = port.to_string();
         let protocol = protocol.to_string();
         let page = self.clone();
-        
+
         glib::spawn_future_local(async move {
             let zone_clone = zone.clone();
             let port_clone = port.clone();
             let protocol_clone = protocol.clone();
-            
+
             let result = gtk4::gio::spawn_blocking(move || {
                 let mut client = crate::firewall::FirewallClient::new();
                 if let Err(e) = client.connect() {
                     return Err(anyhow::anyhow!("Not connected to firewalld: {}", e));
                 }
-                
+
                 // action: 0=Allow (open port), 1=Block (reject connections)
                 let outcome = if action == 0 {
                     // Allow = add port to zone (opens the port)
@@ -945,7 +1009,8 @@ impl PortsPage {
                     gettext("Port blocked (rejected)")
                 };
                 Ok((msg, outcome))
-            }).await;
+            })
+            .await;
 
             match result {
                 Ok(Ok((msg, outcome))) => {
@@ -960,21 +1025,26 @@ impl PortsPage {
 
                     // Save rule metadata
                     if let Some((start, end)) = parse_port_spec(&port) {
-                        let key = PortStorage::make_key(&format_port_spec(start, end), &protocol, &zone);
+                        let key =
+                            PortStorage::make_key(&format_port_spec(start, end), &protocol, &zone);
                         let mut metadata = PortMetadata::new(name.as_deref().unwrap_or(""));
                         metadata.port = start;
                         metadata.end_port = if end > start { end } else { 0 };
                         metadata.protocol = protocol.clone();
                         metadata.zone = zone.clone();
-                        metadata.incoming_action = if action == 0 { "allow".to_string() } else { "block".to_string() };
-                        metadata.description = if action == 0 { 
-                            "Incoming: Allowed".to_string() 
-                        } else { 
-                            "Incoming: Blocked".to_string() 
+                        metadata.incoming_action = if action == 0 {
+                            "allow".to_string()
+                        } else {
+                            "block".to_string()
+                        };
+                        metadata.description = if action == 0 {
+                            "Incoming: Allowed".to_string()
+                        } else {
+                            "Incoming: Blocked".to_string()
                         };
                         page.imp().storage.borrow_mut().set(key, metadata);
                     }
-                    
+
                     page.request_refresh();
                 }
                 Ok(Err(e)) => {
@@ -989,7 +1059,15 @@ impl PortsPage {
 
     /// Add a port to the firewall (legacy method).
     #[allow(dead_code)]
-    fn add_port(&self, zone: &str, port: &str, protocol: &str, _direction: &str, permanent: bool, name: Option<String>) {
+    fn add_port(
+        &self,
+        zone: &str,
+        port: &str,
+        protocol: &str,
+        _direction: &str,
+        permanent: bool,
+        name: Option<String>,
+    ) {
         // Convert to new method - only supports incoming now
         let action = 0; // Allow
         self.add_port_rule(zone, port, protocol, action, permanent, name);
@@ -1001,7 +1079,7 @@ impl PortsPage {
         let port_original = port.clone();
 
         let dialog = adw::AlertDialog::builder()
-            .heading(&format!("Edit Port {}", port.port_spec()))
+            .heading(format!("Edit Port {}", port.port_spec()))
             .build();
 
         // Create form content
@@ -1016,12 +1094,12 @@ impl PortsPage {
 
         // === Port Details Section ===
         let details_group = adw::PreferencesGroup::builder()
-            .title(&gettext("Port Details"))
+            .title(gettext("Port Details"))
             .build();
 
         // Name entry
         let name_entry = adw::EntryRow::builder()
-            .title(&gettext("Name (optional)"))
+            .title(gettext("Name (optional)"))
             .text(port.name.as_deref().unwrap_or(""))
             .build();
         details_group.add(&name_entry);
@@ -1030,12 +1108,20 @@ impl PortsPage {
         // Determine initial generic selection
         let has_tcp = port.protocols.contains(&"tcp".to_string());
         let has_udp = port.protocols.contains(&"udp".to_string());
-        let initial_proto_idx = if has_tcp && has_udp { 2 } // Both
-            else if has_udp { 1 } // UDP
-            else { 0 }; // TCP (default)
+        let initial_proto_idx = if has_tcp && has_udp {
+            2
+        }
+        // Both
+        else if has_udp {
+            1
+        }
+        // UDP
+        else {
+            0
+        }; // TCP (default)
 
         let protocol_row = adw::ComboRow::builder()
-            .title(&gettext("Protocol"))
+            .title(gettext("Protocol"))
             .model(&gtk4::StringList::new(&[
                 gettext("TCP").as_str(),
                 gettext("UDP").as_str(),
@@ -1049,14 +1135,14 @@ impl PortsPage {
 
         // === Rule Action Section ===
         let action_group = adw::PreferencesGroup::builder()
-            .title(&gettext("Firewall Action"))
+            .title(gettext("Firewall Action"))
             .build();
 
         // Action selection
         let initial_action_idx = if port.is_blocked() { 1 } else { 0 };
         let action_row = adw::ComboRow::builder()
-            .title(&gettext("Action"))
-            .subtitle(&gettext("Allow opens the port, Block rejects connections"))
+            .title(gettext("Action"))
+            .subtitle(gettext("Allow opens the port, Block rejects connections"))
             .model(&gtk4::StringList::new(&[
                 gettext("Allow (Open Port)").as_str(),
                 gettext("Block (Reject Connections)").as_str(),
@@ -1070,26 +1156,33 @@ impl PortsPage {
 
         // === Zone Selection Section ===
         let zones_group = adw::PreferencesGroup::builder()
-            .title(&gettext("Zones"))
-            .description(&gettext("Select one or more zones to apply this rule"))
+            .title(gettext("Zones"))
+            .description(gettext("Select one or more zones to apply this rule"))
             .build();
 
         // Zone list
         let cached_zones = imp.cached_zones.borrow().clone();
         let default_zone_list = vec![
-            "public".to_string(), "home".to_string(), "work".to_string(), 
-            "internal".to_string(), "external".to_string(), "dmz".to_string(), 
-            "block".to_string(), "drop".to_string(), "trusted".to_string()
+            "public".to_string(),
+            "home".to_string(),
+            "work".to_string(),
+            "internal".to_string(),
+            "external".to_string(),
+            "dmz".to_string(),
+            "block".to_string(),
+            "drop".to_string(),
+            "trusted".to_string(),
         ];
-        
+
         let zone_names: Vec<String> = if cached_zones.is_empty() {
             default_zone_list
         } else {
             cached_zones
         };
-        
-        let zone_switches: Rc<RefCell<Vec<(String, adw::SwitchRow)>>> = Rc::new(RefCell::new(Vec::new()));
-        
+
+        let zone_switches: Rc<RefCell<Vec<(String, adw::SwitchRow)>>> =
+            Rc::new(RefCell::new(Vec::new()));
+
         for zone_name in &zone_names {
             // Check if this zone is currently active for this port
             let is_active = port.zones.contains(zone_name);
@@ -1098,7 +1191,7 @@ impl PortsPage {
                 .title(zone_name)
                 .active(is_active)
                 .build();
-            
+
             let icon_name = match zone_name.as_str() {
                 "public" => "network-wireless-symbolic",
                 "home" => "user-home-symbolic",
@@ -1109,21 +1202,23 @@ impl PortsPage {
                 _ => "network-wired-symbolic",
             };
             switch_row.add_prefix(&gtk4::Image::from_icon_name(icon_name));
-            
+
             zones_group.add(&switch_row);
-            zone_switches.borrow_mut().push((zone_name.clone(), switch_row));
+            zone_switches
+                .borrow_mut()
+                .push((zone_name.clone(), switch_row));
         }
-        
+
         content.append(&zones_group);
 
         // === Options ===
         let options_group = adw::PreferencesGroup::builder()
-            .title(&gettext("Options"))
+            .title(gettext("Options"))
             .build();
 
         let permanent_row = adw::SwitchRow::builder()
-            .title(&gettext("Make Permanent"))
-            .subtitle(&gettext("Rule persists after reboot"))
+            .title(gettext("Make Permanent"))
+            .subtitle(gettext("Rule persists after reboot"))
             .active(port.is_permanent)
             .build();
         options_group.add(&permanent_row);
@@ -1161,7 +1256,7 @@ impl PortsPage {
                 let protocol_idx = protocol_row.selected();
                 let action_idx = action_row.selected(); // 0=Allow, 1=Block
                 let permanent = permanent_row.is_active();
-                
+
                 // Collect selected zones
                 let selected_zones: Vec<String> = zone_switches_clone.borrow()
                     .iter()
@@ -1181,13 +1276,13 @@ impl PortsPage {
                     return;
                 }
                 let name = sanitized_name.filter(|n| !n.is_empty());
-                
+
                 let protocols: Vec<&str> = match protocol_idx {
                     0 => vec!["tcp"],
                     1 => vec!["udp"],
                     _ => vec!["tcp", "udp"],
                 };
-                
+
                 // apply_edit will remove old rules and add new ones
                 page.apply_port_edit(&port_original, &selected_zones, &protocols, action_idx, permanent, name);
             }
@@ -1202,18 +1297,26 @@ impl PortsPage {
     }
 
     /// Apply edits to a port: remove old rules, add new ones.
-    fn apply_port_edit(&self, original: &ConsolidatedPort, new_zones: &[String], new_protocols: &[&str], action: u32, permanent: bool, name: Option<String>) {
+    fn apply_port_edit(
+        &self,
+        original: &ConsolidatedPort,
+        new_zones: &[String],
+        new_protocols: &[&str],
+        action: u32,
+        permanent: bool,
+        name: Option<String>,
+    ) {
         let page = self.clone();
         let original = original.clone();
         let new_zones = new_zones.to_vec();
         let new_protocols: Vec<String> = new_protocols.iter().map(|s| s.to_string()).collect();
         let name = name.clone();
-        
+
         // Clone for use after spawn_blocking moves the originals
         let original_after = original.clone();
         let new_zones_after = new_zones.clone();
         let new_protocols_after = new_protocols.clone();
-        
+
         let raw_rules = original.raw_rules.clone();
 
         glib::spawn_future_local(async move {
@@ -1274,7 +1377,8 @@ impl PortsPage {
                 }
 
                 Ok(permanent_failed)
-            }).await;
+            })
+            .await;
 
             match result {
                 Ok(Ok(permanent_failed)) => {
@@ -1308,17 +1412,21 @@ impl PortsPage {
                             metadata.end_port = port_end.filter(|&e| e > port_num).unwrap_or(0);
                             metadata.protocol = protocol.clone();
                             metadata.zone = zone.clone();
-                            metadata.incoming_action = if action == 0 { "allow".to_string() } else { "block".to_string() };
-                            metadata.description = if action == 0 { 
-                                "Incoming: Allowed".to_string() 
-                            } else { 
-                                "Incoming: Blocked".to_string() 
+                            metadata.incoming_action = if action == 0 {
+                                "allow".to_string()
+                            } else {
+                                "block".to_string()
+                            };
+                            metadata.description = if action == 0 {
+                                "Incoming: Allowed".to_string()
+                            } else {
+                                "Incoming: Blocked".to_string()
                             };
                             storage.set(key, metadata);
                         }
                     }
                     drop(storage);
-                    
+
                     page.request_refresh();
                 }
                 Ok(Err(e)) => {

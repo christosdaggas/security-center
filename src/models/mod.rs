@@ -4,15 +4,15 @@
 
 //! Data models for firewall entities.
 
-mod zone;
-mod service;
-mod port;
 mod interface;
+mod port;
+mod service;
+mod zone;
 
-pub use zone::Zone;
-pub use service::Service;
-pub use port::Port;
-pub use interface::Interface;
 pub use consolidated_port::ConsolidatedPort;
+pub use interface::Interface;
+pub use port::Port;
+pub use service::Service;
+pub use zone::Zone;
 
 mod consolidated_port;

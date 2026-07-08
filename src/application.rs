@@ -56,18 +56,18 @@ impl Application {
 
     fn show_preferences_dialog(&self) {
         let dialog = adw::PreferencesDialog::builder()
-            .title(&gettext("Preferences"))
+            .title(gettext("Preferences"))
             .build();
 
         let page = adw::PreferencesPage::new();
 
         let appearance_group = adw::PreferencesGroup::builder()
-            .title(&gettext("Appearance"))
+            .title(gettext("Appearance"))
             .build();
 
         let theme_row = adw::ComboRow::builder()
-            .title(&gettext("Theme"))
-            .subtitle(&gettext("Choose the application color scheme"))
+            .title(gettext("Theme"))
+            .subtitle(gettext("Choose the application color scheme"))
             .model(&gtk4::StringList::new(&[
                 gettext("System").as_str(),
                 gettext("Light").as_str(),
@@ -98,15 +98,17 @@ impl Application {
         page.add(&appearance_group);
 
         let behavior_group = adw::PreferencesGroup::builder()
-            .title(&gettext("Behavior"))
-            .description(&gettext("Startup and system integration options"))
+            .title(gettext("Behavior"))
+            .description(gettext("Startup and system integration options"))
             .build();
 
         let autostart_enabled = crate::autostart::is_autostart_enabled();
 
         let autostart_row = adw::SwitchRow::builder()
-            .title(&gettext("Start on Login"))
-            .subtitle(&gettext("Automatically start Security Center when you log in"))
+            .title(gettext("Start on Login"))
+            .subtitle(gettext(
+                "Automatically start Security Center when you log in",
+            ))
             .active(autostart_enabled)
             .build();
 
@@ -122,15 +124,20 @@ impl Application {
         // Toggle the live firewall connections overview on the dashboard.
         let connections_enabled = self.imp().settings.borrow().show_connections_overview();
         let connections_row = adw::SwitchRow::builder()
-            .title(&gettext("Firewall Connections Overview"))
-            .subtitle(&gettext("Show the live per-application connection monitor on the dashboard"))
+            .title(gettext("Firewall Connections Overview"))
+            .subtitle(gettext(
+                "Show the live per-application connection monitor on the dashboard",
+            ))
             .active(connections_enabled)
             .build();
 
         let app = self.clone();
         connections_row.connect_active_notify(move |row| {
             let enabled = row.is_active();
-            app.imp().settings.borrow_mut().set_show_connections_overview(enabled);
+            app.imp()
+                .settings
+                .borrow_mut()
+                .set_show_connections_overview(enabled);
             if let Some(window) = app.imp().window.get() {
                 window.set_connections_overview_visible(enabled);
             }
@@ -187,7 +194,7 @@ impl Application {
 
     fn show_about_dialog(&self) {
         let dialog = adw::AboutDialog::builder()
-            .application_name(&gettext("Security Center"))
+            .application_name(gettext("Security Center"))
             .application_icon("com.chrisdaggas.security-center")
             .developer_name("Christos A. Daggas")
             .version(env!("CARGO_PKG_VERSION"))
@@ -196,7 +203,7 @@ impl Application {
             .license_type(gtk4::License::MitX11)
             .copyright("© 2024-2026 Christos A. Daggas")
             .developers(vec!["Christos A. Daggas".to_string()])
-            .comments(&gettext("Manage your system security, firewall and services"))
+            .comments(gettext("Manage your system security, firewall and services"))
             .release_notes("<p>Version 1.7.0 - July 2026</p><ul>\
                 <li>Redesigned Overview Dashboard - Live per-application firewall connection monitor</li>\
                 <li>Application Connection Cards - Real application icons, throughput sparklines, and remote endpoints</li>\
@@ -258,30 +265,35 @@ impl Application {
     fn register_icon_paths(&self) {
         if let Some(display) = gtk4::gdk::Display::default() {
             let icon_theme = gtk4::IconTheme::for_display(&display);
-            
+
             // Try to find icons relative to the executable (for development/portable use)
             if let Ok(exe_path) = std::env::current_exe() {
                 if let Some(exe_dir) = exe_path.parent() {
                     let dev_icons = exe_dir.join("../../data/icons");
                     if dev_icons.exists() {
-                        if let Some(path_str) = dev_icons.canonicalize().ok().and_then(|p| p.to_str().map(String::from)) {
+                        if let Some(path_str) = dev_icons
+                            .canonicalize()
+                            .ok()
+                            .and_then(|p| p.to_str().map(String::from))
+                        {
                             icon_theme.add_search_path(&path_str);
                         }
                     }
                 }
             }
-            
+
             icon_theme.add_search_path("data/icons");
         }
     }
 
     fn load_css(&self) {
         let provider = gtk4::CssProvider::new();
-        
+
         if let Some(display) = gtk4::gdk::Display::default() {
             let accent_color = self.get_accent_color();
-            
-            let css = format!(r#"
+
+            let css = format!(
+                r#"
                 /* Define accent color with fallback */
                 @define-color firewall_accent {accent_color};
                 
@@ -341,8 +353,9 @@ impl Application {
                     font-weight: bold;
                     font-size: 10px;
                 }}
-            "#);
-            
+            "#
+            );
+
             provider.load_from_string(&css);
             gtk4::style_context_add_provider_for_display(
                 &display,
@@ -395,8 +408,8 @@ impl Application {
 
 mod imp {
     use super::*;
-    use std::cell::OnceCell;
     use libadwaita::subclass::prelude::*;
+    use std::cell::OnceCell;
 
     #[derive(Default)]
     pub struct Application {
@@ -421,18 +434,16 @@ mod imp {
     impl ApplicationImpl for Application {
         fn activate(&self) {
             let app = self.obj();
-            
+
             app.load_css();
-            
+
             let theme = self.settings.borrow().theme().to_string();
             app.apply_theme(&theme);
-            
+
             app.setup_actions();
             app.setup_shortcuts();
 
-            let window = self.window.get_or_init(|| {
-                MainWindow::new(&*app)
-            });
+            let window = self.window.get_or_init(|| MainWindow::new(&*app));
 
             window.present();
         }
@@ -440,9 +451,9 @@ mod imp {
         fn startup(&self) {
             self.parent_startup();
             info!("Application starting up");
-            
+
             self.obj().register_icon_paths();
-            
+
             gtk4::Window::set_default_icon_name("com.chrisdaggas.security-center");
         }
     }

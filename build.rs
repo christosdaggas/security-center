@@ -3,13 +3,12 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn main() -> Result<(), String> {
-    let out_dir = PathBuf::from(
-        env::var("OUT_DIR").map_err(|e| format!("OUT_DIR not set: {}", e))?,
-    );
+    let out_dir =
+        PathBuf::from(env::var("OUT_DIR").map_err(|e| format!("OUT_DIR not set: {}", e))?);
     let manifest_dir = PathBuf::from(
         env::var("CARGO_MANIFEST_DIR").map_err(|e| format!("CARGO_MANIFEST_DIR not set: {}", e))?,
     );
-    
+
     let data_dir = manifest_dir.join("data");
     let gresource_xml = data_dir.join("com.chrisdaggas.security-center.gresource.xml");
     let output = out_dir.join("security-center.gresource");

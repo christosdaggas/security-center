@@ -49,7 +49,8 @@ impl BarChart {
     /// Set the data from a list of (label, value) tuples.
     pub fn set_data(&self, data: &[(String, u64)]) {
         let max_value = data.iter().map(|(_, v)| *v as f64).fold(1.0_f64, f64::max);
-        let entries: Vec<BarEntry> = data.iter()
+        let entries: Vec<BarEntry> = data
+            .iter()
             .map(|(label, value)| BarEntry::new(label, *value as f64, max_value))
             .collect();
         self.set_entries(entries);
@@ -58,19 +59,19 @@ impl BarChart {
     /// Set the bar entries to display.
     pub fn set_entries(&self, entries: Vec<BarEntry>) {
         let imp = self.imp();
-        
+
         // Store target values and start animation
         let current = imp.current_values.borrow().clone();
         let target: Vec<f64> = entries.iter().map(|e| e.normalized()).collect();
-        
+
         // Pad or truncate current values to match
         let mut padded_current = current;
         padded_current.resize(target.len(), 0.0);
-        
+
         imp.current_values.replace(padded_current);
         imp.target_values.replace(target);
         imp.entries.replace(entries);
-        
+
         if !imp.animating.get() {
             self.start_animation();
         }
@@ -91,16 +92,16 @@ impl BarChart {
     fn start_animation(&self) {
         let imp = self.imp();
         imp.animating.set(true);
-        
+
         let widget = self.clone();
         self.add_tick_callback(move |_, _| {
             let imp = widget.imp();
-            
+
             let mut current = imp.current_values.borrow_mut();
             let target = imp.target_values.borrow();
-            
+
             let mut all_done = true;
-            
+
             for (i, curr) in current.iter_mut().enumerate() {
                 if let Some(tgt) = target.get(i) {
                     let diff = tgt - *curr;
@@ -112,12 +113,12 @@ impl BarChart {
                     }
                 }
             }
-            
+
             drop(current);
             drop(target);
-            
+
             widget.queue_draw();
-            
+
             if all_done {
                 imp.animating.set(false);
                 glib::ControlFlow::Break
@@ -156,11 +157,11 @@ mod imp {
     impl ObjectImpl for BarChart {
         fn constructed(&self) {
             self.parent_constructed();
-            
+
             let obj = self.obj();
             obj.set_width_request(250);
             obj.set_height_request(150);
-            
+
             self.placeholder.replace("No data available".to_string());
         }
     }
@@ -170,18 +171,18 @@ mod imp {
             let widget = self.obj();
             let width = widget.width() as f64;
             let height = widget.height() as f64;
-            
+
             let entries = self.entries.borrow();
             let current_values = self.current_values.borrow();
-            
+
             // Get colors - use widget color() method (GTK 4.10+) with fallbacks
-            let accent_color = gdk::RGBA::new(0.2, 0.52, 0.89, 1.0);  // Blue accent
+            let accent_color = gdk::RGBA::new(0.2, 0.52, 0.89, 1.0); // Blue accent
             let text_color = widget.color();
             let dim_color = gdk::RGBA::new(0.5, 0.5, 0.5, 0.2);
-            
+
             let bounds = graphene::Rect::new(0.0, 0.0, width as f32, height as f32);
             let cr = snapshot.append_cairo(&bounds);
-            
+
             if entries.is_empty() {
                 // Draw placeholder
                 let placeholder = self.placeholder.borrow();
@@ -191,27 +192,33 @@ mod imp {
                     text_color.blue() as f64,
                     0.5,
                 );
-                cr.select_font_face("Sans", gtk4::cairo::FontSlant::Normal, gtk4::cairo::FontWeight::Normal);
+                cr.select_font_face(
+                    "Sans",
+                    gtk4::cairo::FontSlant::Normal,
+                    gtk4::cairo::FontWeight::Normal,
+                );
                 cr.set_font_size(12.0);
-                let extents = cr.text_extents(&placeholder).unwrap_or_else(|_| gtk4::cairo::TextExtents::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+                let extents = cr.text_extents(&placeholder).unwrap_or_else(|_| {
+                    gtk4::cairo::TextExtents::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+                });
                 cr.move_to((width - extents.width()) / 2.0, height / 2.0);
                 let _ = cr.show_text(&placeholder);
                 return;
             }
-            
+
             let bar_height = 24.0;
             let bar_spacing = 8.0;
             let label_width = 80.0;
             let value_width = 50.0;
             let bar_area_width = width - label_width - value_width - 20.0;
-            
+
             let max_bars = 5;
             let bars_to_show = entries.len().min(max_bars);
-            
+
             for (i, entry) in entries.iter().take(bars_to_show).enumerate() {
                 let y = 10.0 + (i as f64 * (bar_height + bar_spacing));
                 let current_value = current_values.get(i).copied().unwrap_or(0.0);
-                
+
                 // Draw label
                 cr.set_source_rgba(
                     text_color.red() as f64,
@@ -219,19 +226,23 @@ mod imp {
                     text_color.blue() as f64,
                     0.9,
                 );
-                cr.select_font_face("Sans", gtk4::cairo::FontSlant::Normal, gtk4::cairo::FontWeight::Normal);
+                cr.select_font_face(
+                    "Sans",
+                    gtk4::cairo::FontSlant::Normal,
+                    gtk4::cairo::FontWeight::Normal,
+                );
                 cr.set_font_size(11.0);
-                
+
                 // Truncate label if too long
                 let label = if entry.label.len() > 12 {
                     format!("{}…", &entry.label[..11])
                 } else {
                     entry.label.clone()
                 };
-                
+
                 cr.move_to(10.0, y + bar_height / 2.0 + 4.0);
                 let _ = cr.show_text(&label);
-                
+
                 // Draw bar background
                 cr.set_source_rgba(
                     dim_color.red() as f64,
@@ -241,7 +252,7 @@ mod imp {
                 );
                 Self::rounded_rect(&cr, label_width, y, bar_area_width, bar_height, 4.0);
                 let _ = cr.fill();
-                
+
                 // Draw bar fill
                 let fill_width = current_value * bar_area_width;
                 if fill_width > 0.0 {
@@ -254,7 +265,7 @@ mod imp {
                     Self::rounded_rect(&cr, label_width, y, fill_width.max(8.0), bar_height, 4.0);
                     let _ = cr.fill();
                 }
-                
+
                 // Draw value
                 cr.set_source_rgba(
                     text_color.red() as f64,
@@ -275,10 +286,28 @@ mod imp {
         fn rounded_rect(cr: &gtk4::cairo::Context, x: f64, y: f64, w: f64, h: f64, r: f64) {
             let r = r.min(w / 2.0).min(h / 2.0);
             cr.new_path();
-            cr.arc(x + r, y + r, r, std::f64::consts::PI, 1.5 * std::f64::consts::PI);
-            cr.arc(x + w - r, y + r, r, 1.5 * std::f64::consts::PI, 2.0 * std::f64::consts::PI);
+            cr.arc(
+                x + r,
+                y + r,
+                r,
+                std::f64::consts::PI,
+                1.5 * std::f64::consts::PI,
+            );
+            cr.arc(
+                x + w - r,
+                y + r,
+                r,
+                1.5 * std::f64::consts::PI,
+                2.0 * std::f64::consts::PI,
+            );
             cr.arc(x + w - r, y + h - r, r, 0.0, 0.5 * std::f64::consts::PI);
-            cr.arc(x + r, y + h - r, r, 0.5 * std::f64::consts::PI, std::f64::consts::PI);
+            cr.arc(
+                x + r,
+                y + h - r,
+                r,
+                0.5 * std::f64::consts::PI,
+                std::f64::consts::PI,
+            );
             cr.close_path();
         }
 

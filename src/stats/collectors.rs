@@ -92,7 +92,9 @@ impl TrafficCollector {
 
         // Calculate delta from last collection
         if let Some(ref last) = self.last_counters {
-            let delta = counters.accepted_packets.saturating_sub(last.accepted_packets);
+            let delta = counters
+                .accepted_packets
+                .saturating_sub(last.accepted_packets);
             self.total_accepted += delta;
         } else {
             // First collection - use current value as baseline

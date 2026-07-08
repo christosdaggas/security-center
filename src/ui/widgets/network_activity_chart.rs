@@ -36,7 +36,7 @@ impl NetworkActivityChart {
     pub fn push_values(&self, inbound: f64, outbound: f64) {
         let imp = self.imp();
         let max_points = imp.max_points.get();
-        
+
         {
             let mut data = imp.inbound_data.borrow_mut();
             data.push(inbound);
@@ -44,7 +44,7 @@ impl NetworkActivityChart {
                 data.remove(0);
             }
         }
-        
+
         {
             let mut data = imp.outbound_data.borrow_mut();
             data.push(outbound);
@@ -52,18 +52,28 @@ impl NetworkActivityChart {
                 data.remove(0);
             }
         }
-        
+
         self.queue_draw();
     }
 
     /// Get the current inbound value.
     pub fn current_inbound(&self) -> f64 {
-        self.imp().inbound_data.borrow().last().copied().unwrap_or(0.0)
+        self.imp()
+            .inbound_data
+            .borrow()
+            .last()
+            .copied()
+            .unwrap_or(0.0)
     }
 
     /// Get the current outbound value.
     pub fn current_outbound(&self) -> f64 {
-        self.imp().outbound_data.borrow().last().copied().unwrap_or(0.0)
+        self.imp()
+            .outbound_data
+            .borrow()
+            .last()
+            .copied()
+            .unwrap_or(0.0)
     }
 
     /// Limit sampling to a single interface. `None` sums all non-loopback
@@ -161,10 +171,7 @@ fn read_network_stats(only: Option<&str>) -> (u64, u64) {
                     _ => {}
                 }
                 // Parse receive bytes (column 1) and transmit bytes (column 9)
-                if let (Ok(rx), Ok(tx)) = (
-                    parts[1].parse::<u64>(),
-                    parts[9].parse::<u64>(),
-                ) {
+                if let (Ok(rx), Ok(tx)) = (parts[1].parse::<u64>(), parts[9].parse::<u64>()) {
                     rx_total += rx;
                     tx_total += tx;
                 }
@@ -202,13 +209,13 @@ mod imp {
     impl ObjectImpl for NetworkActivityChart {
         fn constructed(&self) {
             self.parent_constructed();
-            
+
             let obj = self.obj();
             obj.set_width_request(300);
             obj.set_height_request(120);
-            
+
             self.max_points.set(60);
-            
+
             // Initialize with zeros
             *self.inbound_data.borrow_mut() = vec![0.0; 60];
             *self.outbound_data.borrow_mut() = vec![0.0; 60];
@@ -220,17 +227,17 @@ mod imp {
             let widget = self.obj();
             let width = widget.width() as f64;
             let height = widget.height() as f64;
-            
+
             if width <= 0.0 || height <= 0.0 {
                 return;
             }
-            
+
             let bounds = graphene::Rect::new(0.0, 0.0, width as f32, height as f32);
             let cr = snapshot.append_cairo(&bounds);
-            
+
             // Get current color scheme
             let is_dark = adw::StyleManager::default().is_dark();
-            
+
             // Background
             if is_dark {
                 cr.set_source_rgba(0.1, 0.1, 0.1, 0.3);
@@ -238,7 +245,7 @@ mod imp {
                 cr.set_source_rgba(0.95, 0.95, 0.95, 0.5);
             }
             let _ = cr.paint();
-            
+
             // Grid lines
             if is_dark {
                 cr.set_source_rgba(1.0, 1.0, 1.0, 0.1);
@@ -255,18 +262,20 @@ mod imp {
 
             let inbound = self.inbound_data.borrow();
             let outbound = self.outbound_data.borrow();
-            
+
             // Find max value for scaling
-            let max_val = inbound.iter().chain(outbound.iter())
+            let max_val = inbound
+                .iter()
+                .chain(outbound.iter())
                 .cloned()
                 .fold(1.0f64, f64::max);
-            
+
             let step = if inbound.len() > 1 {
                 width / (inbound.len() as f64 - 1.0)
             } else {
                 width
             };
-            
+
             // Draw inbound line (blue - like download)
             cr.set_source_rgba(0.21, 0.52, 0.89, 0.8);
             cr.set_line_width(2.0);
@@ -280,7 +289,7 @@ mod imp {
                 }
             }
             let _ = cr.stroke();
-            
+
             // Fill under inbound line
             cr.set_source_rgba(0.21, 0.52, 0.89, 0.15);
             for (i, &val) in inbound.iter().enumerate() {
@@ -296,7 +305,7 @@ mod imp {
             cr.line_to(width, height);
             cr.close_path();
             let _ = cr.fill();
-            
+
             // Draw outbound line (green - like upload)
             cr.set_source_rgba(0.18, 0.76, 0.49, 0.8);
             cr.set_line_width(2.0);

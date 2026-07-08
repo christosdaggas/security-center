@@ -74,7 +74,10 @@ impl StatsCache {
     pub fn load(&self) -> Option<CachedStats> {
         let metadata = fs::metadata(&self.path).ok()?;
         if metadata.len() > 1_048_576 {
-            warn!("Stats cache file too large ({} bytes), ignoring", metadata.len());
+            warn!(
+                "Stats cache file too large ({} bytes), ignoring",
+                metadata.len()
+            );
             return None;
         }
         let content = fs::read_to_string(&self.path).ok()?;

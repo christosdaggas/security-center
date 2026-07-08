@@ -7,9 +7,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4::subclass::prelude::*;
-use gtk4::glib;
 use libadwaita as adw;
 use libadwaita::prelude::*;
 
@@ -61,13 +61,13 @@ impl ZonesPage {
             .build();
 
         let title = gtk4::Label::builder()
-            .label(&gettext("Zones"))
+            .label(gettext("Zones"))
             .css_classes(vec!["title-1".to_string()])
             .halign(gtk4::Align::Start)
             .build();
 
         let subtitle = gtk4::Label::builder()
-            .label(&gettext("Manage firewall zones and their settings"))
+            .label(gettext("Manage firewall zones and their settings"))
             .css_classes(vec!["dim-label".to_string()])
             .halign(gtk4::Align::Start)
             .build();
@@ -98,17 +98,23 @@ impl ZonesPage {
         scrolled.set_child(Some(&content));
 
         // Active zones group
-        content.append(&Self::create_section_header("network-workgroup-symbolic", &gettext("Active Zones")));
+        content.append(&Self::create_section_header(
+            "network-workgroup-symbolic",
+            &gettext("Active Zones"),
+        ));
         let active_group = adw::PreferencesGroup::builder()
-            .description(&gettext("Zones with assigned interfaces or sources"))
+            .description(gettext("Zones with assigned interfaces or sources"))
             .build();
         content.append(&active_group);
         imp.active_group.replace(Some(active_group));
 
         // Available zones group
-        content.append(&Self::create_section_header("view-list-symbolic", &gettext("Available Zones")));
+        content.append(&Self::create_section_header(
+            "view-list-symbolic",
+            &gettext("Available Zones"),
+        ));
         let available_group = adw::PreferencesGroup::builder()
-            .description(&gettext("Click 'Set Default' to change the default zone"))
+            .description(gettext("Click 'Set Default' to change the default zone"))
             .build();
         content.append(&available_group);
         imp.available_group.replace(Some(available_group));
@@ -140,7 +146,7 @@ impl ZonesPage {
     fn set_default_zone(&self, zone_name: &str) {
         let zone = zone_name.to_string();
         let page = self.clone();
-        
+
         glib::spawn_future_local(async move {
             let zone_clone = zone.clone();
             let result = gtk4::gio::spawn_blocking(move || {
@@ -150,7 +156,8 @@ impl ZonesPage {
                     return Err(anyhow::anyhow!("Failed to connect"));
                 }
                 client.set_default_zone(&zone_clone)
-            }).await;
+            })
+            .await;
 
             match result {
                 Ok(Ok(())) => {
@@ -176,7 +183,8 @@ impl ZonesPage {
         Self::clear_preferences_group(imp.available_group.borrow().as_ref());
 
         // Separate active (with interfaces/sources) vs available zones
-        let (active, available): (Vec<_>, Vec<_>) = zones.iter()
+        let (active, available): (Vec<_>, Vec<_>) = zones
+            .iter()
             .partition(|z| !z.interfaces.is_empty() || !z.sources.is_empty());
 
         // Add active zones
@@ -187,7 +195,7 @@ impl ZonesPage {
             }
         }
 
-        // Add available zones  
+        // Add available zones
         if let Some(group) = imp.available_group.borrow().as_ref() {
             for zone in &available {
                 let row = self.create_zone_row_new(zone);
@@ -201,12 +209,13 @@ impl ZonesPage {
         if let Some(group) = group {
             // Collect all rows first to avoid modification during iteration
             let mut rows_to_remove: Vec<gtk4::Widget> = Vec::new();
-            
+
             // Recursively find all ActionRow and ExpanderRow widgets
             fn find_rows(widget: &gtk4::Widget, rows: &mut Vec<gtk4::Widget>) {
                 // Check if this widget is a row type
-                if widget.downcast_ref::<adw::ActionRow>().is_some() 
-                    || widget.downcast_ref::<adw::ExpanderRow>().is_some() {
+                if widget.downcast_ref::<adw::ActionRow>().is_some()
+                    || widget.downcast_ref::<adw::ExpanderRow>().is_some()
+                {
                     rows.push(widget.clone());
                 }
                 // Check children
@@ -218,7 +227,7 @@ impl ZonesPage {
                     }
                 }
             }
-            
+
             // Find all rows in the group
             if let Some(first) = group.first_child() {
                 let mut child = Some(first);
@@ -227,7 +236,7 @@ impl ZonesPage {
                     child = c.next_sibling();
                 }
             }
-            
+
             // Remove each row using the group's remove method
             for row in rows_to_remove {
                 group.remove(&row);
@@ -241,7 +250,7 @@ impl ZonesPage {
             .title(&zone.name)
             .subtitle(&zone.description)
             .build();
-        
+
         // Icon based on zone type
         let icon = match zone.name.as_str() {
             "trusted" => "security-high-symbolic",
@@ -251,11 +260,11 @@ impl ZonesPage {
             _ => "network-server-symbolic",
         };
         row.add_prefix(&gtk4::Image::from_icon_name(icon));
-        
+
         // Default badge if this is the default zone
         if zone.is_default {
             let badge = gtk4::Label::builder()
-                .label(&gettext("Default"))
+                .label(gettext("Default"))
                 .css_classes(["success", "caption"])
                 .valign(gtk4::Align::Center)
                 .build();
@@ -265,7 +274,7 @@ impl ZonesPage {
             let zone_name = zone.name.clone();
             let page = self.clone();
             let button = gtk4::Button::builder()
-                .label(&gettext("Set Default"))
+                .label(gettext("Set Default"))
                 .valign(gtk4::Align::Center)
                 .css_classes(["flat"])
                 .build();
@@ -274,40 +283,40 @@ impl ZonesPage {
             });
             row.add_suffix(&button);
         }
-        
+
         // Sub-rows for zone details
         if !zone.services.is_empty() {
             let services_row = adw::ActionRow::builder()
-                .title(&gettext("Services"))
-                .subtitle(&zone.services.join(", "))
+                .title(gettext("Services"))
+                .subtitle(zone.services.join(", "))
                 .build();
             row.add_row(&services_row);
         }
-        
+
         if !zone.ports.is_empty() {
             let ports_row = adw::ActionRow::builder()
-                .title(&gettext("Ports"))
-                .subtitle(&zone.ports.join(", "))
+                .title(gettext("Ports"))
+                .subtitle(zone.ports.join(", "))
                 .build();
             row.add_row(&ports_row);
         }
-        
+
         if !zone.interfaces.is_empty() {
             let ifaces_row = adw::ActionRow::builder()
-                .title(&gettext("Interfaces"))
-                .subtitle(&zone.interfaces.join(", "))
+                .title(gettext("Interfaces"))
+                .subtitle(zone.interfaces.join(", "))
                 .build();
             row.add_row(&ifaces_row);
         }
-        
+
         if !zone.sources.is_empty() {
             let sources_row = adw::ActionRow::builder()
-                .title(&gettext("Sources"))
-                .subtitle(&zone.sources.join(", "))
+                .title(gettext("Sources"))
+                .subtitle(zone.sources.join(", "))
                 .build();
             row.add_row(&sources_row);
         }
-        
+
         row
     }
 

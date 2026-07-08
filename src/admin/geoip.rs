@@ -12,7 +12,7 @@
 //! Database search order:
 //!   1. `$SECURITY_CENTER_GEOIP_DB`
 //!   2. common system paths (`/usr/share/GeoIP`, `/var/lib/GeoIP`, …)
-//! for `dbip-country-lite.mmdb`, `GeoLite2-Country.mmdb`, or `country.mmdb`.
+//!      for `dbip-country-lite.mmdb`, `GeoLite2-Country.mmdb`, or `country.mmdb`.
 
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
@@ -149,7 +149,10 @@ mod tests {
     fn test_private_addresses_skipped() {
         // With no database loaded, lookups are always None and never panic.
         let geo = GeoIp { reader: None };
-        assert_eq!(geo.country_iso(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))), None);
+        assert_eq!(
+            geo.country_iso(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))),
+            None
+        );
         assert_eq!(geo.country_iso(IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8))), None);
         assert!(!geo.is_available());
     }

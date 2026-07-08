@@ -7,15 +7,17 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
+use super::{
+    HelpPage, NetworkExposurePage, OverviewPage, PortsPage, QuickActionsPage, ServicesPage,
+    SystemServicesPage, ZonesPage,
+};
+use crate::firewall::FirewallClient;
+use crate::i18n::gettext;
 use gtk4::prelude::*;
 use gtk4::subclass::prelude::*;
 use gtk4::{gio, glib};
 use libadwaita as adw;
 use libadwaita::prelude::*;
-use crate::firewall::FirewallClient;
-use crate::i18n::gettext;
-use super::{OverviewPage, ZonesPage, ServicesPage, PortsPage, SystemServicesPage,
-            NetworkExposurePage, QuickActionsPage, HelpPage};
 
 glib::wrapper! {
     /// The main application window.
@@ -37,16 +39,16 @@ impl MainWindow {
 
         window.setup_ui();
         window.setup_actions();
-        
+
         // Show window immediately, connect to firewalld after main loop starts
         window.set_visible(true);
-        
+
         // Connect to firewalld after a short delay
         let win = window.clone();
         glib::timeout_add_seconds_local_once(2, move || {
             win.connect_to_firewalld();
         });
-        
+
         window
     }
 
@@ -142,7 +144,8 @@ impl MainWindow {
         imp.services_page.replace(Some(services_page));
         imp.ports_page.replace(Some(ports_page));
         imp.system_services_page.replace(Some(system_services_page));
-        imp.network_exposure_page.replace(Some(network_exposure_page));
+        imp.network_exposure_page
+            .replace(Some(network_exposure_page));
         imp.quick_actions_page.replace(Some(quick_actions_page));
         imp.stack.replace(Some(stack.clone()));
 
@@ -164,7 +167,7 @@ impl MainWindow {
         // Sidebar collapse button (top-right of sidebar header)
         let sidebar_toggle_btn = gtk4::Button::builder()
             .icon_name("sidebar-show-symbolic")
-            .tooltip_text(&gettext("Collapse sidebar"))
+            .tooltip_text(gettext("Collapse sidebar"))
             .build();
         sidebar_toggle_btn.add_css_class("flat");
         sidebar_toggle_btn.set_action_name(Some("win.toggle-sidebar"));
@@ -187,7 +190,11 @@ impl MainWindow {
             ("services", "Services", "application-x-addon-symbolic"),
             ("ports", "Ports", "network-transmit-receive-symbolic"),
             ("system-services", "System Services", "system-run-symbolic"),
-            ("network-exposure", "Network Exposure", "network-wired-symbolic"),
+            (
+                "network-exposure",
+                "Network Exposure",
+                "network-wired-symbolic",
+            ),
             ("quick-actions", "Quick Actions", "system-shutdown-symbolic"),
             ("help", "Help", "help-about-symbolic"),
         ];
@@ -232,7 +239,7 @@ impl MainWindow {
             if let Some(row) = row {
                 let name = row.widget_name();
                 stack_clone.set_visible_child_name(&name);
-                
+
                 let title = match name.as_str() {
                     "overview" => "Overview",
                     "zones" => "Zones",
@@ -247,15 +254,19 @@ impl MainWindow {
                 if let Some(content_title) = window_clone.imp().content_title.borrow().as_ref() {
                     content_title.set_title(&gettext(title));
                 }
-                
+
                 match name.as_str() {
                     "system-services" => {
-                        if let Some(page) = window_clone.imp().system_services_page.borrow().as_ref() {
+                        if let Some(page) =
+                            window_clone.imp().system_services_page.borrow().as_ref()
+                        {
                             page.refresh_services();
                         }
                     }
                     "network-exposure" => {
-                        if let Some(page) = window_clone.imp().network_exposure_page.borrow().as_ref() {
+                        if let Some(page) =
+                            window_clone.imp().network_exposure_page.borrow().as_ref()
+                        {
                             page.refresh();
                         }
                     }
@@ -299,12 +310,15 @@ impl MainWindow {
         info_box.set_margin_end(12);
         info_box.set_margin_top(8);
         info_box.set_margin_bottom(8);
-        
+
         let version_label = gtk4::Label::new(None);
-        version_label.set_markup(&format!("<span size=\"x-small\">Version {}</span>", env!("CARGO_PKG_VERSION")));
+        version_label.set_markup(&format!(
+            "<span size=\"x-small\">Version {}</span>",
+            env!("CARGO_PKG_VERSION")
+        ));
         version_label.set_halign(gtk4::Align::Start);
         info_box.append(&version_label);
-        
+
         sidebar_box.append(&info_box);
 
         // Store collapsible sidebar refs
@@ -324,30 +338,30 @@ impl MainWindow {
         // === CONTENT AREA ===
         let content_box = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         content_box.set_hexpand(true);
-        
+
         let header = adw::HeaderBar::new();
         let content_title = adw::WindowTitle::new(&gettext("Overview"), "");
         header.set_title_widget(Some(&content_title));
         imp.content_title.replace(Some(content_title));
-        
+
         let menu_button = gtk4::MenuButton::builder()
             .icon_name("open-menu-symbolic")
             .build();
-        
+
         let popover = self.create_menu_popover();
         menu_button.set_popover(Some(&popover));
-        
+
         header.pack_end(&menu_button);
 
         let refresh_button = gtk4::Button::builder()
             .icon_name("view-refresh-symbolic")
             .action_name("win.refresh")
-            .tooltip_text(&gettext("Refresh (Ctrl+R)"))
+            .tooltip_text(gettext("Refresh (Ctrl+R)"))
             .build();
         header.pack_end(&refresh_button);
 
         content_box.append(&header);
-        
+
         let scrolled = gtk4::ScrolledWindow::builder()
             .hscrollbar_policy(gtk4::PolicyType::Never)
             .vscrollbar_policy(gtk4::PolicyType::Automatic)
@@ -394,7 +408,7 @@ impl MainWindow {
         // Helper to create theme button content
         fn create_theme_content(css_class: &str, is_selected: bool) -> gtk4::Overlay {
             let overlay = gtk4::Overlay::new();
-            
+
             let icon = gtk4::Box::builder()
                 .width_request(44)
                 .height_request(44)
@@ -402,7 +416,7 @@ impl MainWindow {
             icon.add_css_class("theme-selector");
             icon.add_css_class(css_class);
             overlay.set_child(Some(&icon));
-            
+
             if is_selected {
                 let check = gtk4::Image::from_icon_name("object-select-symbolic");
                 check.add_css_class("theme-check");
@@ -410,7 +424,7 @@ impl MainWindow {
                 check.set_valign(gtk4::Align::Center);
                 overlay.add_overlay(&check);
             }
-            
+
             overlay
         }
 
@@ -439,7 +453,7 @@ impl MainWindow {
 
         // Set initial state based on current theme
         let style_manager = adw::StyleManager::default();
-        
+
         match style_manager.color_scheme() {
             adw::ColorScheme::ForceLight => {
                 light_btn.set_active(true);
@@ -688,7 +702,7 @@ impl MainWindow {
             let rule = match zbus::MatchRule::builder()
                 .msg_type(zbus::message::Type::Signal)
                 .sender(crate::firewall::BUS_NAME)
-                .and_then(|b| Ok(b.build()))
+                .map(|b| b.build())
             {
                 Ok(rule) => rule,
                 Err(e) => {
@@ -730,18 +744,18 @@ impl MainWindow {
     /// Refresh all data from firewalld without blocking the UI.
     pub fn refresh_data(&self) {
         let window = self.clone();
-        
+
         // Run D-Bus calls in a background thread to avoid freezing the UI
         glib::spawn_future_local(async move {
             let data = gio::spawn_blocking(move || {
                 // This runs in a background thread
                 let client = crate::firewall::FirewallClient::new();
                 let mut client = client;
-                
+
                 if client.connect().is_err() {
                     return None;
                 }
-                
+
                 let zones = client.get_zones().ok();
                 let services = client.get_services().ok();
                 let default_zone = client.get_default_zone().ok();
@@ -749,35 +763,45 @@ impl MainWindow {
                 // would report "protected" while everything is being dropped.
                 let panic_mode = client.query_panic_mode().unwrap_or(false);
 
-                let ports: Vec<crate::models::Port> = zones.as_ref()
+                let ports: Vec<crate::models::Port> = zones
+                    .as_ref()
                     .map(|zones| {
-                        zones.iter()
+                        zones
+                            .iter()
                             .flat_map(|zone| {
-                                zone.ports.iter()
-                                    .filter_map(|port_str| {
-                                        crate::models::Port::parse_with_zone(port_str, &zone.name)
-                                    })
+                                zone.ports.iter().filter_map(|port_str| {
+                                    crate::models::Port::parse_with_zone(port_str, &zone.name)
+                                })
                             })
                             .collect()
                     })
                     .unwrap_or_default();
-                
+
                 // Collect blocked ports from rich rules
-                let blocked_ports: Vec<crate::models::Port> = zones.as_ref()
+                let blocked_ports: Vec<crate::models::Port> = zones
+                    .as_ref()
                     .map(|zones| {
-                        zones.iter()
+                        zones
+                            .iter()
                             .flat_map(|zone| {
-                                zone.rich_rules.iter()
-                                    .filter_map(|rule| {
-                                        crate::models::Port::parse_from_rich_rule(rule, &zone.name)
-                                    })
+                                zone.rich_rules.iter().filter_map(|rule| {
+                                    crate::models::Port::parse_from_rich_rule(rule, &zone.name)
+                                })
                             })
                             .collect()
                     })
                     .unwrap_or_default();
-                
-                Some((zones, services, default_zone, ports, blocked_ports, panic_mode))
-            }).await;
+
+                Some((
+                    zones,
+                    services,
+                    default_zone,
+                    ports,
+                    blocked_ports,
+                    panic_mode,
+                ))
+            })
+            .await;
 
             // Back on the main thread - update UI
             match data {
@@ -800,10 +824,12 @@ impl MainWindow {
                                 page.set_default_zone(zone);
                             }
                             if let Some(ref zones) = zones {
-                                let zone_names: Vec<String> = zones.iter().map(|z| z.name.clone()).collect();
+                                let zone_names: Vec<String> =
+                                    zones.iter().map(|z| z.name.clone()).collect();
                                 page.set_available_zones(&zone_names);
                                 // Per-zone enabled services so state tracks the selector
-                                let map: std::collections::HashMap<String, Vec<String>> = zones.iter()
+                                let map: std::collections::HashMap<String, Vec<String>> = zones
+                                    .iter()
                                     .map(|z| (z.name.clone(), z.services.clone()))
                                     .collect();
                                 page.set_zone_services(map);
@@ -816,7 +842,8 @@ impl MainWindow {
                     if let Some(page) = imp.ports_page.borrow().as_ref() {
                         // Pass available zone names for the dropdown
                         if let Some(ref zones) = zones {
-                            let zone_names: Vec<String> = zones.iter().map(|z| z.name.clone()).collect();
+                            let zone_names: Vec<String> =
+                                zones.iter().map(|z| z.name.clone()).collect();
                             page.set_available_zones(&zone_names);
                         }
                         // Preselect the real default zone in the Add dialog, so
@@ -854,8 +881,8 @@ impl MainWindow {
         let switch = switch.clone();
 
         let dialog = adw::AlertDialog::builder()
-            .heading(&gettext("Block all network traffic?"))
-            .body(&gettext(
+            .heading(gettext("Block all network traffic?"))
+            .body(gettext(
                 "Panic mode drops every incoming and outgoing packet. \
                  This can interrupt active connections, including a remote SSH \
                  session to this machine. You can turn traffic back on at any time.",
@@ -896,7 +923,7 @@ impl MainWindow {
                 if let Err(e) = client.connect() {
                     return Err(format!("Failed to connect: {}", e));
                 }
-                
+
                 if enable {
                     // Disable panic mode to re-enable firewall
                     client.disable_panic_mode().map_err(|e| e.to_string())
@@ -904,7 +931,8 @@ impl MainWindow {
                     // Enable panic mode to disable firewall (blocks all traffic)
                     client.enable_panic_mode().map_err(|e| e.to_string())
                 }
-            }).await;
+            })
+            .await;
 
             match result {
                 Ok(Ok(())) => {
@@ -941,13 +969,13 @@ impl MainWindow {
     /// Update the firewall status display.
     fn update_status(&self, connected: bool, panic_mode: bool) {
         let imp = self.imp();
-        
+
         // Track whether firewalld is running
         imp.firewall_connected.set(connected);
-        
+
         // Guard: prevent the switch signal from triggering toggle_firewall
         imp.updating_switch.set(true);
-        
+
         // Update via overview page with the correct state
         if let Some(page) = imp.overview_page.borrow().as_ref() {
             if !connected {
@@ -958,7 +986,7 @@ impl MainWindow {
                 page.set_firewall_state(super::overview_page::FirewallState::Active);
             }
         }
-        
+
         imp.updating_switch.set(false);
     }
 
@@ -966,7 +994,7 @@ impl MainWindow {
     #[allow(dead_code)]
     fn show_error(&self, message: &str) {
         let dialog = adw::AlertDialog::builder()
-            .heading(&gettext("Error"))
+            .heading(gettext("Error"))
             .body(message)
             .build();
 
@@ -996,7 +1024,8 @@ impl MainWindow {
                     .build()
                     .ok()?;
                 rt.block_on(version_check::check_for_update(APP_VERSION))
-            }).await;
+            })
+            .await;
 
             // Handle the result on the GTK main thread
             if let Ok(Some(update_info)) = result {
@@ -1074,4 +1103,3 @@ mod imp {
     impl ApplicationWindowImpl for MainWindow {}
     impl AdwApplicationWindowImpl for MainWindow {}
 }
-

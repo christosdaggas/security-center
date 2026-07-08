@@ -18,12 +18,16 @@
 //! UI Layer → Admin Module → D-Bus → systemd/firewalld → Polkit
 //! ```
 
-mod network;
 mod actions;
-mod sock_diag;
 mod geoip;
+mod network;
+mod sock_diag;
 
-pub use network::{ActiveConnection, ListeningEndpoint, NetworkExposure, FirewallStatus, get_service_name};
-pub use sock_diag::{collect_socket_bytes, collect_top_talkers, TalkerBytes};
+pub use actions::{
+    ActionCategory, AdminAction, AdminActionResult, QuickActionsManager, QUICK_ACTIONS,
+};
 pub use geoip::GeoIp;
-pub use actions::{AdminAction, AdminActionResult, QuickActionsManager, ActionCategory, QUICK_ACTIONS};
+pub use network::{
+    get_service_name, ActiveConnection, FirewallStatus, ListeningEndpoint, NetworkExposure,
+};
+pub use sock_diag::{collect_socket_bytes, collect_top_talkers, TalkerBytes};

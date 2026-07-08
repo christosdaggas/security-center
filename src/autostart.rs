@@ -37,7 +37,8 @@ pub fn enable_autostart() -> Result<(), String> {
 
     // Create autostart directory if it doesn't exist
     if !dir.exists() {
-        fs::create_dir_all(&dir).map_err(|e| format!("Failed to create autostart directory: {}", e))?;
+        fs::create_dir_all(&dir)
+            .map_err(|e| format!("Failed to create autostart directory: {}", e))?;
     }
 
     // Create the .desktop file content
@@ -55,8 +56,8 @@ NoDisplay=false
         APP_NAME, APP_ID
     );
 
-    let mut file = fs::File::create(&path)
-        .map_err(|e| format!("Failed to create autostart file: {}", e))?;
+    let mut file =
+        fs::File::create(&path).map_err(|e| format!("Failed to create autostart file: {}", e))?;
     file.write_all(desktop_content.as_bytes())
         .map_err(|e| format!("Failed to write autostart file: {}", e))?;
 

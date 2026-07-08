@@ -95,7 +95,11 @@ pub fn collect_top_talkers() -> Result<Vec<TalkerBytes>> {
 
     let mut result: Vec<TalkerBytes> = totals
         .into_iter()
-        .map(|(addr, (bytes_in, bytes_out))| TalkerBytes { addr, bytes_in, bytes_out })
+        .map(|(addr, (bytes_in, bytes_out))| TalkerBytes {
+            addr,
+            bytes_in,
+            bytes_out,
+        })
         .collect();
     result.sort_by(|a, b| b.total().cmp(&a.total()).then(a.addr.cmp(&b.addr)));
     Ok(result)

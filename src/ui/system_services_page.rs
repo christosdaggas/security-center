@@ -6,14 +6,14 @@
 
 use std::cell::RefCell;
 
+use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4::subclass::prelude::*;
-use gtk4::glib;
 use libadwaita as adw;
 use libadwaita::prelude::*;
 
 use crate::i18n::gettext;
-use crate::systemd::{SystemdClient, ServiceInfo, ServiceState};
+use crate::systemd::{ServiceInfo, ServiceState, SystemdClient};
 
 glib::wrapper! {
     /// System services management page.
@@ -54,13 +54,13 @@ impl SystemServicesPage {
             .build();
 
         let title = gtk4::Label::builder()
-            .label(&gettext("System Services"))
+            .label(gettext("System Services"))
             .css_classes(vec!["title-1".to_string()])
             .halign(gtk4::Align::Start)
             .build();
 
         let subtitle = gtk4::Label::builder()
-            .label(&gettext("Manage system services and daemons"))
+            .label(gettext("Manage system services and daemons"))
             .css_classes(vec!["dim-label".to_string()])
             .halign(gtk4::Align::Start)
             .build();
@@ -71,7 +71,7 @@ impl SystemServicesPage {
         let refresh_button = gtk4::Button::builder()
             .icon_name("view-refresh-symbolic")
             .css_classes(vec!["flat".to_string()])
-            .tooltip_text(&gettext("Refresh services list"))
+            .tooltip_text(gettext("Refresh services list"))
             .valign(gtk4::Align::Center)
             .build();
 
@@ -104,7 +104,7 @@ impl SystemServicesPage {
 
         // Search entry
         let search_entry = gtk4::SearchEntry::builder()
-            .placeholder_text(&gettext("Search services..."))
+            .placeholder_text(gettext("Search services..."))
             .hexpand(true)
             .build();
         imp.search_entry.replace(Some(search_entry.clone()));
@@ -118,25 +118,34 @@ impl SystemServicesPage {
         });
 
         // Running services group
-        content.append(&Self::create_section_header("media-playback-start-symbolic", &gettext("Running Services")));
+        content.append(&Self::create_section_header(
+            "media-playback-start-symbolic",
+            &gettext("Running Services"),
+        ));
         let running_group = adw::PreferencesGroup::builder()
-            .description(&gettext("Services that are currently active"))
+            .description(gettext("Services that are currently active"))
             .build();
         imp.running_group.replace(Some(running_group.clone()));
         content.append(&running_group);
 
         // Stopped services group
-        content.append(&Self::create_section_header("media-playback-stop-symbolic", &gettext("Stopped Services")));
+        content.append(&Self::create_section_header(
+            "media-playback-stop-symbolic",
+            &gettext("Stopped Services"),
+        ));
         let stopped_group = adw::PreferencesGroup::builder()
-            .description(&gettext("Services that are not running"))
+            .description(gettext("Services that are not running"))
             .build();
         imp.stopped_group.replace(Some(stopped_group.clone()));
         content.append(&stopped_group);
 
         // Failed services group
-        content.append(&Self::create_section_header("dialog-error-symbolic", &gettext("Failed Services")));
+        content.append(&Self::create_section_header(
+            "dialog-error-symbolic",
+            &gettext("Failed Services"),
+        ));
         let failed_group = adw::PreferencesGroup::builder()
-            .description(&gettext("Services that have failed"))
+            .description(gettext("Services that have failed"))
             .build();
         imp.failed_group.replace(Some(failed_group.clone()));
         content.append(&failed_group);
@@ -172,7 +181,8 @@ impl SystemServicesPage {
                     return Vec::new();
                 }
                 client.list_security_services().unwrap_or_default()
-            }).await;
+            })
+            .await;
 
             if let Ok(services) = services {
                 page.store_and_display_services(&services);
@@ -191,14 +201,16 @@ impl SystemServicesPage {
     fn filter_services(&self, query: &str) {
         let imp = self.imp();
         let services = imp.services.borrow().clone();
-        
+
         if query.is_empty() {
             self.display_services(&services);
         } else {
             let filtered: Vec<ServiceInfo> = services
                 .iter()
-                .filter(|s| s.name.to_lowercase().contains(query) || 
-                           s.description.to_lowercase().contains(query))
+                .filter(|s| {
+                    s.name.to_lowercase().contains(query)
+                        || s.description.to_lowercase().contains(query)
+                })
                 .cloned()
                 .collect();
             self.display_services(&filtered);
@@ -257,13 +269,19 @@ impl SystemServicesPage {
 
         // Update group descriptions with counts
         if let Some(group) = imp.running_group.borrow().as_ref() {
-            group.set_description(Some(&gettext("%d services currently active").replace("%d", &running_count.to_string())));
+            group.set_description(Some(
+                &gettext("%d services currently active").replace("%d", &running_count.to_string()),
+            ));
         }
         if let Some(group) = imp.stopped_group.borrow().as_ref() {
-            group.set_description(Some(&gettext("%d services not running").replace("%d", &stopped_count.to_string())));
+            group.set_description(Some(
+                &gettext("%d services not running").replace("%d", &stopped_count.to_string()),
+            ));
         }
         if let Some(group) = imp.failed_group.borrow().as_ref() {
-            group.set_description(Some(&gettext("%d services have failed").replace("%d", &failed_count.to_string())));
+            group.set_description(Some(
+                &gettext("%d services have failed").replace("%d", &failed_count.to_string()),
+            ));
             group.set_visible(failed_count > 0);
         }
     }
@@ -272,15 +290,15 @@ impl SystemServicesPage {
     fn create_service_row(&self, service: &ServiceInfo) -> adw::ActionRow {
         // Build subtitle with description and PID/Memory info
         let mut subtitle_parts = vec![service.description.clone()];
-        
+
         if service.main_pid > 0 {
             subtitle_parts.push(format!("PID: {}", service.main_pid));
         }
-        
+
         if let Some(mem) = service.memory_display() {
             subtitle_parts.push(format!("Memory: {}", mem));
         }
-        
+
         let subtitle = subtitle_parts.join(" • ");
 
         let row = adw::ActionRow::builder()
@@ -311,9 +329,17 @@ impl SystemServicesPage {
 
         // Start/Stop button
         let toggle_button = gtk4::Button::builder()
-            .icon_name(if is_running { "media-playback-stop-symbolic" } else { "media-playback-start-symbolic" })
+            .icon_name(if is_running {
+                "media-playback-stop-symbolic"
+            } else {
+                "media-playback-start-symbolic"
+            })
             .css_classes(vec!["flat".to_string()])
-            .tooltip_text(if is_running { gettext("Stop service") } else { gettext("Start service") })
+            .tooltip_text(if is_running {
+                gettext("Stop service")
+            } else {
+                gettext("Start service")
+            })
             .valign(gtk4::Align::Center)
             .build();
 
@@ -336,7 +362,7 @@ impl SystemServicesPage {
             let restart_button = gtk4::Button::builder()
                 .icon_name("view-refresh-symbolic")
                 .css_classes(vec!["flat".to_string()])
-                .tooltip_text(&gettext("Restart service"))
+                .tooltip_text(gettext("Restart service"))
                 .valign(gtk4::Align::Center)
                 .build();
 
@@ -354,7 +380,11 @@ impl SystemServicesPage {
         let enable_switch = gtk4::Switch::builder()
             .active(service.is_enabled)
             .valign(gtk4::Align::Center)
-            .tooltip_text(if service.is_enabled { gettext("Disable (won't start on boot)") } else { gettext("Enable (start on boot)") })
+            .tooltip_text(if service.is_enabled {
+                gettext("Disable (won't start on boot)")
+            } else {
+                gettext("Enable (start on boot)")
+            })
             .build();
 
         let page_clone = self.clone();
@@ -378,20 +408,25 @@ impl SystemServicesPage {
                         client.stop_service(&name).map_err(|e| e.to_string())?;
                         client.disable_service(&name).map_err(|e| e.to_string())
                     }
-                }).await;
+                })
+                .await;
 
                 match result {
                     Ok(Ok(())) => {
-                        page.show_toast(&format!("Service {} {} and {}", 
+                        page.show_toast(&format!(
+                            "Service {} {} and {}",
                             name_for_toast.trim_end_matches(".service"),
                             if state { "started" } else { "stopped" },
                             if state { "enabled" } else { "disabled" }
                         ));
                         // Refresh to move service between groups
                         let page_refresh = page.clone();
-                        glib::timeout_add_local_once(std::time::Duration::from_millis(500), move || {
-                            page_refresh.refresh_services();
-                        });
+                        glib::timeout_add_local_once(
+                            std::time::Duration::from_millis(500),
+                            move || {
+                                page_refresh.refresh_services();
+                            },
+                        );
                     }
                     Ok(Err(e)) => {
                         page.show_toast(&format!("{}: {}", gettext("Error"), e));
@@ -427,15 +462,22 @@ impl SystemServicesPage {
                     return Err("Failed to connect to systemd".to_string());
                 }
                 client.start_service(&name_clone).map_err(|e| e.to_string())
-            }).await;
+            })
+            .await;
 
             match result {
                 Ok(Ok(())) => {
-                    page.show_toast(&format!("Started {}", service_name.trim_end_matches(".service")));
+                    page.show_toast(&format!(
+                        "Started {}",
+                        service_name.trim_end_matches(".service")
+                    ));
                     // Wait a moment then refresh
-                    glib::timeout_add_local_once(std::time::Duration::from_millis(500), move || {
-                        page.refresh_services();
-                    });
+                    glib::timeout_add_local_once(
+                        std::time::Duration::from_millis(500),
+                        move || {
+                            page.refresh_services();
+                        },
+                    );
                 }
                 Ok(Err(e)) => {
                     page.show_toast(&format!("Failed to start: {}", e));
@@ -462,14 +504,21 @@ impl SystemServicesPage {
                     return Err("Failed to connect to systemd".to_string());
                 }
                 client.stop_service(&name_clone).map_err(|e| e.to_string())
-            }).await;
+            })
+            .await;
 
             match result {
                 Ok(Ok(())) => {
-                    page.show_toast(&format!("Stopped {}", service_name.trim_end_matches(".service")));
-                    glib::timeout_add_local_once(std::time::Duration::from_millis(500), move || {
-                        page.refresh_services();
-                    });
+                    page.show_toast(&format!(
+                        "Stopped {}",
+                        service_name.trim_end_matches(".service")
+                    ));
+                    glib::timeout_add_local_once(
+                        std::time::Duration::from_millis(500),
+                        move || {
+                            page.refresh_services();
+                        },
+                    );
                 }
                 Ok(Err(e)) => {
                     page.show_toast(&format!("Failed to stop: {}", e));
@@ -495,15 +544,24 @@ impl SystemServicesPage {
                 if client.connect().is_err() {
                     return Err("Failed to connect to systemd".to_string());
                 }
-                client.restart_service(&name_clone).map_err(|e| e.to_string())
-            }).await;
+                client
+                    .restart_service(&name_clone)
+                    .map_err(|e| e.to_string())
+            })
+            .await;
 
             match result {
                 Ok(Ok(())) => {
-                    page.show_toast(&format!("Restarted {}", service_name.trim_end_matches(".service")));
-                    glib::timeout_add_local_once(std::time::Duration::from_millis(500), move || {
-                        page.refresh_services();
-                    });
+                    page.show_toast(&format!(
+                        "Restarted {}",
+                        service_name.trim_end_matches(".service")
+                    ));
+                    glib::timeout_add_local_once(
+                        std::time::Duration::from_millis(500),
+                        move || {
+                            page.refresh_services();
+                        },
+                    );
                 }
                 Ok(Err(e)) => {
                     page.show_toast(&format!("Failed to restart: {}", e));

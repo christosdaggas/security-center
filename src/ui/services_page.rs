@@ -7,9 +7,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4::subclass::prelude::*;
-use gtk4::glib;
 use libadwaita as adw;
 use libadwaita::prelude::*;
 
@@ -61,13 +61,15 @@ impl ServicesPage {
             .build();
 
         let title = gtk4::Label::builder()
-            .label(&gettext("Services"))
+            .label(gettext("Services"))
             .css_classes(vec!["title-1".to_string()])
             .halign(gtk4::Align::Start)
             .build();
 
         let subtitle = gtk4::Label::builder()
-            .label(&gettext("Enable or disable network services in the firewall"))
+            .label(gettext(
+                "Enable or disable network services in the firewall",
+            ))
             .css_classes(vec!["dim-label".to_string()])
             .halign(gtk4::Align::Start)
             .build();
@@ -99,7 +101,7 @@ impl ServicesPage {
 
         // Info banner about authentication
         let info_banner = adw::Banner::builder()
-            .title(&gettext("Authentication may be required to modify services"))
+            .title(gettext("Authentication may be required to modify services"))
             .revealed(true)
             .build();
         content.append(&info_banner);
@@ -107,8 +109,8 @@ impl ServicesPage {
         // Zone selector — enable/disable applies to the chosen zone
         let zone_group = adw::PreferencesGroup::builder().build();
         let zone_dropdown = adw::ComboRow::builder()
-            .title(&gettext("Zone"))
-            .subtitle(&gettext("Services are enabled or disabled in this zone"))
+            .title(gettext("Zone"))
+            .subtitle(gettext("Services are enabled or disabled in this zone"))
             .model(&gtk4::StringList::new(&[]))
             .build();
         zone_dropdown.add_prefix(&gtk4::Image::from_icon_name("network-server-symbolic"));
@@ -117,7 +119,10 @@ impl ServicesPage {
             if let Some(model) = row.model() {
                 if let Some(item) = model.item(row.selected()) {
                     if let Some(s) = item.downcast_ref::<gtk4::StringObject>() {
-                        page_for_zone.imp().selected_zone.replace(s.string().to_string());
+                        page_for_zone
+                            .imp()
+                            .selected_zone
+                            .replace(s.string().to_string());
                         // Re-render so enabled state reflects the selected zone
                         let services = page_for_zone.imp().services.borrow().clone();
                         page_for_zone.render_services(&services);
@@ -131,29 +136,40 @@ impl ServicesPage {
 
         // Search filter over the full service list
         let search_entry = gtk4::SearchEntry::builder()
-            .placeholder_text(&gettext("Search services (e.g. postgresql, wireguard, mosh)"))
+            .placeholder_text(gettext(
+                "Search services (e.g. postgresql, wireguard, mosh)",
+            ))
             .hexpand(true)
             .build();
         let page_for_search = self.clone();
         search_entry.connect_search_changed(move |entry| {
-            page_for_search.imp().search_text.replace(entry.text().to_string().to_lowercase());
+            page_for_search
+                .imp()
+                .search_text
+                .replace(entry.text().to_string().to_lowercase());
             let services = page_for_search.imp().services.borrow().clone();
             page_for_search.render_services(&services);
         });
         content.append(&search_entry);
 
         // Enabled services group
-        content.append(&Self::create_section_header("preferences-system-symbolic", &gettext("Enabled Services")));
+        content.append(&Self::create_section_header(
+            "preferences-system-symbolic",
+            &gettext("Enabled Services"),
+        ));
         let enabled_group = adw::PreferencesGroup::builder()
-            .description(&gettext("Services allowing traffic through the firewall"))
+            .description(gettext("Services allowing traffic through the firewall"))
             .build();
         content.append(&enabled_group);
         imp.enabled_group.replace(Some(enabled_group));
 
         // All services group — every firewalld service definition
-        content.append(&Self::create_section_header("view-list-symbolic", &gettext("All Services")));
+        content.append(&Self::create_section_header(
+            "view-list-symbolic",
+            &gettext("All Services"),
+        ));
         let all_group = adw::PreferencesGroup::builder()
-            .description(&gettext("Every service firewalld knows about"))
+            .description(gettext("Every service firewalld knows about"))
             .build();
         content.append(&all_group);
         imp.all_group.replace(Some(all_group));
@@ -175,9 +191,8 @@ impl ServicesPage {
         imp.available_zones.replace(zones.to_vec());
 
         if let Some(dropdown) = imp.zone_dropdown.borrow().as_ref() {
-            let model = gtk4::StringList::new(
-                &zones.iter().map(|z| z.as_str()).collect::<Vec<_>>(),
-            );
+            let model =
+                gtk4::StringList::new(&zones.iter().map(|z| z.as_str()).collect::<Vec<_>>());
             dropdown.set_model(Some(&model));
             // Select the currently targeted zone
             let target = imp.selected_zone.borrow().clone();
@@ -218,13 +233,15 @@ impl ServicesPage {
         let matches = |name: &str| search.is_empty() || name.to_lowercase().contains(&search);
 
         // Enabled services (in the selected zone)
-        let mut enabled_services: Vec<&Service> = services.iter()
+        let mut enabled_services: Vec<&Service> = services
+            .iter()
             .filter(|s| enabled_in_zone.contains(s.name.as_str()) && matches(&s.name))
             .collect();
         enabled_services.sort_by(|a, b| a.name.cmp(&b.name));
 
         // Every other service, filtered by search
-        let mut all_services: Vec<&Service> = services.iter()
+        let mut all_services: Vec<&Service> = services
+            .iter()
             .filter(|s| !enabled_in_zone.contains(s.name.as_str()) && matches(&s.name))
             .collect();
         all_services.sort_by(|a, b| a.name.cmp(&b.name));
@@ -233,7 +250,7 @@ impl ServicesPage {
             if let Some(group) = imp.enabled_group.borrow().as_ref() {
                 let placeholder = adw::ActionRow::builder()
                     .title(gettext("No services enabled in '%s'").replace("%s", &selected_zone))
-                    .subtitle(&gettext("Enable services below to allow specific traffic"))
+                    .subtitle(gettext("Enable services below to allow specific traffic"))
                     .sensitive(false)
                     .build();
                 group.add(&placeholder);
@@ -247,7 +264,11 @@ impl ServicesPage {
         if all_services.is_empty() {
             if let Some(group) = imp.all_group.borrow().as_ref() {
                 let placeholder = adw::ActionRow::builder()
-                    .title(if search.is_empty() { gettext("No services available") } else { gettext("No matching services") })
+                    .title(if search.is_empty() {
+                        gettext("No services available")
+                    } else {
+                        gettext("No matching services")
+                    })
                     .sensitive(false)
                     .build();
                 group.add(&placeholder);
@@ -264,12 +285,13 @@ impl ServicesPage {
         if let Some(group) = group {
             // Collect all rows first to avoid modification during iteration
             let mut rows_to_remove: Vec<gtk4::Widget> = Vec::new();
-            
+
             // Recursively find all ActionRow and ExpanderRow widgets
             fn find_rows(widget: &gtk4::Widget, rows: &mut Vec<gtk4::Widget>) {
                 // Check if this widget is a row type
-                if widget.downcast_ref::<adw::ActionRow>().is_some() 
-                    || widget.downcast_ref::<adw::ExpanderRow>().is_some() {
+                if widget.downcast_ref::<adw::ActionRow>().is_some()
+                    || widget.downcast_ref::<adw::ExpanderRow>().is_some()
+                {
                     rows.push(widget.clone());
                 }
                 // Check children
@@ -281,7 +303,7 @@ impl ServicesPage {
                     }
                 }
             }
-            
+
             // Find all rows in the group
             if let Some(first) = group.first_child() {
                 let mut child = Some(first);
@@ -290,7 +312,7 @@ impl ServicesPage {
                     child = c.next_sibling();
                 }
             }
-            
+
             // Remove each row using the group's remove method
             for row in rows_to_remove {
                 group.remove(&row);
@@ -301,7 +323,7 @@ impl ServicesPage {
     /// Add a service row to the appropriate group.
     fn add_service_row(&self, service: &Service, enabled: bool) {
         let imp = self.imp();
-        
+
         let group = if enabled {
             imp.enabled_group.borrow()
         } else {
@@ -334,7 +356,11 @@ impl ServicesPage {
             let switch = gtk4::Switch::builder()
                 .active(enabled)
                 .valign(gtk4::Align::Center)
-                .tooltip_text(if enabled { gettext("Disable service") } else { gettext("Enable service") })
+                .tooltip_text(if enabled {
+                    gettext("Disable service")
+                } else {
+                    gettext("Enable service")
+                })
                 .build();
 
             let service_name = service.name.clone();
@@ -391,7 +417,7 @@ impl ServicesPage {
         let zone = imp.selected_zone.borrow().clone();
         let service_name = name.to_string();
         let page = self.clone();
-        
+
         glib::spawn_future_local(async move {
             let service_clone = service_name.clone();
             let zone_clone = zone.clone();
@@ -401,7 +427,8 @@ impl ServicesPage {
                     return Err(anyhow::anyhow!("Not connected to firewalld"));
                 }
                 client.enable_service(&zone_clone, &service_clone, true)
-            }).await;
+            })
+            .await;
 
             match result {
                 Ok(Ok(outcome)) => {
@@ -411,7 +438,9 @@ impl ServicesPage {
                             service_name
                         ));
                     } else {
-                        page.show_toast(&gettext("Service '%s' enabled").replace("%s", &service_name));
+                        page.show_toast(
+                            &gettext("Service '%s' enabled").replace("%s", &service_name),
+                        );
                     }
                     page.request_refresh();
                 }
@@ -434,7 +463,7 @@ impl ServicesPage {
         let zone = imp.selected_zone.borrow().clone();
         let service_name = name.to_string();
         let page = self.clone();
-        
+
         glib::spawn_future_local(async move {
             let service_clone = service_name.clone();
             let zone_clone = zone.clone();
@@ -444,7 +473,8 @@ impl ServicesPage {
                     return Err(anyhow::anyhow!("Not connected to firewalld"));
                 }
                 client.disable_service(&zone_clone, &service_clone, true)
-            }).await;
+            })
+            .await;
 
             match result {
                 Ok(Ok(outcome)) => {
@@ -454,7 +484,9 @@ impl ServicesPage {
                             service_name
                         ));
                     } else {
-                        page.show_toast(&gettext("Service '%s' disabled").replace("%s", &service_name));
+                        page.show_toast(
+                            &gettext("Service '%s' disabled").replace("%s", &service_name),
+                        );
                     }
                     page.request_refresh();
                 }

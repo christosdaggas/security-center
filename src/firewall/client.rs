@@ -78,8 +78,7 @@ impl FirewallClient {
     pub fn connect(&mut self) -> Result<()> {
         info!("Connecting to firewalld...");
 
-        let conn = Connection::system()
-            .context("Failed to connect to system D-Bus")?;
+        let conn = Connection::system().context("Failed to connect to system D-Bus")?;
 
         // Test connection by getting the default zone
         let _: String = conn
@@ -121,7 +120,9 @@ impl FirewallClient {
         B: serde::ser::Serialize + zbus::zvariant::DynamicType,
         R: for<'d> zbus::zvariant::DynamicDeserialize<'d>,
     {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
 
         let proxy = Proxy::new(conn, BUS_NAME, path, interface)
@@ -134,7 +135,9 @@ impl FirewallClient {
 
     /// Get the default zone name.
     pub fn get_default_zone(&self) -> Result<String> {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
 
         let zone: String = conn
@@ -168,7 +171,9 @@ impl FirewallClient {
 
     /// Get all zones.
     pub fn get_zones(&mut self) -> Result<Vec<Zone>> {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
 
         // Get zone names
@@ -241,7 +246,9 @@ impl FirewallClient {
 
     /// Get services enabled in a zone.
     fn get_zone_services(&self, zone: &str) -> Result<Vec<String>> {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
 
         let services: Vec<String> = conn
@@ -260,7 +267,9 @@ impl FirewallClient {
 
     /// Get ports enabled in a zone.
     fn get_zone_ports(&self, zone: &str) -> Result<Vec<String>> {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
 
         // firewalld returns aas (array of array of strings) not a(ss)
@@ -277,7 +286,8 @@ impl FirewallClient {
             .deserialize()?;
 
         // Convert from [[port, proto], ...] to ["port/proto", ...]
-        Ok(ports.into_iter()
+        Ok(ports
+            .into_iter()
             .filter_map(|arr| {
                 if arr.len() >= 2 {
                     Some(format!("{}/{}", arr[0], arr[1]))
@@ -290,7 +300,9 @@ impl FirewallClient {
 
     /// Get rich rules for a zone.
     pub fn get_zone_rich_rules(&self, zone: &str) -> Result<Vec<String>> {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
 
         let rules: Vec<String> = conn
@@ -309,7 +321,9 @@ impl FirewallClient {
 
     /// Get all available services.
     pub fn get_services(&mut self) -> Result<Vec<Service>> {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
 
         // Get all service names (this is on the main interface)
@@ -346,9 +360,18 @@ impl FirewallClient {
 
     /// Add a port to a zone. Runtime failure is an `Err`; the returned
     /// outcome reports whether the permanent half also succeeded.
-    pub fn add_port(&self, zone: &str, port: &str, protocol: &str, permanent: bool) -> Result<PermanentOutcome> {
+    pub fn add_port(
+        &self,
+        zone: &str,
+        port: &str,
+        protocol: &str,
+        permanent: bool,
+    ) -> Result<PermanentOutcome> {
         validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
-        info!("add_port called: zone={}, port={}, protocol={}, permanent={}", zone, port, protocol, permanent);
+        info!(
+            "add_port called: zone={}, port={}, protocol={}, permanent={}",
+            zone, port, protocol, permanent
+        );
 
         // Add to runtime config
         let result: Result<Option<String>> = self.call_interactive(
@@ -359,10 +382,16 @@ impl FirewallClient {
         );
 
         match result {
-            Ok(_) => info!("Added port {}/{} to zone {} (runtime)", port, protocol, zone),
+            Ok(_) => info!(
+                "Added port {}/{} to zone {} (runtime)",
+                port, protocol, zone
+            ),
             Err(e) if e.to_string().contains("ALREADY_ENABLED") => {
-                info!("Port {}/{} already enabled in zone {}", port, protocol, zone);
-            },
+                info!(
+                    "Port {}/{} already enabled in zone {}",
+                    port, protocol, zone
+                );
+            }
             Err(e) => return Err(e),
         }
 
@@ -378,7 +407,13 @@ impl FirewallClient {
 
     /// Remove a port from a zone. Runtime failure is an `Err` unless the
     /// port was already gone; the outcome reports the permanent half.
-    pub fn remove_port(&self, zone: &str, port: &str, protocol: &str, permanent: bool) -> Result<PermanentOutcome> {
+    pub fn remove_port(
+        &self,
+        zone: &str,
+        port: &str,
+        protocol: &str,
+        permanent: bool,
+    ) -> Result<PermanentOutcome> {
         validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
         // Remove from runtime
         let result: Result<Option<String>> = self.call_interactive(
@@ -389,8 +424,11 @@ impl FirewallClient {
         );
 
         match result {
-            Ok(_) => info!("Removed port {}/{} from zone {} (runtime)", port, protocol, zone),
-            Err(e) if e.to_string().contains("NOT_ENABLED") => {},
+            Ok(_) => info!(
+                "Removed port {}/{} from zone {} (runtime)",
+                port, protocol, zone
+            ),
+            Err(e) if e.to_string().contains("NOT_ENABLED") => {}
             Err(e) => return Err(e),
         }
 
@@ -429,8 +467,12 @@ impl FirewallClient {
         match result {
             Ok(_) => PermanentOutcome::Applied,
             // Already matching permanent config counts as applied
-            Err(e) if e.to_string().contains("ALREADY_ENABLED")
-                || e.to_string().contains("NOT_ENABLED") => PermanentOutcome::Applied,
+            Err(e)
+                if e.to_string().contains("ALREADY_ENABLED")
+                    || e.to_string().contains("NOT_ENABLED") =>
+            {
+                PermanentOutcome::Applied
+            }
             Err(e) => {
                 warn!("Permanent {} failed for zone {}: {}", method, zone, e);
                 PermanentOutcome::Failed(e.to_string())
@@ -439,7 +481,12 @@ impl FirewallClient {
     }
 
     /// Enable a service in a zone.
-    pub fn enable_service(&self, zone: &str, service: &str, permanent: bool) -> Result<PermanentOutcome> {
+    pub fn enable_service(
+        &self,
+        zone: &str,
+        service: &str,
+        permanent: bool,
+    ) -> Result<PermanentOutcome> {
         validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
         let result: Result<Option<String>> = self.call_interactive(
             ObjectPath::try_from(paths::ROOT)?,
@@ -450,7 +497,7 @@ impl FirewallClient {
 
         match result {
             Ok(_) => info!("Enabled service {} in zone {} (runtime)", service, zone),
-            Err(e) if e.to_string().contains("ALREADY_ENABLED") => {},
+            Err(e) if e.to_string().contains("ALREADY_ENABLED") => {}
             Err(e) => return Err(e),
         }
 
@@ -465,7 +512,12 @@ impl FirewallClient {
     }
 
     /// Disable a service in a zone.
-    pub fn disable_service(&self, zone: &str, service: &str, permanent: bool) -> Result<PermanentOutcome> {
+    pub fn disable_service(
+        &self,
+        zone: &str,
+        service: &str,
+        permanent: bool,
+    ) -> Result<PermanentOutcome> {
         validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
         let result: Result<Option<String>> = self.call_interactive(
             ObjectPath::try_from(paths::ROOT)?,
@@ -476,7 +528,7 @@ impl FirewallClient {
 
         match result {
             Ok(_) => info!("Disabled service {} in zone {} (runtime)", service, zone),
-            Err(e) if e.to_string().contains("NOT_ENABLED") => {},
+            Err(e) if e.to_string().contains("NOT_ENABLED") => {}
             Err(e) => return Err(e),
         }
 
@@ -491,7 +543,12 @@ impl FirewallClient {
     }
 
     /// Add a rich rule to a zone.
-    pub fn add_rich_rule(&self, zone: &str, rule: &str, permanent: bool) -> Result<PermanentOutcome> {
+    pub fn add_rich_rule(
+        &self,
+        zone: &str,
+        rule: &str,
+        permanent: bool,
+    ) -> Result<PermanentOutcome> {
         validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
         let result: Result<Option<String>> = self.call_interactive(
             ObjectPath::try_from(paths::ROOT)?,
@@ -502,7 +559,7 @@ impl FirewallClient {
 
         match result {
             Ok(_) => info!("Added rich rule to zone {}: {}", zone, rule),
-            Err(e) if e.to_string().contains("ALREADY_ENABLED") => {},
+            Err(e) if e.to_string().contains("ALREADY_ENABLED") => {}
             Err(e) => return Err(e),
         }
 
@@ -517,7 +574,12 @@ impl FirewallClient {
     }
 
     /// Remove a rich rule from a zone.
-    pub fn remove_rich_rule(&self, zone: &str, rule: &str, permanent: bool) -> Result<PermanentOutcome> {
+    pub fn remove_rich_rule(
+        &self,
+        zone: &str,
+        rule: &str,
+        permanent: bool,
+    ) -> Result<PermanentOutcome> {
         validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
         let result: Result<Option<String>> = self.call_interactive(
             ObjectPath::try_from(paths::ROOT)?,
@@ -528,7 +590,7 @@ impl FirewallClient {
 
         match result {
             Ok(_) => info!("Removed rich rule from zone {}: {}", zone, rule),
-            Err(e) if e.to_string().contains("NOT_ENABLED") => {},
+            Err(e) if e.to_string().contains("NOT_ENABLED") => {}
             Err(e) => return Err(e),
         }
 
@@ -544,7 +606,9 @@ impl FirewallClient {
 
     /// Get the D-Bus path for a zone's permanent config.
     fn get_zone_config_path(&self, zone_name: &str) -> Result<String> {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
 
         let path: OwnedObjectPath = conn
@@ -563,7 +627,9 @@ impl FirewallClient {
 
     /// Get network interfaces.
     pub fn get_interfaces(&self) -> Result<Vec<Interface>> {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
 
         // Get active zones which contain interface info
@@ -638,7 +704,9 @@ impl FirewallClient {
 
     /// Query if panic mode is enabled.
     pub fn query_panic_mode(&self) -> Result<bool> {
-        let conn = self.connection.as_ref()
+        let conn = self
+            .connection
+            .as_ref()
             .ok_or_else(|| anyhow!("Not connected to firewalld"))?;
 
         let enabled: bool = conn

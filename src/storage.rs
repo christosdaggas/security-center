@@ -23,9 +23,9 @@ pub struct PortMetadata {
     pub description: String,
     pub created_at: String,
     #[serde(default)]
-    pub incoming_action: String,  // "allow", "deny", or ""
+    pub incoming_action: String, // "allow", "deny", or ""
     #[serde(default)]
-    pub outgoing_action: String,  // "allow", "deny", or ""
+    pub outgoing_action: String, // "allow", "deny", or ""
     #[serde(default)]
     pub zone: String,
     #[serde(default)]
@@ -71,7 +71,6 @@ impl PortMetadata {
             end_port: 0,
         }
     }
-    
 }
 
 /// Storage for port metadata.
@@ -133,7 +132,10 @@ impl PortStorage {
         for (key, mut meta) in data {
             // Validate protocol
             if !meta.protocol.is_empty() && validate_protocol(&meta.protocol).is_none() {
-                warn!("Discarding port metadata entry with invalid protocol: {}", meta.protocol);
+                warn!(
+                    "Discarding port metadata entry with invalid protocol: {}",
+                    meta.protocol
+                );
                 continue;
             }
             // Validate port number (must be > 0 if protocol is set)
@@ -173,32 +175,30 @@ impl PortStorage {
         if !self.dirty {
             return;
         }
-        
+
         if let Some(parent) = self.path.parent() {
             let _ = fs::create_dir_all(parent);
         }
 
         match serde_json::to_string_pretty(&self.data) {
-            Ok(content) => {
-                match fs::File::create(&self.path) {
-                    Ok(mut file) => {
-                        #[cfg(unix)]
-                        {
-                            if let Err(e) = file.set_permissions(fs::Permissions::from_mode(0o600)) {
-                                warn!("Failed to set file permissions: {}", e);
-                            }
-                        }
-                        if let Err(e) = file.write_all(content.as_bytes()) {
-                            warn!("Failed to save port metadata: {}", e);
-                        } else {
-                            self.dirty = false;
+            Ok(content) => match fs::File::create(&self.path) {
+                Ok(mut file) => {
+                    #[cfg(unix)]
+                    {
+                        if let Err(e) = file.set_permissions(fs::Permissions::from_mode(0o600)) {
+                            warn!("Failed to set file permissions: {}", e);
                         }
                     }
-                    Err(e) => {
-                        warn!("Failed to create port metadata file: {}", e);
+                    if let Err(e) = file.write_all(content.as_bytes()) {
+                        warn!("Failed to save port metadata: {}", e);
+                    } else {
+                        self.dirty = false;
                     }
                 }
-            }
+                Err(e) => {
+                    warn!("Failed to create port metadata file: {}", e);
+                }
+            },
             Err(e) => {
                 warn!("Failed to serialize port metadata: {}", e);
             }
@@ -342,10 +342,8 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn test_save_sets_permissions() {
-        let tmp = std::env::temp_dir().join(format!(
-            "security-center-test-{}.json",
-            std::process::id()
-        ));
+        let tmp =
+            std::env::temp_dir().join(format!("security-center-test-{}.json", std::process::id()));
         let mut storage = PortStorage {
             data: HashMap::new(),
             path: tmp.clone(),

@@ -19,14 +19,14 @@
 
 use std::cell::RefCell;
 
+use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4::subclass::prelude::*;
-use gtk4::glib;
 use libadwaita as adw;
 use libadwaita::prelude::*;
 use tracing::error;
 
-use crate::admin::{ListeningEndpoint, NetworkExposure, FirewallStatus, get_service_name};
+use crate::admin::{get_service_name, FirewallStatus, ListeningEndpoint, NetworkExposure};
 use crate::i18n::gettext;
 use crate::ui::widgets::BarChart;
 use crate::validation::validate_protocol;
@@ -74,13 +74,13 @@ impl NetworkExposurePage {
             .build();
 
         let title = gtk4::Label::builder()
-            .label(&gettext("Network Exposure"))
+            .label(gettext("Network Exposure"))
             .css_classes(vec!["title-1".to_string()])
             .halign(gtk4::Align::Start)
             .build();
 
         let subtitle = gtk4::Label::builder()
-            .label(&gettext("Monitor listening ports and their firewall status"))
+            .label(gettext("Monitor listening ports and their firewall status"))
             .css_classes(vec!["dim-label".to_string()])
             .halign(gtk4::Align::Start)
             .build();
@@ -90,7 +90,7 @@ impl NetworkExposurePage {
 
         let refresh_button = gtk4::Button::builder()
             .icon_name("view-refresh-symbolic")
-            .tooltip_text(&gettext("Refresh"))
+            .tooltip_text(gettext("Refresh"))
             .css_classes(vec!["flat".to_string()])
             .valign(gtk4::Align::Center)
             .build();
@@ -131,9 +131,12 @@ impl NetworkExposurePage {
             .margin_bottom(12)
             .build();
 
-        let total_card = self.create_summary_card(&gettext("Total Ports"), "0", "network-server-symbolic");
-        let exposed_card = self.create_summary_card(&gettext("Exposed"), "0", "security-low-symbolic");
-        let blocked_card = self.create_summary_card(&gettext("Blocked"), "0", "security-high-symbolic");
+        let total_card =
+            self.create_summary_card(&gettext("Total Ports"), "0", "network-server-symbolic");
+        let exposed_card =
+            self.create_summary_card(&gettext("Exposed"), "0", "security-low-symbolic");
+        let blocked_card =
+            self.create_summary_card(&gettext("Blocked"), "0", "security-high-symbolic");
 
         imp.total_card.replace(Some(total_card.clone()));
         imp.exposed_card.replace(Some(exposed_card.clone()));
@@ -145,12 +148,13 @@ impl NetworkExposurePage {
         content.append(&summary_box);
 
         // Exposed endpoints (risky)
-        let exposed_header = Self::create_section_header("dialog-warning-symbolic", &gettext("Exposed to Network"));
+        let exposed_header =
+            Self::create_section_header("dialog-warning-symbolic", &gettext("Exposed to Network"));
         exposed_header.set_visible(false);
         imp.exposed_header.replace(Some(exposed_header.clone()));
         content.append(&exposed_header);
         let exposed_group = adw::PreferencesGroup::builder()
-            .description(&gettext("These ports are listening on all interfaces"))
+            .description(gettext("These ports are listening on all interfaces"))
             .visible(false)
             .build();
         imp.exposed_group.replace(Some(exposed_group.clone()));
@@ -162,14 +166,17 @@ impl NetworkExposurePage {
         imp.local_header.replace(Some(local_header.clone()));
         content.append(&local_header);
         let local_group = adw::PreferencesGroup::builder()
-            .description(&gettext("These ports are only accessible locally"))
+            .description(gettext("These ports are only accessible locally"))
             .visible(false)
             .build();
         imp.local_group.replace(Some(local_group.clone()));
         content.append(&local_group);
 
         // Active connections (established sessions to remote hosts)
-        let conn_header = Self::create_section_header("network-transmit-receive-symbolic", &gettext("Active Connections"));
+        let conn_header = Self::create_section_header(
+            "network-transmit-receive-symbolic",
+            &gettext("Active Connections"),
+        );
         conn_header.set_visible(false);
         imp.connections_header.replace(Some(conn_header.clone()));
         content.append(&conn_header);
@@ -192,10 +199,11 @@ impl NetworkExposurePage {
         content.append(&talkers_card);
 
         let connections_group = adw::PreferencesGroup::builder()
-            .description(&gettext("Established connections to remote hosts"))
+            .description(gettext("Established connections to remote hosts"))
             .visible(false)
             .build();
-        imp.connections_group.replace(Some(connections_group.clone()));
+        imp.connections_group
+            .replace(Some(connections_group.clone()));
         content.append(&connections_group);
 
         scrolled.set_child(Some(&content));
@@ -212,7 +220,7 @@ impl NetworkExposurePage {
             .build();
 
         let status_label = gtk4::Label::builder()
-            .label(&gettext("Scan to see listening ports"))
+            .label(gettext("Scan to see listening ports"))
             .css_classes(vec!["dim-label".to_string()])
             .halign(gtk4::Align::Center)
             .build();
@@ -366,7 +374,8 @@ impl NetworkExposurePage {
                     })
                     .collect(),
                 _ => {
-                    let mut counts: std::collections::HashMap<String, u64> = std::collections::HashMap::new();
+                    let mut counts: std::collections::HashMap<String, u64> =
+                        std::collections::HashMap::new();
                     for conn in &connections {
                         *counts.entry(conn.remote_addr.to_string()).or_insert(0) += 1;
                     }
@@ -464,7 +473,9 @@ impl NetworkExposurePage {
                     .title(glib::markup_escape_text(&title).as_str())
                     .subtitle(glib::markup_escape_text(&subtitle).as_str())
                     .build();
-                row.add_prefix(&gtk4::Image::from_icon_name("network-transmit-receive-symbolic"));
+                row.add_prefix(&gtk4::Image::from_icon_name(
+                    "network-transmit-receive-symbolic",
+                ));
 
                 // Country flag (offline GeoIP) when the remote resolves
                 if let Some(label) = geo_labels.get(&g.addr) {
@@ -578,11 +589,14 @@ impl NetworkExposurePage {
             endpoint.port.to_string()
         };
 
-        let process_name = endpoint.process_name.clone().unwrap_or_else(|| gettext("Unknown Process"));
+        let process_name = endpoint
+            .process_name
+            .clone()
+            .unwrap_or_else(|| gettext("Unknown Process"));
 
         let row = adw::ExpanderRow::builder()
             .title(&port_label)
-            .subtitle(&format!("{} • {}", process_name, endpoint.protocol.as_str()))
+            .subtitle(format!("{} • {}", process_name, endpoint.protocol.as_str()))
             .build();
 
         // Status icon based on exposure
@@ -592,14 +606,12 @@ impl NetworkExposurePage {
             "security-high-symbolic"
         };
 
-        let status_icon = gtk4::Image::builder()
-            .icon_name(icon_name)
-            .build();
+        let status_icon = gtk4::Image::builder().icon_name(icon_name).build();
         row.add_prefix(&status_icon);
 
         // Firewall status badge
         let fw_label = gtk4::Label::builder()
-            .label(&endpoint.firewall_status.label())
+            .label(endpoint.firewall_status.label())
             .css_classes(vec!["caption".to_string()])
             .valign(gtk4::Align::Center)
             .build();
@@ -627,8 +639,8 @@ impl NetworkExposurePage {
 
         // Details row
         let details_row = adw::ActionRow::builder()
-            .title(&gettext("Listening Address"))
-            .subtitle(&format!("{}:{}", endpoint.local_addr, endpoint.port))
+            .title(gettext("Listening Address"))
+            .subtitle(format!("{}:{}", endpoint.local_addr, endpoint.port))
             .build();
         row.add_row(&details_row);
 
@@ -641,16 +653,14 @@ impl NetworkExposurePage {
             }
 
             let process_row = adw::ActionRow::builder()
-                .title(&gettext("Process"))
+                .title(gettext("Process"))
                 .subtitle(&subtitle)
                 .build();
             row.add_row(&process_row);
         }
 
         // Actions row
-        let actions_row = adw::ActionRow::builder()
-            .title(&gettext("Actions"))
-            .build();
+        let actions_row = adw::ActionRow::builder().title(gettext("Actions")).build();
 
         let button_box = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Horizontal)
@@ -661,9 +671,9 @@ impl NetworkExposurePage {
         // Stop service button (if we know the process)
         if let Some(process_name) = &endpoint.process_name {
             let stop_btn = gtk4::Button::builder()
-                .label(&gettext("Stop Service"))
+                .label(gettext("Stop Service"))
                 .css_classes(vec!["flat".to_string()])
-                .tooltip_text(&gettext("Stop the systemd service using this port"))
+                .tooltip_text(gettext("Stop the systemd service using this port"))
                 .build();
 
             let unit = format!("{}.service", process_name);
@@ -678,9 +688,9 @@ impl NetworkExposurePage {
 
         // Block port button (red with white text)
         let block_btn = gtk4::Button::builder()
-            .label(&gettext("Block Port"))
+            .label(gettext("Block Port"))
             .css_classes(vec!["destructive-action".to_string()])
-            .tooltip_text(&gettext("Add a firewall rule to block this port"))
+            .tooltip_text(gettext("Add a firewall rule to block this port"))
             .build();
 
         // Connect to firewall block action
@@ -736,7 +746,8 @@ impl NetworkExposurePage {
                     let mut client = crate::systemd::SystemdClient::new();
                     client.connect()?;
                     client.stop_service(&unit_clone)
-                }).await;
+                })
+                .await;
 
                 match result {
                     Ok(Ok(())) => {
@@ -779,7 +790,8 @@ impl NetworkExposurePage {
                 }
 
                 // Get the default zone to add the rule to
-                let zone = client.get_default_zone()
+                let zone = client
+                    .get_default_zone()
                     .unwrap_or_else(|_| "public".to_string());
 
                 // Validate protocol before constructing rich rule
@@ -798,7 +810,8 @@ impl NetworkExposurePage {
                 let outcome = client.add_rich_rule(&zone, &rule, true)?;
 
                 Ok((zone, outcome.failed()))
-            }).await;
+            })
+            .await;
 
             match result {
                 Ok(Ok((zone, permanent_failed))) => {
@@ -808,7 +821,10 @@ impl NetworkExposurePage {
                             port_str, protocol, zone
                         ));
                     } else {
-                        page.show_toast(&format!("Port {}/{} blocked in zone '{}'", port_str, protocol, zone));
+                        page.show_toast(&format!(
+                            "Port {}/{} blocked in zone '{}'",
+                            port_str, protocol, zone
+                        ));
                     }
                     // Refresh to show updated status
                     page.refresh();

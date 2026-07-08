@@ -5,7 +5,7 @@
 //! Security Center - A GTK4/Libadwaita security management application.
 
 use gtk4::prelude::*;
-use gtk4::{gio, gdk, glib};
+use gtk4::{gdk, gio, glib};
 use libadwaita as adw;
 
 use gtk4 as gtk;
@@ -45,10 +45,7 @@ fn main() -> glib::ExitCode {
     use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer().with_target(false))
-        .with(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info")),
-        )
+        .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
         .init();
 
     let resource_bytes = include_bytes!(concat!(env!("OUT_DIR"), "/security-center.gresource"));

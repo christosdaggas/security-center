@@ -10,13 +10,13 @@ use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, Ipv4Addr};
 
+use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4::subclass::prelude::*;
-use gtk4::glib;
 
+use super::widgets::{list_interfaces, DonutChart, MeterBar, NetworkActivityChart, Sparkline};
 use crate::i18n::gettext;
 use crate::models::Zone;
-use super::widgets::{list_interfaces, NetworkActivityChart, Sparkline, DonutChart, MeterBar};
 
 /// How often the live connection dashboard refreshes.
 const REFRESH_SECS: u32 = 5;
@@ -250,14 +250,14 @@ impl OverviewPage {
             .build();
 
         let status_title = gtk4::Label::builder()
-            .label(&gettext("Firewall Active"))
+            .label(gettext("Firewall Active"))
             .css_classes(vec!["title-2".to_string()])
             .halign(gtk4::Align::Start)
             .build();
         imp.status_title.replace(Some(status_title.clone()));
 
         let status_subtitle = gtk4::Label::builder()
-            .label(&gettext("Your system is protected"))
+            .label(gettext("Your system is protected"))
             .css_classes(vec!["dim-label".to_string()])
             .halign(gtk4::Align::Start)
             .build();
@@ -287,7 +287,7 @@ impl OverviewPage {
             .build();
         zone_info_box.append(&zone_icon);
         let zone_label = gtk4::Label::builder()
-            .label(&gettext("Default Zone:"))
+            .label(gettext("Default Zone:"))
             .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
             .build();
         zone_info_box.append(&zone_label);
@@ -295,7 +295,8 @@ impl OverviewPage {
             .label("public")
             .css_classes(vec!["caption".to_string()])
             .build();
-        imp.default_zone_label.replace(Some(zone_name_label.clone()));
+        imp.default_zone_label
+            .replace(Some(zone_name_label.clone()));
         zone_info_box.append(&zone_name_label);
         toggle_box.append(&zone_info_box);
 
@@ -309,13 +310,13 @@ impl OverviewPage {
             .build();
         let restart_button = gtk4::Button::builder()
             .icon_name("view-refresh-symbolic")
-            .tooltip_text(&gettext("Restart Firewall"))
+            .tooltip_text(gettext("Restart Firewall"))
             .css_classes(vec!["circular".to_string()])
             .valign(gtk4::Align::Center)
             .halign(gtk4::Align::Center)
             .build();
         let restart_label = gtk4::Label::builder()
-            .label(&gettext("Restart"))
+            .label(gettext("Restart"))
             .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
             .halign(gtk4::Align::Center)
             .build();
@@ -339,11 +340,16 @@ impl OverviewPage {
                         if let Some(main_window) = window.downcast_ref::<super::MainWindow>() {
                             match result {
                                 Ok(Ok(())) => {
-                                    main_window.show_toast(&gettext("Firewall reloaded successfully"));
+                                    main_window
+                                        .show_toast(&gettext("Firewall reloaded successfully"));
                                     main_window.refresh_data();
                                 }
                                 Ok(Err(e)) => {
-                                    main_window.show_toast(&format!("{}: {}", gettext("Failed to reload"), e));
+                                    main_window.show_toast(&format!(
+                                        "{}: {}",
+                                        gettext("Failed to reload"),
+                                        e
+                                    ));
                                 }
                                 Err(_) => {
                                     main_window.show_toast(&gettext("Failed to reload firewall"));
@@ -373,7 +379,7 @@ impl OverviewPage {
             .build();
         imp.traffic_switch.replace(Some(traffic_switch.clone()));
         let toggle_label = gtk4::Label::builder()
-            .label(&gettext("Traffic Enabled"))
+            .label(gettext("Traffic Enabled"))
             .css_classes(vec!["caption".to_string(), "success".to_string()])
             .halign(gtk4::Align::Center)
             .build();
@@ -397,13 +403,19 @@ impl OverviewPage {
             .homogeneous(true)
             .build();
 
-        let (active_card, active_val) =
-            stat_card("network-transmit-receive-symbolic", "accent", &gettext("Active Connections"));
+        let (active_card, active_val) = stat_card(
+            "network-transmit-receive-symbolic",
+            "accent",
+            &gettext("Active Connections"),
+        );
         imp.metric_active.replace(Some(active_val));
         row.append(&active_card);
 
-        let (blocked_card, blocked_val) =
-            stat_card("action-unavailable-symbolic", "error", &gettext("Blocked Ports"));
+        let (blocked_card, blocked_val) = stat_card(
+            "action-unavailable-symbolic",
+            "error",
+            &gettext("Blocked Ports"),
+        );
         imp.metric_blocked.replace(Some(blocked_val));
         row.append(&blocked_card);
 
@@ -413,8 +425,11 @@ impl OverviewPage {
         row.append(&apps_card);
 
         // System Status card carries a coloured pill instead of a number.
-        let (status_card, status_val) =
-            stat_card("security-high-symbolic", "success", &gettext("System Status"));
+        let (status_card, status_val) = stat_card(
+            "security-high-symbolic",
+            "success",
+            &gettext("System Status"),
+        );
         status_val.remove_css_class("stat-value");
         status_val.add_css_class("pill-ok");
         status_val.set_label(&gettext("Protected"));
@@ -455,14 +470,14 @@ impl OverviewPage {
             .build();
         titles.append(
             &gtk4::Label::builder()
-                .label(&gettext("Firewall Connections Overview"))
+                .label(gettext("Firewall Connections Overview"))
                 .css_classes(vec!["heading".to_string()])
                 .halign(gtk4::Align::Start)
                 .build(),
         );
         titles.append(
             &gtk4::Label::builder()
-                .label(&gettext("Outbound sessions permitted by the active ruleset"))
+                .label(gettext("Outbound sessions permitted by the active ruleset"))
                 .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
                 .halign(gtk4::Align::Start)
                 .build(),
@@ -470,7 +485,7 @@ impl OverviewPage {
         header.append(&titles);
 
         let conn_chip = gtk4::Label::builder()
-            .label(&gettext("No connections"))
+            .label(gettext("No connections"))
             .css_classes(vec!["caption".to_string(), "conn-chip".to_string()])
             .valign(gtk4::Align::Center)
             .build();
@@ -525,7 +540,10 @@ impl OverviewPage {
     /// Panel: connection-state donut with a legend.
     fn build_donut_panel(&self) -> gtk4::Frame {
         let imp = self.imp();
-        let (frame, content) = panel_card(&gettext("Connection Overview"), &gettext("By current state"));
+        let (frame, content) = panel_card(
+            &gettext("Connection Overview"),
+            &gettext("By current state"),
+        );
 
         let donut = DonutChart::new();
         donut.set_halign(gtk4::Align::Center);
@@ -550,7 +568,7 @@ impl OverviewPage {
         center.append(&total);
         center.append(
             &gtk4::Label::builder()
-                .label(&gettext("Total"))
+                .label(gettext("Total"))
                 .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
                 .build(),
         );
@@ -577,7 +595,10 @@ impl OverviewPage {
     /// Panel: top protocols as horizontal meter bars.
     fn build_protocols_panel(&self) -> gtk4::Frame {
         let imp = self.imp();
-        let (frame, content) = panel_card(&gettext("Top Protocols"), &gettext("Share of active sessions"));
+        let (frame, content) = panel_card(
+            &gettext("Top Protocols"),
+            &gettext("Share of active sessions"),
+        );
 
         let list = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
@@ -593,8 +614,10 @@ impl OverviewPage {
     /// Panel: remote endpoints grouped by country.
     fn build_countries_panel(&self) -> gtk4::Frame {
         let imp = self.imp();
-        let (frame, content) =
-            panel_card(&gettext("Connection Status"), &gettext("Remote endpoints by country"));
+        let (frame, content) = panel_card(
+            &gettext("Connection Status"),
+            &gettext("Remote endpoints by country"),
+        );
 
         let list = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
@@ -610,7 +633,8 @@ impl OverviewPage {
     /// Create the live network-activity card (real /proc/net/dev bandwidth).
     fn create_network_activity_card(&self) -> gtk4::Frame {
         let imp = self.imp();
-        let (frame, content) = panel_card(&gettext("Network Activity"), &gettext("Throughput · live"));
+        let (frame, content) =
+            panel_card(&gettext("Network Activity"), &gettext("Throughput · live"));
 
         // Interface selector.
         let header = gtk4::Box::builder()
@@ -646,7 +670,11 @@ impl OverviewPage {
         let interfaces_for_dd = interfaces.clone();
         iface_dropdown.connect_selected_notify(move |dd| {
             let sel = dd.selected() as usize;
-            let iface = if sel == 0 { None } else { interfaces_for_dd.get(sel - 1).cloned() };
+            let iface = if sel == 0 {
+                None
+            } else {
+                interfaces_for_dd.get(sel - 1).cloned()
+            };
             chart_for_dd.set_interface(iface);
         });
 
@@ -754,7 +782,9 @@ impl OverviewPage {
                 entry.countries.insert(label.clone());
             }
 
-            *proto_counts.entry(protocol_of(conn.remote_port)).or_insert(0) += 1;
+            *proto_counts
+                .entry(protocol_of(conn.remote_port))
+                .or_insert(0) += 1;
             let key = geo_labels
                 .get(&conn.remote_addr)
                 .cloned()
@@ -788,7 +818,10 @@ impl OverviewPage {
                 (listening as f64, color_idle()),
             ]);
         }
-        set_label(&imp.donut_total, &(remote_count + blocked + listening).to_string());
+        set_label(
+            &imp.donut_total,
+            &(remote_count + blocked + listening).to_string(),
+        );
         set_label(&imp.donut_active_val, &remote_count.to_string());
         set_label(&imp.donut_blocked_val, &blocked.to_string());
         set_label(&imp.donut_idle_val, &listening.to_string());
@@ -819,7 +852,7 @@ impl OverviewPage {
 
         if app_list.is_empty() {
             let empty = gtk4::Label::builder()
-                .label(&gettext("No active connections"))
+                .label(gettext("No active connections"))
                 .css_classes(vec!["dim-label".to_string()])
                 .margin_top(16)
                 .margin_bottom(16)
@@ -902,7 +935,7 @@ impl OverviewPage {
             );
             top.append(
                 &gtk4::Label::builder()
-                    .label(&format!("{:.0}%", frac * 100.0))
+                    .label(format!("{:.0}%", frac * 100.0))
                     .css_classes(vec!["caption".to_string(), "numeric".to_string()])
                     .halign(gtk4::Align::End)
                     .build(),
@@ -957,8 +990,12 @@ impl OverviewPage {
             );
             top.append(
                 &gtk4::Label::builder()
-                    .label(&count.to_string())
-                    .css_classes(vec!["caption".to_string(), "dim-label".to_string(), "numeric".to_string()])
+                    .label(count.to_string())
+                    .css_classes(vec![
+                        "caption".to_string(),
+                        "dim-label".to_string(),
+                        "numeric".to_string(),
+                    ])
                     .halign(gtk4::Align::End)
                     .build(),
             );
@@ -1069,7 +1106,7 @@ fn build_app_card(d: AppCardData) -> gtk4::Box {
     );
     status.append(
         &gtk4::Label::builder()
-            .label(&gettext("Connected"))
+            .label(gettext("Connected"))
             .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
             .build(),
     );
@@ -1086,8 +1123,12 @@ fn build_app_card(d: AppCardData) -> gtk4::Box {
     }
     main.append(
         &gtk4::Label::builder()
-            .label(&addr_parts.join("  ·  "))
-            .css_classes(vec!["caption".to_string(), "dim-label".to_string(), "mono-addr".to_string()])
+            .label(addr_parts.join("  ·  "))
+            .css_classes(vec![
+                "caption".to_string(),
+                "dim-label".to_string(),
+                "mono-addr".to_string(),
+            ])
             .halign(gtk4::Align::Start)
             .ellipsize(gtk4::pango::EllipsizeMode::End)
             .build(),
@@ -1110,15 +1151,19 @@ fn build_app_card(d: AppCardData) -> gtk4::Box {
         .build();
     rate_col.append(
         &gtk4::Label::builder()
-            .label(&format!("{:.0} KB/s", d.down_kbs + d.up_kbs))
+            .label(format!("{:.0} KB/s", d.down_kbs + d.up_kbs))
             .css_classes(vec!["heading".to_string(), "numeric".to_string()])
             .halign(gtk4::Align::End)
             .build(),
     );
     rate_col.append(
         &gtk4::Label::builder()
-            .label(&format!("↓{:.0} ↑{:.0}", d.down_kbs, d.up_kbs))
-            .css_classes(vec!["caption".to_string(), "dim-label".to_string(), "numeric".to_string()])
+            .label(format!("↓{:.0} ↑{:.0}", d.down_kbs, d.up_kbs))
+            .css_classes(vec![
+                "caption".to_string(),
+                "dim-label".to_string(),
+                "numeric".to_string(),
+            ])
             .halign(gtk4::Align::End)
             .build(),
     );
@@ -1311,7 +1356,12 @@ fn icon_for_process(process: &str, port: u16) -> String {
     } else if p.contains("gnome-software") || p.contains("packagekit") {
         &["org.gnome.Software", "system-software-install"]
     } else if p.contains("vscod") || p.contains("code") {
-        &["vscode", "visual-studio-code", "code", "com.visualstudio.code"]
+        &[
+            "vscode",
+            "visual-studio-code",
+            "code",
+            "com.visualstudio.code",
+        ]
     } else if p.contains("thunder") {
         &["thunderbird", "org.mozilla.Thunderbird"]
     } else if p.contains("discord") {

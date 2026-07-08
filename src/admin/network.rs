@@ -23,12 +23,12 @@
 //! Listening Socket → Process (via inode) → Firewall Rule → Zone
 //! ```
 
+use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::Path;
-use anyhow::{Context, Result};
 
 use crate::firewall::FirewallClient;
 use crate::validation::parse_port_spec;
@@ -115,9 +115,7 @@ impl ListeningEndpoint {
                 FirewallStatus::Allowed { zone } if zone == "public" || zone == "external" => {
                     Some("Exposed to public network")
                 }
-                FirewallStatus::Allowed { .. } => {
-                    Some("Listening on all interfaces")
-                }
+                FirewallStatus::Allowed { .. } => Some("Listening on all interfaces"),
                 _ => None,
             }
         } else {
@@ -197,25 +195,25 @@ impl NetworkExposure {
     pub fn scan(&mut self) -> Result<Vec<ListeningEndpoint>> {
         // Build inode -> PID mapping first
         self.build_inode_map()?;
-        
+
         // Read all listening sockets
         let mut endpoints = Vec::new();
-        
+
         // TCP IPv4
         if let Ok(tcp4) = self.read_proc_net("/proc/net/tcp", Protocol::Tcp, false) {
             endpoints.extend(tcp4);
         }
-        
+
         // TCP IPv6
         if let Ok(tcp6) = self.read_proc_net("/proc/net/tcp6", Protocol::Tcp, true) {
             endpoints.extend(tcp6);
         }
-        
+
         // UDP IPv4
         if let Ok(udp4) = self.read_proc_net("/proc/net/udp", Protocol::Udp, false) {
             endpoints.extend(udp4);
         }
-        
+
         // UDP IPv6
         if let Ok(udp6) = self.read_proc_net("/proc/net/udp6", Protocol::Udp, true) {
             endpoints.extend(udp6);
@@ -234,7 +232,7 @@ impl NetworkExposure {
 
         // Sort by port
         endpoints.sort_by_key(|e| (e.port, e.protocol as u8));
-        
+
         // Remove duplicates (same port/protocol)
         endpoints.dedup_by(|a, b| a.port == b.port && a.protocol == b.protocol);
 
@@ -287,9 +285,13 @@ impl NetworkExposure {
             let protocol = endpoint.protocol.as_str().to_lowercase();
             let port = endpoint.port;
 
-            if blocked_ranges.iter().any(|(start, end, p)| *p == protocol && (*start..=*end).contains(&port)) {
+            if blocked_ranges
+                .iter()
+                .any(|(start, end, p)| *p == protocol && (*start..=*end).contains(&port))
+            {
                 endpoint.firewall_status = FirewallStatus::Blocked;
-            } else if let Some((_, _, _, zone)) = allowed_ranges.iter()
+            } else if let Some((_, _, _, zone)) = allowed_ranges
+                .iter()
                 .find(|(start, end, p, _)| *p == protocol && (*start..=*end).contains(&port))
             {
                 endpoint.firewall_status = FirewallStatus::Allowed { zone: zone.clone() };
@@ -304,7 +306,7 @@ impl NetworkExposure {
         self.pid_info.clear();
 
         let proc = Path::new("/proc");
-        
+
         for entry in fs::read_dir(proc).context("Failed to read /proc")? {
             let entry = match entry {
                 Ok(e) => e,
@@ -313,7 +315,7 @@ impl NetworkExposure {
 
             let name = entry.file_name();
             let name_str = name.to_string_lossy();
-            
+
             // Only process numeric directories (PIDs)
             let pid: u32 = match name_str.parse() {
                 Ok(p) => p,
@@ -436,10 +438,14 @@ impl NetworkExposure {
     }
 
     /// Read listening sockets from a /proc/net/* file.
-    fn read_proc_net(&self, path: &str, protocol: Protocol, ipv6: bool) -> Result<Vec<ListeningEndpoint>> {
-        let file = fs::File::open(path)
-            .with_context(|| format!("Failed to open {}", path))?;
-        
+    fn read_proc_net(
+        &self,
+        path: &str,
+        protocol: Protocol,
+        ipv6: bool,
+    ) -> Result<Vec<ListeningEndpoint>> {
+        let file = fs::File::open(path).with_context(|| format!("Failed to open {}", path))?;
+
         let reader = BufReader::new(file);
         let mut endpoints = Vec::new();
 
@@ -465,7 +471,12 @@ impl NetworkExposure {
     /// Parse a line from /proc/net/tcp or similar.
     ///
     /// Format: sl local_address rem_address st tx_queue:rx_queue tr:tm->when retrnsmt uid timeout inode
-    fn parse_proc_net_line(&self, line: &str, protocol: Protocol, ipv6: bool) -> Option<ListeningEndpoint> {
+    fn parse_proc_net_line(
+        &self,
+        line: &str,
+        protocol: Protocol,
+        ipv6: bool,
+    ) -> Option<ListeningEndpoint> {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() < 10 {
             return None;
@@ -473,7 +484,7 @@ impl NetworkExposure {
 
         // State: 0A = LISTEN for TCP, or just check for UDP
         let state = u8::from_str_radix(parts[3], 16).ok()?;
-        
+
         // For TCP, only show LISTEN (0x0A)
         // For UDP, show all (UDP is connectionless, so "listening" means bound)
         if protocol == Protocol::Tcp && state != 0x0A {
@@ -493,7 +504,7 @@ impl NetworkExposure {
         };
 
         let port = u16::from_str_radix(local_parts[1], 16).ok()?;
-        
+
         // Skip ports 0 (not actually listening)
         if port == 0 {
             return None;
@@ -531,7 +542,7 @@ fn parse_ipv4_hex(hex: &str) -> Option<Ipv4Addr> {
     if hex.len() != 8 {
         return None;
     }
-    
+
     let bytes = u32::from_str_radix(hex, 16).ok()?;
     Some(Ipv4Addr::from(bytes.to_be()))
 }
@@ -632,7 +643,10 @@ mod tests {
         // 0.0.0.0 in little-endian hex
         assert_eq!(parse_ipv4_hex("00000000"), Some(Ipv4Addr::new(0, 0, 0, 0)));
         // 127.0.0.1 in little-endian hex
-        assert_eq!(parse_ipv4_hex("0100007F"), Some(Ipv4Addr::new(127, 0, 0, 1)));
+        assert_eq!(
+            parse_ipv4_hex("0100007F"),
+            Some(Ipv4Addr::new(127, 0, 0, 1))
+        );
     }
 
     #[test]
@@ -649,7 +663,9 @@ mod tests {
         let scanner = NetworkExposure::new();
         // ESTABLISHED (state 01), remote 192.168.1.10:443
         let line = "   0: 0100007F:8080 0A01A8C0:01BB 01 00000000:00000000 00:00000000 00000000  1000        0 987654 1 0000000000000000";
-        let conn = scanner.parse_connection_line(line, false).expect("should parse");
+        let conn = scanner
+            .parse_connection_line(line, false)
+            .expect("should parse");
         assert_eq!(conn.remote_addr, IpAddr::V4(Ipv4Addr::new(192, 168, 1, 10)));
         assert_eq!(conn.remote_port, 443);
         assert_eq!(conn.local_port, 0x8080);
@@ -686,9 +702,18 @@ mod tests {
 
     #[test]
     fn test_parse_port_string() {
-        assert_eq!(parse_port_string("80/tcp"), Some(((80, 80), "tcp".to_string())));
-        assert_eq!(parse_port_string("53/udp"), Some(((53, 53), "udp".to_string())));
-        assert_eq!(parse_port_string("10-20/tcp"), Some(((10, 20), "tcp".to_string())));
+        assert_eq!(
+            parse_port_string("80/tcp"),
+            Some(((80, 80), "tcp".to_string()))
+        );
+        assert_eq!(
+            parse_port_string("53/udp"),
+            Some(((53, 53), "udp".to_string()))
+        );
+        assert_eq!(
+            parse_port_string("10-20/tcp"),
+            Some(((10, 20), "tcp".to_string()))
+        );
         assert_eq!(parse_port_string("invalid"), None);
         assert_eq!(parse_port_string("80/tcp/udp"), None);
     }
@@ -704,7 +729,9 @@ mod tests {
             Some(((53, 53), "udp".to_string()))
         );
         assert_eq!(
-            parse_rich_rule_port("rule family=\"ipv4\" port port=\"8000-9000\" protocol=\"tcp\" reject"),
+            parse_rich_rule_port(
+                "rule family=\"ipv4\" port port=\"8000-9000\" protocol=\"tcp\" reject"
+            ),
             Some(((8000, 9000), "tcp".to_string()))
         );
         assert_eq!(parse_rich_rule_port("not a port rule"), None);
