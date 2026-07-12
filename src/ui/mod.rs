@@ -4,7 +4,10 @@
 
 //! User interface components.
 
+mod app_icons;
+mod connections_page;
 mod help_page;
+mod ip_details;
 mod main_window;
 mod network_exposure_page;
 mod overview_page;
@@ -16,6 +19,7 @@ mod zones_page;
 
 pub mod widgets;
 
+pub use connections_page::ConnectionsPage;
 pub use help_page::HelpPage;
 pub use main_window::MainWindow;
 pub use network_exposure_page::NetworkExposurePage;

@@ -153,7 +153,7 @@ pub struct ActiveConnection {
 impl ActiveConnection {
     /// True if the remote peer is outside the local machine (not loopback).
     pub fn is_remote(&self) -> bool {
-        !self.remote_addr.is_loopback() && !self.remote_addr.is_unspecified()
+        !is_local_ip(self.remote_addr)
     }
 
     /// Process label, falling back to the PID or "unknown".
@@ -522,6 +522,18 @@ impl NetworkExposure {
             cmdline: None,
             firewall_status: FirewallStatus::Unknown,
         })
+    }
+}
+
+/// True for loopback / unspecified peers, including IPv4-mapped IPv6 forms
+/// like `::ffff:127.0.0.1` that `IpAddr::is_loopback` alone misses.
+pub fn is_local_ip(addr: IpAddr) -> bool {
+    match addr {
+        IpAddr::V4(v4) => v4.is_loopback() || v4.is_unspecified(),
+        IpAddr::V6(v6) => match v6.to_ipv4_mapped() {
+            Some(v4) => v4.is_loopback() || v4.is_unspecified(),
+            None => v6.is_loopback() || v6.is_unspecified(),
+        },
     }
 }
 

@@ -47,6 +47,20 @@
   <content_rating type="oars-1.1" />
   
   <releases>
+    <release version="1.8.0" date="2026-07-12">
+      <description>
+        <p>What's New in 1.8.0:</p>
+        <ul>
+          <li>New Connections page — a full, searchable and sortable list of every active outbound connection, grouped by destination with live byte totals and country flags</li>
+          <li>IP details window — click any connection to see its country, city, region, ISP, organisation, ASN and reverse DNS, with quick links to AbuseIPDB, Shodan, ipinfo.io and ARIN</li>
+          <li>On-demand online IP lookup — richer geolocation is fetched from a free service only when you click, so the app stays offline by default (ipwho.is over HTTPS, with an ip-api.com fallback)</li>
+          <li>Configurable dashboard — choose how many application connection cards the overview shows</li>
+          <li>New preference to enable or disable online IP lookups</li>
+          <li>Refreshed application icon</li>
+          <li>Accuracy fixes — dashboard cards now always show a real remote endpoint with a matching country</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.7.0" date="2026-07-07">
       <description>
         <p>What's New in 1.7.0:</p>

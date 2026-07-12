@@ -144,6 +144,55 @@ impl Application {
         });
         behavior_group.add(&connections_row);
 
+        // How many application cards the dashboard's connections overview shows.
+        let current_max = self.imp().settings.borrow().dashboard_max_apps();
+        let apps_row = adw::SpinRow::builder()
+            .title(gettext("Dashboard connection cards"))
+            .subtitle(gettext(
+                "How many application cards the dashboard connections overview shows",
+            ))
+            .adjustment(&gtk4::Adjustment::new(
+                current_max as f64,
+                crate::config::DASHBOARD_MAX_APPS_MIN as f64,
+                crate::config::DASHBOARD_MAX_APPS_MAX as f64,
+                1.0,
+                1.0,
+                0.0,
+            ))
+            .build();
+
+        let app = self.clone();
+        apps_row.connect_value_notify(move |row| {
+            let count = row.value().round() as usize;
+            app.imp()
+                .settings
+                .borrow_mut()
+                .set_dashboard_max_apps(count);
+            if let Some(window) = app.imp().window.get() {
+                window.set_dashboard_max_apps(count);
+            }
+        });
+        behavior_group.add(&apps_row);
+
+        // Allow the IP details window to fetch rich data from a free online service.
+        let online_enabled = self.imp().settings.borrow().enable_online_ip_lookup();
+        let online_row = adw::SwitchRow::builder()
+            .title(gettext("Online IP lookups"))
+            .subtitle(gettext(
+                "Let the IP details window fetch city, ISP and ASN from a free online service when you click",
+            ))
+            .active(online_enabled)
+            .build();
+
+        let app = self.clone();
+        online_row.connect_active_notify(move |row| {
+            app.imp()
+                .settings
+                .borrow_mut()
+                .set_enable_online_ip_lookup(row.is_active());
+        });
+        behavior_group.add(&online_row);
+
         // Note: no system-tray toggle here. The app has no tray backend, and an
         // inert switch that silently does nothing erodes trust in every other
         // control. Reintroduce it together with an actual StatusNotifierItem.
@@ -204,7 +253,14 @@ impl Application {
             .copyright("© 2024-2026 Christos A. Daggas")
             .developers(vec!["Christos A. Daggas".to_string()])
             .comments(gettext("Manage your system security, firewall and services"))
-            .release_notes("<p>Version 1.7.0 - July 2026</p><ul>\
+            .release_notes("<p>Version 1.8.0 - July 2026</p><ul>\
+                <li>New Connections page - Full searchable and sortable list of every active outbound connection, grouped by destination with live byte totals and country flags</li>\
+                <li>IP Details Window - Click any connection to see country, city, region, ISP, organisation, ASN and reverse DNS, with quick links to AbuseIPDB, Shodan, ipinfo.io and ARIN</li>\
+                <li>On-Demand Online IP Lookup - Richer geolocation is fetched only when you click, keeping the app offline by default (ipwho.is over HTTPS, with an ip-api.com fallback)</li>\
+                <li>Configurable Dashboard - Choose how many application connection cards the overview shows</li>\
+                <li>New preference to enable or disable online IP lookups</li>\
+                <li>Refreshed application icon</li>\
+            </ul><p>Version 1.7.0 - July 2026</p><ul>\
                 <li>Redesigned Overview Dashboard - Live per-application firewall connection monitor</li>\
                 <li>Application Connection Cards - Real application icons, throughput sparklines, and remote endpoints</li>\
                 <li>Real-Time Analytics - Connection-state donut, network activity graph, top protocols, and remote countries</li>\

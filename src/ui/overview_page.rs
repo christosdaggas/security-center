@@ -14,7 +14,9 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4::subclass::prelude::*;
 
+use super::app_icons::{display_process_name, icon_for_process, protocol_of};
 use super::widgets::{list_interfaces, DonutChart, MeterBar, NetworkActivityChart, Sparkline};
+use crate::admin::is_local_ip;
 use crate::i18n::gettext;
 use crate::models::Zone;
 
@@ -163,14 +165,12 @@ impl OverviewPage {
         self.set_spacing(0);
 
         // Make Flatpak-exported application icons resolvable by name.
-        if let Some(theme) = icon_theme() {
-            theme.add_search_path("/var/lib/flatpak/exports/share/icons");
-            if let Some(home) = std::env::var_os("HOME") {
-                let mut p = std::path::PathBuf::from(home);
-                p.push(".local/share/flatpak/exports/share/icons");
-                theme.add_search_path(&p);
-            }
-        }
+        super::app_icons::register_flatpak_icon_paths();
+
+        // Honour the saved "dashboard cards to show" preference.
+        self.imp()
+            .max_apps
+            .set(crate::config::Settings::new().dashboard_max_apps());
 
         let scrolled = gtk4::ScrolledWindow::builder()
             .hscrollbar_policy(gtk4::PolicyType::Never)
@@ -740,15 +740,16 @@ impl OverviewPage {
         let imp = self.imp();
 
         // --- Aggregate per remote application ---
+        // Endpoints are keyed by (addr, port) so the busiest one we later show
+        // on the card is always a real socket pair, not a fabricated mix of the
+        // top host and an unrelated port.
         struct AppAgg {
             process: String,
             conn_count: usize,
             bytes_total: u64,
             interval_in: u64,
             interval_out: u64,
-            hosts: HashMap<IpAddr, u64>,
-            ports: HashSet<u16>,
-            countries: HashSet<String>,
+            hosts: HashMap<(IpAddr, u16), u64>,
         }
         let mut apps: HashMap<String, AppAgg> = HashMap::new();
 
@@ -764,7 +765,7 @@ impl OverviewPage {
 
         for conn in &connections {
             // Only outbound / remote sessions belong on this dashboard.
-            if is_local_addr(conn.remote_addr) {
+            if is_local_ip(conn.remote_addr) {
                 continue;
             }
             remote_count += 1;
@@ -785,18 +786,15 @@ impl OverviewPage {
                 interval_in: 0,
                 interval_out: 0,
                 hosts: HashMap::new(),
-                ports: HashSet::new(),
-                countries: HashSet::new(),
             });
             entry.conn_count += 1;
             entry.bytes_total = entry.bytes_total.saturating_add(bin).saturating_add(bout);
             entry.interval_in = entry.interval_in.saturating_add(din);
             entry.interval_out = entry.interval_out.saturating_add(dout);
-            *entry.hosts.entry(conn.remote_addr).or_insert(0) += bin.saturating_add(bout);
-            entry.ports.insert(conn.remote_port);
-            if let Some(label) = geo_labels.get(&conn.remote_addr) {
-                entry.countries.insert(label.clone());
-            }
+            *entry
+                .hosts
+                .entry((conn.remote_addr, conn.remote_port))
+                .or_insert(0) += bin.saturating_add(bout);
 
             *proto_counts
                 .entry(protocol_of(conn.remote_port))
@@ -852,29 +850,13 @@ impl OverviewPage {
                 .then(a.process.cmp(&b.process))
         });
 
+        // Build render data for at most the largest count the user can pick, so
+        // changing the dashboard limit later re-renders from this cache without a
+        // fresh scan (which would reset the per-socket rate baseline).
         let mut spark = imp.app_spark.borrow_mut();
-
-        let flow_ref = imp.app_flow.borrow();
-        let flow = match flow_ref.as_ref() {
-            Some(f) => f,
-            None => return,
-        };
-        while let Some(child) = flow.first_child() {
-            flow.remove(&child);
-        }
-
-        if app_list.is_empty() {
-            let empty = gtk4::Label::builder()
-                .label(gettext("No active connections"))
-                .css_classes(vec!["dim-label".to_string()])
-                .margin_top(16)
-                .margin_bottom(16)
-                .build();
-            flow.append(&empty);
-        }
-
         let mut seen: HashSet<String> = HashSet::new();
-        for app in app_list.iter().take(6) {
+        let mut cards: Vec<AppCardData> = Vec::new();
+        for app in app_list.iter().take(crate::config::DASHBOARD_MAX_APPS_MAX) {
             seen.insert(app.process.clone());
 
             let down_kbs = (app.interval_in as f64 / INTERVAL_SECS) / 1024.0;
@@ -886,27 +868,64 @@ impl OverviewPage {
                 hist.remove(0);
             }
 
-            let (primary_addr, _) = app
+            // The busiest (addr, port) pair — a real socket group — carries the
+            // IP, port and country shown on the card, so they always agree.
+            let (primary_addr, primary_port) = app
                 .hosts
                 .iter()
                 .max_by_key(|(_, b)| **b)
-                .map(|(a, b)| (*a, *b))
+                .map(|((a, p), _)| (*a, *p))
                 .unwrap_or((IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0));
 
-            let card = build_app_card(AppCardData {
+            cards.push(AppCardData {
                 process: app.process.clone(),
                 conn_count: app.conn_count,
                 down_kbs,
                 up_kbs,
                 primary_addr,
-                port: app.ports.iter().min().copied().unwrap_or(0),
-                country: app.countries.iter().next().cloned(),
+                port: primary_port,
+                country: geo_labels.get(&primary_addr).cloned(),
                 history: hist.clone(),
             });
-            flow.append(&card);
+        }
+        spark.retain(|k, _| seen.contains(k));
+        drop(spark);
+
+        imp.last_apps.replace(cards);
+        self.render_cards();
+    }
+
+    /// Rebuild the app-card grid from cached render data using the current limit.
+    /// Called both after a scan and when the user changes the card count, so the
+    /// count change never forces an off-cadence rescan.
+    fn render_cards(&self) {
+        let imp = self.imp();
+        let flow_ref = imp.app_flow.borrow();
+        let flow = match flow_ref.as_ref() {
+            Some(f) => f,
+            None => return,
+        };
+        while let Some(child) = flow.first_child() {
+            flow.remove(&child);
         }
 
-        spark.retain(|k, _| seen.contains(k));
+        let cards = imp.last_apps.borrow();
+        if cards.is_empty() {
+            flow.append(
+                &gtk4::Label::builder()
+                    .label(gettext("No active connections"))
+                    .css_classes(vec!["dim-label".to_string()])
+                    .margin_top(16)
+                    .margin_bottom(16)
+                    .build(),
+            );
+            return;
+        }
+
+        let max_apps = imp.max_apps.get().max(1);
+        for card in cards.iter().take(max_apps) {
+            flow.append(&build_app_card(card.clone()));
+        }
     }
 
     /// Rebuild the protocols panel from the current tally.
@@ -1045,6 +1064,14 @@ impl OverviewPage {
             hub.set_visible(visible);
         }
     }
+
+    /// Change how many application cards the dashboard shows, then re-render.
+    /// Re-renders from cached data (no rescan) so the live rate baseline stays
+    /// aligned to the 5-second timer cadence.
+    pub fn set_max_apps(&self, count: usize) {
+        self.imp().max_apps.set(count.max(1));
+        self.render_cards();
+    }
 }
 
 impl Default for OverviewPage {
@@ -1054,7 +1081,8 @@ impl Default for OverviewPage {
 }
 
 /// Data needed to render one application connection card.
-struct AppCardData {
+#[derive(Clone)]
+pub(crate) struct AppCardData {
     process: String,
     conn_count: usize,
     down_kbs: f64,
@@ -1327,18 +1355,6 @@ fn endpoint_label(addr: IpAddr, geo_labels: &HashMap<IpAddr, String>) -> String 
     }
 }
 
-/// Bucket a remote port into a coarse protocol name.
-fn protocol_of(port: u16) -> &'static str {
-    match port {
-        443 | 8443 => "HTTPS",
-        80 | 8080 | 8000 => "HTTP",
-        53 => "DNS",
-        22 => "SSH",
-        25 | 110 | 143 | 465 | 587 | 993 | 995 => "Mail",
-        _ => "Other",
-    }
-}
-
 /// Colour (linear RGB) for a protocol bar.
 fn protocol_color(name: &str) -> (f64, f64, f64) {
     match name {
@@ -1362,108 +1378,6 @@ fn color_error() -> (f64, f64, f64) {
 }
 fn color_idle() -> (f64, f64, f64) {
     (0.55, 0.55, 0.58)
-}
-
-/// Convert process executable names into friendlier card titles.
-fn display_process_name(process: &str) -> String {
-    process
-        .split(['-', '_', ' '])
-        .filter(|part| !part.is_empty())
-        .map(|part| {
-            let mut chars = part.chars();
-            match chars.next() {
-                Some(first) => first.to_uppercase().chain(chars).collect::<String>(),
-                None => String::new(),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-/// Resolve the best themed icon name for a process: a real application icon
-/// when one is installed, otherwise a symbolic category icon based on the port.
-fn icon_for_process(process: &str, port: u16) -> String {
-    let p = process.to_ascii_lowercase();
-
-    let candidates: &[&str] = if p.contains("firefox") {
-        &["firefox", "org.mozilla.firefox"]
-    } else if p.contains("chromium") {
-        &["chromium", "chromium-browser"]
-    } else if p.contains("chrome") {
-        &["google-chrome", "google-chrome-stable"]
-    } else if p.contains("signal") {
-        &["org.signal.Signal", "signal-desktop", "signal"]
-    } else if p.contains("gnome-software") || p.contains("packagekit") {
-        &["org.gnome.Software", "system-software-install"]
-    } else if p.contains("vscod") || p.contains("code") {
-        &[
-            "vscode",
-            "visual-studio-code",
-            "code",
-            "com.visualstudio.code",
-        ]
-    } else if p.contains("thunder") {
-        &["thunderbird", "org.mozilla.Thunderbird"]
-    } else if p.contains("discord") {
-        &["discord", "com.discordapp.Discord"]
-    } else if p.contains("steam") {
-        &["steam"]
-    } else if p.contains("spotify") {
-        &["spotify", "com.spotify.Client"]
-    } else if p.contains("telegram") {
-        &["org.telegram.desktop", "telegram"]
-    } else if p.contains("slack") {
-        &["slack", "com.slack.Slack"]
-    } else if p.contains("evolution") {
-        &["org.gnome.Evolution", "evolution"]
-    } else if p.contains("nautilus") {
-        &["org.gnome.Nautilus"]
-    } else if p.contains("curl") || p.contains("wget") {
-        &["folder-download-symbolic"]
-    } else {
-        &[]
-    };
-
-    if let Some(theme) = icon_theme() {
-        for name in candidates {
-            if theme.has_icon(name) {
-                return (*name).to_string();
-            }
-        }
-        // Fall back to trying the raw process name as an icon.
-        if !p.is_empty() && theme.has_icon(&p) {
-            return p;
-        }
-    }
-    category_icon(port).to_string()
-}
-
-/// The default display's icon theme, if a display is available.
-fn icon_theme() -> Option<gtk4::IconTheme> {
-    gtk4::gdk::Display::default().map(|d| gtk4::IconTheme::for_display(&d))
-}
-
-/// A symbolic fallback icon based on the connection's port category.
-fn category_icon(port: u16) -> &'static str {
-    match protocol_of(port) {
-        "HTTPS" | "HTTP" => "web-browser-symbolic",
-        "DNS" => "network-workgroup-symbolic",
-        "SSH" => "utilities-terminal-symbolic",
-        "Mail" => "mail-unread-symbolic",
-        _ => "application-x-executable-symbolic",
-    }
-}
-
-/// True for loopback / unspecified peers, including IPv4-mapped IPv6 forms
-/// like `::ffff:127.0.0.1` that `IpAddr::is_loopback` alone misses.
-fn is_local_addr(addr: IpAddr) -> bool {
-    match addr {
-        IpAddr::V4(v4) => v4.is_loopback() || v4.is_unspecified(),
-        IpAddr::V6(v6) => match v6.to_ipv4_mapped() {
-            Some(v4) => v4.is_loopback() || v4.is_unspecified(),
-            None => v6.is_loopback() || v6.is_unspecified(),
-        },
-    }
 }
 
 mod imp {
@@ -1501,6 +1415,11 @@ mod imp {
         pub rate_label: RefCell<Option<gtk4::Label>>,
         // Live state
         pub blocked_count: Cell<usize>,
+        // How many application cards to render (user-configurable).
+        pub max_apps: Cell<usize>,
+        // Cached render data for the app cards, so changing the count re-renders
+        // without a fresh scan that would reset the per-socket rate baseline.
+        pub(crate) last_apps: RefCell<Vec<AppCardData>>,
         // Previous cumulative (bytes_in, bytes_out) per socket inode, for rates.
         pub prev_sock: RefCell<HashMap<u32, (u64, u64)>>,
         pub app_spark: RefCell<HashMap<String, Vec<f64>>>,

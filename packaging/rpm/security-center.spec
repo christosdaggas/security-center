@@ -1,5 +1,5 @@
 Name:           security-center
-Version:        1.7.0
+Version:        1.8.0
 Release:        1%{?dist}
 Summary:        A modern GTK4 security center for Linux
 
@@ -69,6 +69,13 @@ update-desktop-database -q %{_datadir}/applications || :
 appstreamcli refresh-cache || :
 
 %changelog
+* Sun Jul 12 2026 Christos Daggas <chrisdaggas@example.com> - 1.8.0-1
+- New Connections page: full searchable/sortable list of all outbound connections, grouped by destination
+- IP details window with on-demand online geolocation (ipwho.is over HTTPS, ip-api.com fallback) and external lookup links
+- Configurable number of dashboard connection cards; toggle for online IP lookups
+- Refreshed application icon
+- Accuracy fixes for the dashboard endpoint/country pairing
+
 * Tue Jul 07 2026 Christos Daggas <chrisdaggas@example.com> - 1.7.0-1
 - Redesigned overview dashboard: live per-application firewall connection monitor
 - Per-app connection cards with real application icons, throughput sparklines, and remote endpoints

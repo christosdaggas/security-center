@@ -38,6 +38,13 @@ pub struct AppSettings {
     /// Show the live firewall connections overview on the dashboard.
     #[serde(default = "default_true")]
     pub show_connections_overview: bool,
+    /// How many application connection cards to show on the dashboard.
+    #[serde(default = "default_dashboard_max_apps")]
+    pub dashboard_max_apps: usize,
+    /// Allow on-demand online IP lookups (country/city/ISP/ASN) from the IP
+    /// details window. When false the app never contacts an online service.
+    #[serde(default = "default_true")]
+    pub enable_online_ip_lookup: bool,
 }
 
 fn default_width() -> i32 {
@@ -52,6 +59,18 @@ fn default_theme() -> String {
 fn default_true() -> bool {
     true
 }
+fn default_dashboard_max_apps() -> usize {
+    6
+}
+
+/// Minimum and maximum number of dashboard connection cards the user may pick.
+pub const DASHBOARD_MAX_APPS_MIN: usize = 1;
+pub const DASHBOARD_MAX_APPS_MAX: usize = 24;
+
+/// Clamp the dashboard card count into the supported range.
+fn clamp_dashboard_max_apps(n: usize) -> usize {
+    n.clamp(DASHBOARD_MAX_APPS_MIN, DASHBOARD_MAX_APPS_MAX)
+}
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -63,6 +82,8 @@ impl Default for AppSettings {
             autostart_on_login: false,
             show_tray_icon: false,
             show_connections_overview: true,
+            dashboard_max_apps: default_dashboard_max_apps(),
+            enable_online_ip_lookup: true,
         }
     }
 }
@@ -119,6 +140,8 @@ impl Settings {
                                     }
                                     s.window_width = clamp_window_dimension(s.window_width);
                                     s.window_height = clamp_window_dimension(s.window_height);
+                                    s.dashboard_max_apps =
+                                        clamp_dashboard_max_apps(s.dashboard_max_apps);
                                     s
                                 }
                                 Err(e) => {
@@ -237,6 +260,24 @@ impl Settings {
         self.settings.show_connections_overview = enabled;
         self.save();
     }
+
+    pub fn dashboard_max_apps(&self) -> usize {
+        clamp_dashboard_max_apps(self.settings.dashboard_max_apps)
+    }
+
+    pub fn set_dashboard_max_apps(&mut self, count: usize) {
+        self.settings.dashboard_max_apps = clamp_dashboard_max_apps(count);
+        self.save();
+    }
+
+    pub fn enable_online_ip_lookup(&self) -> bool {
+        self.settings.enable_online_ip_lookup
+    }
+
+    pub fn set_enable_online_ip_lookup(&mut self, enabled: bool) {
+        self.settings.enable_online_ip_lookup = enabled;
+        self.save();
+    }
 }
 
 #[cfg(test)]
@@ -256,5 +297,19 @@ mod tests {
         assert_eq!(validate_theme("light"), Some("light"));
         assert_eq!(validate_theme("dark"), Some("dark"));
         assert_eq!(validate_theme("hacked"), None);
+    }
+
+    #[test]
+    fn test_clamp_dashboard_max_apps() {
+        assert_eq!(clamp_dashboard_max_apps(0), DASHBOARD_MAX_APPS_MIN);
+        assert_eq!(clamp_dashboard_max_apps(6), 6);
+        assert_eq!(clamp_dashboard_max_apps(999), DASHBOARD_MAX_APPS_MAX);
+    }
+
+    #[test]
+    fn test_defaults_include_new_fields() {
+        let s = AppSettings::default();
+        assert_eq!(s.dashboard_max_apps, 6);
+        assert!(s.enable_online_ip_lookup);
     }
 }

@@ -8,8 +8,8 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use super::{
-    HelpPage, NetworkExposurePage, OverviewPage, PortsPage, QuickActionsPage, ServicesPage,
-    SystemServicesPage, ZonesPage,
+    ConnectionsPage, HelpPage, NetworkExposurePage, OverviewPage, PortsPage, QuickActionsPage,
+    ServicesPage, SystemServicesPage, ZonesPage,
 };
 use crate::firewall::FirewallClient;
 use crate::i18n::gettext;
@@ -73,6 +73,13 @@ impl MainWindow {
         }
     }
 
+    /// Update how many application cards the dashboard shows.
+    pub fn set_dashboard_max_apps(&self, count: usize) {
+        if let Some(page) = self.imp().overview_page.borrow().as_ref() {
+            page.set_max_apps(count);
+        }
+    }
+
     /// Setup the main UI.
     fn setup_ui(&self) {
         let imp = self.imp();
@@ -90,6 +97,7 @@ impl MainWindow {
 
         // Create pages
         let overview_page = OverviewPage::new();
+        let connections_page = ConnectionsPage::new();
         let zones_page = ZonesPage::new();
         let services_page = ServicesPage::new();
         let ports_page = PortsPage::new();
@@ -104,6 +112,7 @@ impl MainWindow {
         ports_page.set_client(imp.client.clone());
 
         stack.add_named(&overview_page, Some("overview"));
+        stack.add_named(&connections_page, Some("connections"));
         stack.add_named(&zones_page, Some("zones"));
         stack.add_named(&services_page, Some("services"));
         stack.add_named(&ports_page, Some("ports"));
@@ -145,6 +154,7 @@ impl MainWindow {
 
         // Store pages
         imp.overview_page.replace(Some(overview_page));
+        imp.connections_page.replace(Some(connections_page));
         imp.zones_page.replace(Some(zones_page));
         imp.services_page.replace(Some(services_page));
         imp.ports_page.replace(Some(ports_page));
@@ -191,6 +201,11 @@ impl MainWindow {
 
         let items = [
             ("overview", "Overview", "view-grid-symbolic"),
+            (
+                "connections",
+                "Connections",
+                "network-transmit-symbolic",
+            ),
             ("zones", "Zones", "network-server-symbolic"),
             ("services", "Services", "application-x-addon-symbolic"),
             ("ports", "Ports", "network-transmit-receive-symbolic"),
@@ -247,6 +262,7 @@ impl MainWindow {
 
                 let title = match name.as_str() {
                     "overview" => "Overview",
+                    "connections" => "Connections",
                     "zones" => "Zones",
                     "services" => "Services",
                     "ports" => "Ports",
@@ -261,6 +277,11 @@ impl MainWindow {
                 }
 
                 match name.as_str() {
+                    "connections" => {
+                        if let Some(page) = window_clone.imp().connections_page.borrow().as_ref() {
+                            page.refresh();
+                        }
+                    }
                     "system-services" => {
                         if let Some(page) =
                             window_clone.imp().system_services_page.borrow().as_ref()
@@ -1074,6 +1095,7 @@ mod imp {
         pub toast_overlay: RefCell<Option<adw::ToastOverlay>>,
         pub content_title: RefCell<Option<adw::WindowTitle>>,
         pub overview_page: RefCell<Option<OverviewPage>>,
+        pub connections_page: RefCell<Option<ConnectionsPage>>,
         pub zones_page: RefCell<Option<ZonesPage>>,
         pub services_page: RefCell<Option<ServicesPage>>,
         pub ports_page: RefCell<Option<PortsPage>>,
