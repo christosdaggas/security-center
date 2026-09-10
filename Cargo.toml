@@ -1,6 +1,6 @@
 [package]
 name = "security-center"
-version = "1.8.0"
+version = "1.8.1"
 edition = "2021"
 authors = ["Christos Daggas <chrisdaggas@example.com>"]
 license = "MIT"
@@ -13,7 +13,7 @@ categories = ["gui", "network-programming"]
 gtk4 = { version = "0.9", features = ["v4_14"] }
 libadwaita = { version = "0.7", features = ["v1_5"] }
 
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "fs", "io-util"] }
 zbus = { version = "4", default-features = false, features = ["tokio"] }
 async-channel = "2"
 

@@ -1,5 +1,5 @@
 Name:           security-center
-Version:        1.8.0
+Version:        1.8.1
 Release:        1%{?dist}
 Summary:        A modern GTK4 security center for Linux
 
@@ -69,6 +69,12 @@ update-desktop-database -q %{_datadir}/applications || :
 appstreamcli refresh-cache || :
 
 %changelog
+* Thu Sep 10 2026 Christos Daggas <chrisdaggas@example.com> - 1.8.1-1
+- Correctness fixes: strict validation at the firewall D-Bus boundary, atomic 0600 persistence, portable network decoding, accurate exposure status, interactive polkit auth, and lenient update-version parsing
+- Autostart fix: desktop entry no longer passes an unsupported flag, Hidden=true respected, app handles --minimized for old entries
+- UI fixes: honest checking/offline dashboard states, live refresh timestamp, working global Refresh, resilient port dialogs, cached icons, leak-free timers, chart crash fixes
+- Packaging/i18n: complete translation file list, Arch locales and icons, Flatpak locales, AppStream screenshots
+
 * Sun Jul 12 2026 Christos Daggas <chrisdaggas@example.com> - 1.8.0-1
 - New Connections page: full searchable/sortable list of all outbound connections, grouped by destination
 - IP details window with on-demand online geolocation (ipwho.is over HTTPS, ip-api.com fallback) and external lookup links

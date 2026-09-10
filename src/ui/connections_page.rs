@@ -151,10 +151,22 @@ impl ConnectionsPage {
             .spacing(12)
             .homogeneous(true)
             .build();
-        let chip_conns = summary_chip(&summary, "network-transmit-receive-symbolic", &gettext("Connections"));
-        let chip_hosts = summary_chip(&summary, "network-server-symbolic", &gettext("Remote hosts"));
+        let chip_conns = summary_chip(
+            &summary,
+            "network-transmit-receive-symbolic",
+            &gettext("Connections"),
+        );
+        let chip_hosts = summary_chip(
+            &summary,
+            "network-server-symbolic",
+            &gettext("Remote hosts"),
+        );
         let chip_apps = summary_chip(&summary, "view-app-grid-symbolic", &gettext("Applications"));
-        let chip_traffic = summary_chip(&summary, "network-wired-symbolic", &gettext("Total traffic"));
+        let chip_traffic = summary_chip(
+            &summary,
+            "network-wired-symbolic",
+            &gettext("Total traffic"),
+        );
         imp.chip_conns.replace(Some(chip_conns));
         imp.chip_hosts.replace(Some(chip_hosts));
         imp.chip_apps.replace(Some(chip_apps));
@@ -246,15 +258,12 @@ impl ConnectionsPage {
     fn ingest(
         &self,
         connections: Vec<crate::admin::ActiveConnection>,
-        socket_bytes: HashMap<u32, (u64, u64)>,
+        socket_bytes: HashMap<u64, (u64, u64)>,
         geo_labels: HashMap<IpAddr, String>,
     ) {
         let mut groups: Vec<ConnGroup> = Vec::new();
         for conn in &connections {
-            let (bin, bout) = socket_bytes
-                .get(&(conn.inode as u32))
-                .copied()
-                .unwrap_or((0, 0));
+            let (bin, bout) = socket_bytes.get(&(conn.inode)).copied().unwrap_or((0, 0));
             let proc = conn.process_label();
             if let Some(g) = groups.iter_mut().find(|g| {
                 g.process == proc && g.addr == conn.remote_addr && g.port == conn.remote_port
@@ -318,7 +327,12 @@ impl ConnectionsPage {
             .as_ref()
             .map(|s| s.text().to_lowercase())
             .unwrap_or_default();
-        let sort_mode = imp.sort.borrow().as_ref().map(|d| d.selected()).unwrap_or(0);
+        let sort_mode = imp
+            .sort
+            .borrow()
+            .as_ref()
+            .map(|d| d.selected())
+            .unwrap_or(0);
 
         let all = imp.groups.borrow();
         let mut rows: Vec<ConnGroup> = all.iter().filter(|g| g.matches(&needle)).cloned().collect();
@@ -330,9 +344,15 @@ impl ConnectionsPage {
                     .then(b.bytes_total().cmp(&a.bytes_total()))
             }),
             2 => rows.sort_by(|a, b| {
-                country_key(a).cmp(&country_key(b)).then(b.bytes_total().cmp(&a.bytes_total()))
+                country_key(a)
+                    .cmp(&country_key(b))
+                    .then(b.bytes_total().cmp(&a.bytes_total()))
             }),
-            3 => rows.sort_by(|a, b| b.count.cmp(&a.count).then(b.bytes_total().cmp(&a.bytes_total()))),
+            3 => rows.sort_by(|a, b| {
+                b.count
+                    .cmp(&a.count)
+                    .then(b.bytes_total().cmp(&a.bytes_total()))
+            }),
             _ => rows.sort_by(|a, b| {
                 b.bytes_total()
                     .cmp(&a.bytes_total())

@@ -116,7 +116,13 @@ impl ListeningEndpoint {
                     Some("Exposed to public network")
                 }
                 FirewallStatus::Allowed { .. } => Some("Listening on all interfaces"),
-                _ => None,
+                // Exposed but firewalld gave no verdict (unreachable or no rule
+                // matched). Surfacing this closes the previous silent gap where
+                // exposed-but-unlisted ports showed no warning at all.
+                FirewallStatus::Unknown => {
+                    Some("Listening on all interfaces (firewall status unknown)")
+                }
+                FirewallStatus::Blocked => None,
             }
         } else {
             None
@@ -230,11 +236,15 @@ impl NetworkExposure {
             }
         }
 
-        // Sort by port
-        endpoints.sort_by_key(|e| (e.port, e.protocol as u8));
+        // Sort by port (stable: keep address order for identical ports).
+        endpoints.sort_by_key(|e| (e.port, e.protocol as u8, e.local_addr));
 
-        // Remove duplicates (same port/protocol)
-        endpoints.dedup_by(|a, b| a.port == b.port && a.protocol == b.protocol);
+        // Remove exact duplicates (same addr/port/proto). The old key dropped
+        // the address, collapsing 127.0.0.1:80 and 0.0.0.0:80 into one row
+        // and hiding real exposure.
+        endpoints.dedup_by(|a, b| {
+            a.port == b.port && a.protocol == b.protocol && a.local_addr == b.local_addr
+        });
 
         // Check firewall status for each endpoint
         self.update_firewall_status(&mut endpoints);
@@ -251,10 +261,14 @@ impl NetworkExposure {
             return;
         }
 
-        // Get zones and their rich rules
+        // Get zones and their rich rules. If the zone list itself fails we
+        // cannot judge anything — keep Unknown rather than guessing Blocked.
         let zones = match client.get_zones() {
             Ok(zones) => zones,
-            Err(_) => return,
+            Err(e) => {
+                tracing::warn!("Failed to read firewalld zones: {}", e);
+                return;
+            }
         };
 
         // Collect blocked and allowed port ranges (single ports are
@@ -263,12 +277,11 @@ impl NetworkExposure {
         let mut allowed_ranges: Vec<(u16, u16, String, String)> = Vec::new(); // (start, end, protocol, zone)
 
         for zone in &zones {
-            // Check rich rules for reject/drop rules
+            // Check rich rules for reject/drop rules. parse_rich_rule_port
+            // already matches only real trailing verbs.
             for rule in &zone.rich_rules {
                 if let Some(((start, end), protocol)) = parse_rich_rule_port(rule) {
-                    if rule.contains("reject") || rule.contains("drop") {
-                        blocked_ranges.push((start, end, protocol));
-                    }
+                    blocked_ranges.push((start, end, protocol));
                 }
             }
 
@@ -280,7 +293,10 @@ impl NetworkExposure {
             }
         }
 
-        // Update each endpoint's firewall status
+        // Update each endpoint's firewall status.
+        // firewalld was reachable here, so a port with no allow rule is
+        // genuinely not allowed — mark Blocked instead of leaving Unknown,
+        // which previously hid exposed-but-unlisted ports.
         for endpoint in endpoints.iter_mut() {
             let protocol = endpoint.protocol.as_str().to_lowercase();
             let port = endpoint.port;
@@ -295,8 +311,9 @@ impl NetworkExposure {
                 .find(|(start, end, p, _)| *p == protocol && (*start..=*end).contains(&port))
             {
                 endpoint.firewall_status = FirewallStatus::Allowed { zone: zone.clone() };
+            } else {
+                endpoint.firewall_status = FirewallStatus::Blocked;
             }
-            // Otherwise, keep as Unknown (default)
         }
     }
 
@@ -549,14 +566,15 @@ fn parse_addr_port(field: &str, ipv6: bool) -> Option<(IpAddr, u16)> {
     Some((addr, port))
 }
 
-/// Parse an IPv4 address from hex format (little-endian).
+/// Parse an IPv4 address from hex format (little-endian as stored in /proc).
+/// Portable: uses to_le_bytes so big-endian hosts decode correctly too.
 fn parse_ipv4_hex(hex: &str) -> Option<Ipv4Addr> {
     if hex.len() != 8 {
         return None;
     }
 
-    let bytes = u32::from_str_radix(hex, 16).ok()?;
-    Some(Ipv4Addr::from(bytes.to_be()))
+    let raw = u32::from_str_radix(hex, 16).ok()?;
+    Some(Ipv4Addr::from(raw.to_le_bytes()))
 }
 
 /// Parse an IPv6 address from hex format.
@@ -565,16 +583,13 @@ fn parse_ipv6_hex(hex: &str) -> Option<IpAddr> {
         return None;
     }
 
-    // IPv6 in /proc is stored as 4 groups of 8 hex chars, each in little-endian
+    // IPv6 in /proc is stored as 4 groups of 8 hex chars, each little-endian.
+    // Decode group-wise with to_le_bytes so the result is host-independent.
     let mut bytes = [0u8; 16];
     for i in 0..4 {
         let group = &hex[i * 8..(i + 1) * 8];
         let val = u32::from_str_radix(group, 16).ok()?;
-        let be_bytes = val.to_be_bytes();
-        bytes[i * 4] = be_bytes[3];
-        bytes[i * 4 + 1] = be_bytes[2];
-        bytes[i * 4 + 2] = be_bytes[1];
-        bytes[i * 4 + 3] = be_bytes[0];
+        bytes[i * 4..i * 4 + 4].copy_from_slice(&val.to_le_bytes());
     }
 
     Some(IpAddr::V6(Ipv6Addr::from(bytes)))
@@ -609,9 +624,19 @@ pub fn get_service_name(port: u16) -> Option<&'static str> {
 /// Example: `rule family="ipv4" port port="80" protocol="tcp" reject`
 /// Ranges like port="10-20" are also supported.
 /// Returns Some(((start, end), protocol)) if found; end == start for a single port.
+/// Only matches real trailing verbs (reject/drop) so `log prefix="drop"`
+/// on an accept rule cannot misclassify it.
 fn parse_rich_rule_port(rule: &str) -> Option<((u16, u16), String)> {
     // Check if this is a port rule
     if !rule.contains("port port=") {
+        return None;
+    }
+    let trimmed = rule.trim();
+    let is_block = trimmed.ends_with("reject")
+        || trimmed.ends_with("drop")
+        || trimmed.ends_with("reject\"")
+        || trimmed.ends_with("drop\"");
+    if !is_block {
         return None;
     }
 

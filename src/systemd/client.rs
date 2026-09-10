@@ -30,9 +30,35 @@ impl ServiceState {
     pub fn from_str(s: &str) -> Self {
         match s {
             "running" => ServiceState::Running,
-            "exited" | "dead" | "inactive" => ServiceState::Stopped,
-            "failed" => ServiceState::Failed,
+            "exited" | "dead" | "inactive" | "degraded" => ServiceState::Stopped,
+            "failed" | "error" => ServiceState::Failed,
+            // Sockets/targets report "listening"/"active"/"mounted" etc.
+            // Treat any active-ish substate as running rather than Unknown.
+            "listening" | "active" | "mounted" | "plugged" => ServiceState::Running,
             _ => ServiceState::Unknown,
+        }
+    }
+
+    /// Build from ActiveState + SubState pair: ActiveState is authoritative
+    /// for generic units (sockets, targets), SubState refines services.
+    pub fn from_active_sub(active: &str, sub: &str) -> Self {
+        match active {
+            "active" => match sub {
+                "failed" => ServiceState::Failed,
+                "exited" | "dead" => ServiceState::Stopped,
+                _ => ServiceState::Running,
+            },
+            "failed" => ServiceState::Failed,
+            "inactive" | "deactivating" | "activating" => {
+                // Activating units are not yet running; show Stopped to avoid
+                // implying protection that isn't up yet.
+                if active == "activating" {
+                    ServiceState::Unknown
+                } else {
+                    ServiceState::Stopped
+                }
+            }
+            _ => Self::from_str(sub),
         }
     }
 
@@ -193,6 +219,12 @@ impl SystemdClient {
 
     /// Get information about a specific service.
     pub fn get_service_info(&self, name: &str) -> Result<ServiceInfo> {
+        // Validate on entry so D-Bus is never queried with injection strings.
+        // Empty is rejected here (run_unit_action allows it only for daemon-reload).
+        if name.is_empty() {
+            return Err(anyhow!("Service name must not be empty"));
+        }
+        validate_service_name(name)?;
         let conn = self
             .connection
             .as_ref()
@@ -228,14 +260,26 @@ impl SystemdClient {
             info.description = desc;
         }
 
-        // Get active state (SubState is more specific: running, exited, dead, failed)
-        if let Ok(sub_state) = self.get_unit_property(&unit_path, "SubState") {
-            info.state = ServiceState::from_str(&sub_state);
+        // Get active state. Prefer the (ActiveState, SubState) pair: SubState
+        // alone misclassifies sockets/targets ("listening"/"active").
+        let active_state = self
+            .get_unit_property(&unit_path, "ActiveState")
+            .unwrap_or_default();
+        let sub_state = self
+            .get_unit_property(&unit_path, "SubState")
+            .unwrap_or_default();
+        if !active_state.is_empty() || !sub_state.is_empty() {
+            info.state = ServiceState::from_active_sub(&active_state, &sub_state);
         }
 
-        // Get enabled state
+        // Get enabled state. "static" units have no enable switch but are
+        // considered enabled when pulled in; alias/generated/indirect are
+        // enabled via their target. Only clearly-disabled states count as off.
         if let Ok(unit_file_state) = self.get_unit_property(&unit_path, "UnitFileState") {
-            info.is_enabled = unit_file_state == "enabled" || unit_file_state == "static";
+            info.is_enabled = matches!(
+                unit_file_state.as_str(),
+                "enabled" | "enabled-runtime" | "static" | "alias" | "indirect" | "generated"
+            );
         }
 
         // Get MainPID (only for running services)
@@ -404,6 +448,8 @@ impl SystemdClient {
             }
             "enable" => {
                 // EnableUnitFiles(files, runtime, force) -> (carries_install_info, changes)
+                // force=true overwrites existing symlinks (e.g. alias clashes).
+                // Documented here because silent overwrites surprise operators.
                 let _changes: (bool, Vec<(String, String, String)>) = self
                     .call_manager_interactive(
                         "EnableUnitFiles",

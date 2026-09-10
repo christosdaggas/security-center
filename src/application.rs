@@ -4,7 +4,7 @@
 
 //! Main application struct and lifecycle management.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 use gtk4::prelude::*;
 use gtk4::subclass::prelude::*;
@@ -26,10 +26,21 @@ glib::wrapper! {
 
 impl Application {
     pub fn new(app_id: &str) -> Self {
-        glib::Object::builder()
+        let app: Self = glib::Object::builder()
             .property("application-id", app_id)
-            .property("flags", gio::ApplicationFlags::FLAGS_NONE)
-            .build()
+            // HANDLES_COMMAND_LINE so `--minimized` (written by older
+            // autostart entries) is accepted instead of failing to launch.
+            .property("flags", gio::ApplicationFlags::HANDLES_COMMAND_LINE)
+            .build();
+        app.add_main_option(
+            "minimized",
+            glib::Char::from(b'm'),
+            glib::OptionFlags::NONE,
+            glib::OptionArg::None,
+            "Start minimized (used by autostart)",
+            None,
+        );
+        app
     }
 
     fn setup_actions(&self) {
@@ -253,7 +264,14 @@ impl Application {
             .copyright("© 2024-2026 Christos A. Daggas")
             .developers(vec!["Christos A. Daggas".to_string()])
             .comments(gettext("Manage your system security, firewall and services"))
-            .release_notes("<p>Version 1.8.0 - July 2026</p><ul>\
+            .release_notes("<p>Version 1.8.1 - September 2026</p><ul>\
+                <li>Correctness fixes - Strict firewall input validation, atomic crash-safe settings, portable network decoding, accurate exposure warnings, interactive polkit auth, lenient update checks</li>\
+                <li>Autostart fix - Login entry works everywhere, honours the disabled state, app handles --minimized</li>\
+                <li>Dashboard honesty - Checking state on startup, truthful firewall-off display, live refresh timestamp, Refresh covers the visible page</li>\
+                <li>Resilient port dialogs - Scrollable zones, Add gated on valid input, failed deletes restore the list</li>\
+                <li>Performance and stability - Cached icons, leak-free timers, chart crash fixes</li>\
+                <li>Packaging and translations - Complete translation file list, Arch and Flatpak locales, AppStream screenshots</li>\
+            </ul><p>Version 1.8.0 - July 2026</p><ul>\
                 <li>New Connections page - Full searchable and sortable list of every active outbound connection, grouped by destination with live byte totals and country flags</li>\
                 <li>IP Details Window - Click any connection to see country, city, region, ISP, organisation, ASN and reverse DNS, with quick links to AbuseIPDB, Shodan, ipinfo.io and ARIN</li>\
                 <li>On-Demand Online IP Lookup - Richer geolocation is fetched only when you click, keeping the app offline by default (ipwho.is over HTTPS, with an ip-api.com fallback)</li>\
@@ -471,6 +489,7 @@ mod imp {
     pub struct Application {
         pub window: OnceCell<MainWindow>,
         pub settings: RefCell<Settings>,
+        pub start_minimized: Cell<bool>,
     }
 
     #[glib::object_subclass]
@@ -488,6 +507,15 @@ mod imp {
     }
 
     impl ApplicationImpl for Application {
+        fn command_line(&self, command_line: &gio::ApplicationCommandLine) -> glib::ExitCode {
+            let options = command_line.options_dict();
+            if options.contains("minimized") {
+                self.start_minimized.set(true);
+            }
+            self.activate();
+            glib::ExitCode::SUCCESS
+        }
+
         fn activate(&self) {
             let app = self.obj();
 
@@ -501,7 +529,14 @@ mod imp {
 
             let window = self.window.get_or_init(|| MainWindow::new(&*app));
 
-            window.present();
+            if self.start_minimized.take() {
+                // Autostart: show then minimize so the window manager tracks
+                // it normally (hiding entirely strands the instance).
+                window.present();
+                window.minimize();
+            } else {
+                window.present();
+            }
         }
 
         fn startup(&self) {

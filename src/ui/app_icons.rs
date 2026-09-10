@@ -49,9 +49,34 @@ pub fn category_icon(port: u16) -> &'static str {
 
 /// Resolve the best themed icon name for a process: a real application icon
 /// when one is installed, otherwise a symbolic category icon based on the port.
+/// Results are cached (icon-theme I/O is expensive and this runs on every
+/// 5s dashboard refresh for every app card).
 pub fn icon_for_process(process: &str, port: u16) -> String {
-    let p = process.to_ascii_lowercase();
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+    static CACHE: OnceLock<Mutex<HashMap<(String, u16), String>>> = OnceLock::new();
+    let key = (process.to_ascii_lowercase(), port);
+    if let Some(cached) = CACHE
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .ok()
+        .and_then(|m| m.get(&key).cloned())
+    {
+        return cached;
+    }
+    let resolved = resolve_icon_uncached(&key.0, port);
+    if let Ok(mut m) = CACHE.get_or_init(|| Mutex::new(HashMap::new())).lock() {
+        // Bound the cache so a host with endless short-lived processes cannot
+        // grow it without limit.
+        if m.len() > 512 {
+            m.clear();
+        }
+        m.insert(key, resolved.clone());
+    }
+    resolved
+}
 
+fn resolve_icon_uncached(p: &str, port: u16) -> String {
     let candidates: &[&str] = if p.contains("firefox") {
         &["firefox", "org.mozilla.firefox"]
     } else if p.contains("chromium") {
@@ -62,7 +87,11 @@ pub fn icon_for_process(process: &str, port: u16) -> String {
         &["org.signal.Signal", "signal-desktop", "signal"]
     } else if p.contains("gnome-software") || p.contains("packagekit") {
         &["org.gnome.Software", "system-software-install"]
-    } else if p.contains("vscod") || p.contains("code") {
+    } else if p == "code"
+        || p.contains("vscode")
+        || p.contains("code-oss")
+        || p.contains("vscodium")
+    {
         &[
             "vscode",
             "visual-studio-code",
@@ -98,8 +127,8 @@ pub fn icon_for_process(process: &str, port: u16) -> String {
             }
         }
         // Fall back to trying the raw process name as an icon.
-        if !p.is_empty() && theme.has_icon(&p) {
-            return p;
+        if !p.is_empty() && theme.has_icon(p) {
+            return p.to_string();
         }
     }
     category_icon(port).to_string()

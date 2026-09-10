@@ -16,7 +16,8 @@
 
 use anyhow::{anyhow, Context, Result};
 use tracing::info;
-use zbus::blocking::Connection;
+use zbus::blocking::{Connection, Proxy};
+use zbus::proxy::MethodFlags;
 
 use crate::systemd::SystemdClient;
 
@@ -243,80 +244,76 @@ impl QuickActionsManager {
     // FIREWALL ACTIONS
     // ═══════════════════════════════════════════════════════════════════════════
 
-    fn firewall_reload(&mut self) -> Result<String> {
-        let conn = self.ensure_connected()?;
+    /// Call a firewalld method with interactive polkit authorization so the
+    /// desktop prompts for credentials instead of failing with AccessDenied.
+    fn call_firewalld(&self, method: &str) -> Result<()> {
+        let conn = self
+            .connection
+            .as_ref()
+            .ok_or_else(|| anyhow!("Not connected"))?;
+        let proxy = Proxy::new(conn, FIREWALLD_BUS, FIREWALLD_PATH, FIREWALLD_INTERFACE)
+            .context("Failed to create firewalld proxy")?;
+        let _: Option<()> = proxy
+            .call_with_flags(method, MethodFlags::AllowInteractiveAuth.into(), &())
+            .map_err(|e| anyhow!("{:#}", e))
+            .context(format!("Failed to {} firewall", method))?;
+        Ok(())
+    }
 
-        conn.call_method(
-            Some(FIREWALLD_BUS),
-            FIREWALLD_PATH,
-            Some(FIREWALLD_INTERFACE),
-            "reload",
-            &(),
-        )
-        .context("Failed to reload firewall. Is firewalld running?")?;
+    fn firewall_reload(&mut self) -> Result<String> {
+        self.ensure_connected()?;
+        self.call_firewalld("reload")?;
 
         Ok("Firewall reloaded successfully".to_string())
     }
 
     fn firewall_enable(&mut self) -> Result<String> {
-        // Start the service
-        self.systemctl("start", "firewalld.service")?;
-        // Enable at boot
-        self.systemctl("enable", "firewalld.service")?;
+        // Start the service, then enable at boot. Report which half failed so
+        // a partial state is never presented as generic success/failure.
+        if let Err(e) = self.systemctl("start", "firewalld.service") {
+            return Err(anyhow!("Failed to start firewalld: {:#}", e));
+        }
+        if let Err(e) = self.systemctl("enable", "firewalld.service") {
+            return Err(anyhow!(
+                "Firewall started but failed to enable at boot: {:#}",
+                e
+            ));
+        }
 
         Ok("Firewall enabled and started".to_string())
     }
 
     fn firewall_disable(&mut self) -> Result<String> {
-        // Stop the service
-        self.systemctl("stop", "firewalld.service")?;
-        // Disable at boot
-        self.systemctl("disable", "firewalld.service")?;
+        if let Err(e) = self.systemctl("stop", "firewalld.service") {
+            return Err(anyhow!("Failed to stop firewalld: {:#}", e));
+        }
+        if let Err(e) = self.systemctl("disable", "firewalld.service") {
+            return Err(anyhow!(
+                "Firewall stopped but failed to disable at boot: {:#}",
+                e
+            ));
+        }
 
         Ok("Firewall stopped and disabled".to_string())
     }
 
     fn firewall_panic_on(&mut self) -> Result<String> {
-        let conn = self.ensure_connected()?;
-
-        conn.call_method(
-            Some(FIREWALLD_BUS),
-            FIREWALLD_PATH,
-            Some(FIREWALLD_INTERFACE),
-            "enablePanicMode",
-            &(),
-        )
-        .context("Failed to enable panic mode")?;
+        self.ensure_connected()?;
+        self.call_firewalld("enablePanicMode")?;
 
         Ok("Panic mode enabled - all traffic blocked".to_string())
     }
 
     fn firewall_panic_off(&mut self) -> Result<String> {
-        let conn = self.ensure_connected()?;
-
-        conn.call_method(
-            Some(FIREWALLD_BUS),
-            FIREWALLD_PATH,
-            Some(FIREWALLD_INTERFACE),
-            "disablePanicMode",
-            &(),
-        )
-        .context("Failed to disable panic mode")?;
+        self.ensure_connected()?;
+        self.call_firewalld("disablePanicMode")?;
 
         Ok("Panic mode disabled - normal operation restored".to_string())
     }
 
     fn firewall_runtime_to_permanent(&mut self) -> Result<String> {
-        let conn = self.ensure_connected()?;
-
-        conn.call_method(
-            Some(FIREWALLD_BUS),
-            FIREWALLD_PATH,
-            Some(FIREWALLD_INTERFACE),
-            "runtimeToPermanent",
-            &(),
-        )
-        .context("Failed to save runtime rules")?;
+        self.ensure_connected()?;
+        self.call_firewalld("runtimeToPermanent")?;
 
         Ok("Runtime rules saved to permanent configuration".to_string())
     }
@@ -337,9 +334,21 @@ impl QuickActionsManager {
     }
 
     fn restart_ssh(&mut self) -> Result<String> {
-        // Try sshd.service first (RHEL/Fedora), then ssh.service (Debian/Ubuntu)
-        if self.systemctl("restart", "sshd.service").is_ok() {
-            return Ok("SSH server restarted".to_string());
+        // Try sshd.service first (RHEL/Fedora), then ssh.service (Debian/Ubuntu).
+        // Only fall through on "unit not found" — auth cancellations and real
+        // failures must propagate instead of triggering a second prompt.
+        match self.systemctl("restart", "sshd.service") {
+            Ok(()) => return Ok("SSH server restarted".to_string()),
+            Err(e) => {
+                let msg = format!("{:#}", e);
+                let not_found = msg.contains("not found")
+                    || msg.contains("NotFound")
+                    || msg.contains("No such")
+                    || msg.contains("LoadFailed");
+                if !not_found {
+                    return Err(e);
+                }
+            }
         }
         self.systemctl("restart", "ssh.service")?;
         Ok("SSH server restarted".to_string())

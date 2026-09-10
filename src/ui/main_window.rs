@@ -201,11 +201,7 @@ impl MainWindow {
 
         let items = [
             ("overview", "Overview", "view-grid-symbolic"),
-            (
-                "connections",
-                "Connections",
-                "network-transmit-symbolic",
-            ),
+            ("connections", "Connections", "network-transmit-symbolic"),
             ("zones", "Zones", "network-server-symbolic"),
             ("services", "Services", "application-x-addon-symbolic"),
             ("ports", "Ports", "network-transmit-receive-symbolic"),
@@ -888,6 +884,32 @@ impl MainWindow {
                         if let Some(page) = imp.overview_page.borrow().as_ref() {
                             page.set_zones(zones);
                             page.set_blocked_ports(&blocked_ports);
+                        }
+                    }
+
+                    // The header Refresh button promises a global refresh.
+                    // Secondary pages only refresh on navigation, so also
+                    // refresh whichever one is currently visible.
+                    if let Some(stack) = imp.stack.borrow().as_ref() {
+                        if let Some(visible) = stack.visible_child_name() {
+                            match visible.as_str() {
+                                "connections" => {
+                                    if let Some(p) = imp.connections_page.borrow().as_ref() {
+                                        p.refresh();
+                                    }
+                                }
+                                "system-services" => {
+                                    if let Some(p) = imp.system_services_page.borrow().as_ref() {
+                                        p.refresh_services();
+                                    }
+                                }
+                                "network-exposure" => {
+                                    if let Some(p) = imp.network_exposure_page.borrow().as_ref() {
+                                        p.refresh();
+                                    }
+                                }
+                                _ => {}
+                            }
                         }
                     }
 

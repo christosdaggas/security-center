@@ -58,7 +58,9 @@ pub fn validate_port_name(name: &str) -> Option<String> {
     if trimmed.is_empty() {
         return Some(String::new());
     }
-    if trimmed.len() > 64 {
+    // Count characters, not bytes, so multibyte names are handled consistently
+    // with storage truncation (which cuts on char boundaries).
+    if trimmed.chars().count() > 64 {
         return None;
     }
     if trimmed
@@ -68,6 +70,77 @@ pub fn validate_port_name(name: &str) -> Option<String> {
         Some(trimmed.to_string())
     } else {
         None
+    }
+}
+
+/// Validate a firewalld service name (e.g. "http", "ssh", "cockpit").
+/// Unlike systemd units these carry no suffix. firewalld service names are
+/// short, lowercase, and limited to ASCII alphanumerics, `-` and `_`.
+pub fn validate_firewalld_service(name: &str) -> Result<()> {
+    if name.is_empty() || name.len() > 32 {
+        return Err(anyhow!("Invalid firewalld service name: {}", name));
+    }
+    if !name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    {
+        return Err(anyhow!(
+            "Firewalld service name contains invalid characters: {}",
+            name
+        ));
+    }
+    Ok(())
+}
+
+/// Validate a rich-rule string before it reaches D-Bus.
+/// Rejects empty rules, embedded newlines (log injection) and oversized
+/// payloads. Full semantic validation stays with firewalld.
+pub fn validate_rich_rule(rule: &str) -> Result<()> {
+    let trimmed = rule.trim();
+    if trimmed.is_empty() {
+        return Err(anyhow!("Rich rule must not be empty"));
+    }
+    if trimmed.len() > 4096 {
+        return Err(anyhow!("Rich rule too long (max 4096 bytes)"));
+    }
+    if trimmed.contains('\n') || trimmed.contains('\r') || trimmed.contains('\0') {
+        return Err(anyhow!("Rich rule contains invalid characters"));
+    }
+    Ok(())
+}
+
+/// True for IPs that never have a public GeoIP entry and must never be sent
+/// to an online lookup: loopback, unspecified, private, link-local,
+/// multicast, broadcast, documentation ranges, plus IPv6 ULA/link-local and
+/// IPv4-mapped IPv6 forms of the above. Single shared helper so geoip,
+/// ipinfo and network scans agree.
+pub fn is_non_routable_ip(addr: &std::net::IpAddr) -> bool {
+    use std::net::IpAddr;
+    match addr {
+        IpAddr::V4(v4) => {
+            v4.is_loopback()
+                || v4.is_unspecified()
+                || v4.is_private()
+                || v4.is_link_local()
+                || v4.is_multicast()
+                || v4.is_broadcast()
+                || v4.is_documentation()
+                // 192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24 covered by
+                // is_documentation; 192.0.0.0/24 and benchmarks:
+                || matches!(v4.octets(), [192, 0, 0, _] | [192, 0, 2, _] | [198, 18, _, _] | [198, 51, 100, _] | [203, 0, 113, _])
+        }
+        IpAddr::V6(v6) => {
+            if v6.is_loopback() || v6.is_unspecified() || v6.is_multicast() {
+                return true;
+            }
+            // Unwrap IPv4-mapped (::ffff:a.b.c.d) and check the inner address.
+            if let Some(mapped) = v6.to_ipv4_mapped() {
+                return is_non_routable_ip(&IpAddr::V4(mapped));
+            }
+            let seg = v6.segments();
+            // fc00::/7 unique-local, fe80::/10 link-local.
+            (seg[0] & 0xfe00) == 0xfc00 || (seg[0] & 0xffc0) == 0xfe80
+        }
     }
 }
 
@@ -300,5 +373,45 @@ mod tests {
         assert_eq!(clamp_window_dimension(50), 100);
         assert_eq!(clamp_window_dimension(500), 500);
         assert_eq!(clamp_window_dimension(20000), 10000);
+    }
+
+    #[test]
+    fn test_validate_firewalld_service() {
+        assert!(validate_firewalld_service("http").is_ok());
+        assert!(validate_firewalld_service("ssh").is_ok());
+        assert!(validate_firewalld_service("cockpit").is_ok());
+        assert!(validate_firewalld_service("").is_err());
+        assert!(validate_firewalld_service("http; rm").is_err());
+        assert!(validate_firewalld_service("../../etc").is_err());
+        assert!(validate_firewalld_service(&"a".repeat(33)).is_err());
+    }
+
+    #[test]
+    fn test_validate_rich_rule() {
+        assert!(validate_rich_rule(
+            "rule family=\"ipv4\" port port=\"80\" protocol=\"tcp\" accept"
+        )
+        .is_ok());
+        assert!(validate_rich_rule("").is_err());
+        assert!(validate_rich_rule("rule\nmalicious").is_err());
+        assert!(validate_rich_rule(&"a".repeat(5000)).is_err());
+    }
+
+    #[test]
+    fn test_is_non_routable_ip() {
+        use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+        assert!(is_non_routable_ip(&IpAddr::V4(Ipv4Addr::new(
+            192, 168, 1, 1
+        ))));
+        assert!(is_non_routable_ip(&IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1))));
+        assert!(is_non_routable_ip(&IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1))));
+        assert!(is_non_routable_ip(&IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0))));
+        assert!(!is_non_routable_ip(&IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8))));
+        assert!(is_non_routable_ip(&IpAddr::V6(Ipv6Addr::LOCALHOST)));
+        // IPv4-mapped private must also be non-routable.
+        let mapped: IpAddr = "::ffff:192.168.1.1".parse().unwrap();
+        assert!(is_non_routable_ip(&mapped));
+        let mapped_pub: IpAddr = "::ffff:8.8.8.8".parse().unwrap();
+        assert!(!is_non_routable_ip(&mapped_pub));
     }
 }

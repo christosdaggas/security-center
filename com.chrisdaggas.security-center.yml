@@ -53,6 +53,7 @@ modules:
       - install -Dm644 data/com.chrisdaggas.security-center.metainfo.xml -t /app/share/metainfo/
       - install -Dm644 data/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg -t /app/share/icons/hicolor/scalable/apps/
       - install -Dm644 data/icons/hicolor/symbolic/apps/com.chrisdaggas.security-center-symbolic.svg -t /app/share/icons/hicolor/symbolic/apps/ || true
+      - for lang in ar de el es fr hi it pt ru zh; do if [ -f po/$lang.po ]; then mkdir -p /app/share/locale/$lang/LC_MESSAGES && msgfmt po/$lang.po -o /app/share/locale/$lang/LC_MESSAGES/security-center.mo; fi; done
     sources:
       - type: dir
         path: .

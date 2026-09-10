@@ -119,12 +119,16 @@ impl OverviewPage {
                 }
             }
             FirewallState::Stopped => {
+                // Firewall daemon is down: traffic flows unfiltered. The
+                // switch controls panic mode (not the daemon), so leave it
+                // off + insensitive and label the state honestly instead of
+                // claiming "Traffic Enabled" as if protection were on.
                 if let Some(switch) = imp.traffic_switch.borrow().as_ref() {
-                    switch.set_active(true);
+                    switch.set_active(false);
                     switch.set_sensitive(false);
                 }
                 if let Some(label) = imp.traffic_label.borrow().as_ref() {
-                    label.set_label(&gettext("Traffic Enabled"));
+                    label.set_label(&gettext("Firewall Off"));
                     label.remove_css_class("error");
                     label.remove_css_class("success");
                     label.add_css_class("warning");
@@ -202,15 +206,22 @@ impl OverviewPage {
         scrolled.set_child(Some(&content));
         self.append(&scrolled);
 
-        // Kick off the live connection dashboard.
-        let page = self.clone();
+        // Kick off the live connection dashboard. Weak refs so the timers die
+        // with the page instead of keeping it (and its /proc polling) alive.
+        let weak = self.downgrade();
         glib::timeout_add_seconds_local_once(2, move || {
-            page.refresh_connected_hosts();
+            if let Some(page) = weak.upgrade() {
+                page.refresh_connected_hosts();
+            }
         });
-        let page = self.clone();
+        let weak = self.downgrade();
         glib::timeout_add_seconds_local(REFRESH_SECS, move || {
-            page.refresh_connected_hosts();
-            glib::ControlFlow::Continue
+            if let Some(page) = weak.upgrade() {
+                page.refresh_connected_hosts();
+                glib::ControlFlow::Continue
+            } else {
+                glib::ControlFlow::Break
+            }
         });
     }
 
@@ -231,9 +242,9 @@ impl OverviewPage {
             .build();
 
         let status_icon = gtk4::Image::builder()
-            .icon_name("security-high-symbolic")
+            .icon_name("content-loading-symbolic")
             .pixel_size(48)
-            .css_classes(vec!["success".to_string()])
+            .css_classes(vec!["dim-label".to_string()])
             .build();
         imp.status_icon.replace(Some(status_icon.clone()));
 
@@ -245,14 +256,14 @@ impl OverviewPage {
             .build();
 
         let status_title = gtk4::Label::builder()
-            .label(gettext("Firewall Active"))
+            .label(gettext("Checking Firewall…"))
             .css_classes(vec!["title-2".to_string()])
             .halign(gtk4::Align::Start)
             .build();
         imp.status_title.replace(Some(status_title.clone()));
 
         let status_subtitle = gtk4::Label::builder()
-            .label(gettext("Your system is protected"))
+            .label(gettext("Connecting to firewall…"))
             .css_classes(vec!["dim-label".to_string()])
             .halign(gtk4::Align::Start)
             .build();
@@ -368,14 +379,16 @@ impl OverviewPage {
             .valign(gtk4::Align::Center)
             .build();
         let traffic_switch = gtk4::Switch::builder()
-            .active(true)
+            .active(false)
+            .sensitive(false)
+            .tooltip_text(gettext("Firewall traffic switch"))
             .valign(gtk4::Align::Center)
             .halign(gtk4::Align::Center)
             .build();
         imp.traffic_switch.replace(Some(traffic_switch.clone()));
         let toggle_label = gtk4::Label::builder()
-            .label(gettext("Traffic Enabled"))
-            .css_classes(vec!["caption".to_string(), "success".to_string()])
+            .label(gettext("Checking…"))
+            .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
             .halign(gtk4::Align::Center)
             .build();
         imp.traffic_label.replace(Some(toggle_label.clone()));
@@ -500,13 +513,13 @@ impl OverviewPage {
         conn_chip_box.append(&conn_chip);
         header.append(&conn_chip_box);
 
-        header.append(
-            &gtk4::Label::builder()
-                .label(gettext("Updated just now"))
-                .css_classes(vec!["caption".to_string(), "conn-chip".to_string()])
-                .valign(gtk4::Align::Center)
-                .build(),
-        );
+        let updated_label = gtk4::Label::builder()
+            .label(gettext("Updating…"))
+            .css_classes(vec!["caption".to_string(), "conn-chip".to_string()])
+            .valign(gtk4::Align::Center)
+            .build();
+        imp.updated_label.replace(Some(updated_label.clone()));
+        header.append(&updated_label);
 
         outer.append(&header);
         outer.append(&gtk4::Separator::new(gtk4::Orientation::Horizontal));
@@ -706,13 +719,17 @@ impl OverviewPage {
     }
 
     /// Scan connections + per-socket bytes + country, then render the dashboard.
+    /// Runs off the UI thread; /proc reads and GeoIP lookups never block input.
     fn refresh_connected_hosts(&self) {
-        let page = self.clone();
+        // Weak ref so the 5s timer stops with the page instead of leaking it.
+        let weak = self.downgrade();
         glib::spawn_future_local(async move {
             let data = gtk4::gio::spawn_blocking(|| {
                 let mut scanner = crate::admin::NetworkExposure::new();
                 let connections = scanner.scan_connections().unwrap_or_default();
-                let listening = scanner.scan().map(|v| v.len()).unwrap_or(0);
+                // Distinguish "scan failed" (None) from "no listeners" (Some(0))
+                // so the UI can show an error instead of a misleading zero.
+                let listening = scanner.scan().ok();
                 let socket_bytes = crate::admin::collect_socket_bytes().unwrap_or_default();
                 let geo = crate::admin::GeoIp::load();
                 let labels: HashMap<IpAddr, String> = connections
@@ -723,8 +740,23 @@ impl OverviewPage {
             })
             .await;
 
+            let Some(page) = weak.upgrade() else {
+                return;
+            };
+            // Skip work while off-screen; the next tick will catch up.
+            if !page.is_mapped() {
+                return;
+            }
             if let Ok((connections, listening, socket_bytes, geo_labels)) = data {
-                page.render_app_dashboard(connections, listening, socket_bytes, geo_labels);
+                // Warn on failure instead of silently keeping stale zeros.
+                let listening_count = match listening {
+                    Some(n) => n.len(),
+                    None => {
+                        tracing::warn!("Listening-socket scan failed, showing stale data");
+                        0
+                    }
+                };
+                page.render_app_dashboard(connections, listening_count, socket_bytes, geo_labels);
             }
         });
     }
@@ -734,7 +766,7 @@ impl OverviewPage {
         &self,
         connections: Vec<crate::admin::ActiveConnection>,
         listening: usize,
-        socket_bytes: HashMap<u32, (u64, u64)>,
+        socket_bytes: HashMap<u64, (u64, u64)>,
         geo_labels: HashMap<IpAddr, String>,
     ) {
         let imp = self.imp();
@@ -760,7 +792,7 @@ impl OverviewPage {
         // Per-socket byte deltas give a stable rate even as a process's many
         // short-lived sockets churn between samples.
         let mut prev_sock = imp.prev_sock.borrow_mut();
-        let mut cur_sock: HashMap<u32, (u64, u64)> = HashMap::new();
+        let mut cur_sock: HashMap<u64, (u64, u64)> = HashMap::new();
         let mut remote_count = 0usize;
 
         for conn in &connections {
@@ -770,7 +802,7 @@ impl OverviewPage {
             }
             remote_count += 1;
 
-            let inode = conn.inode as u32;
+            let inode = conn.inode;
             let (bin, bout) = socket_bytes.get(&inode).copied().unwrap_or((0, 0));
             cur_sock.insert(inode, (bin, bout));
             // A socket we have not seen before contributes no delta this round.
@@ -811,13 +843,25 @@ impl OverviewPage {
         set_label(&imp.metric_active, &remote_count.to_string());
         set_label(&imp.metric_apps, &apps.len().to_string());
 
-        // --- Connections hub chip ---
+        // --- Connections hub chip + freshness timestamp ---
         if let Some(chip) = imp.conn_chip.borrow().as_ref() {
             if apps.is_empty() {
                 chip.set_label("0 connected");
             } else {
                 chip.set_label(&format!("{} {}", apps.len(), gettext("connected")));
             }
+        }
+        if let Some(updated) = imp.updated_label.borrow().as_ref() {
+            let now = chrono::Local::now().format("%H:%M:%S").to_string();
+            // Translators: {} is the clock time of the last refresh.
+            let text = gettext("Updated {}").replace("{}", &now);
+            // Fallback when the catalog has no placeholder form yet.
+            let label = if text.contains(&now) {
+                text
+            } else {
+                format!("{} {}", gettext("Updated"), now)
+            };
+            updated.set_label(&label);
         }
 
         // --- Donut: active (remote) vs blocked vs idle/listening ---
@@ -1401,6 +1445,7 @@ mod imp {
         pub connections_hub: RefCell<Option<gtk4::Frame>>,
         pub app_flow: RefCell<Option<gtk4::FlowBox>>,
         pub conn_chip: RefCell<Option<gtk4::Label>>,
+        pub updated_label: RefCell<Option<gtk4::Label>>,
         // Analytics: donut
         pub donut: RefCell<Option<DonutChart>>,
         pub donut_total: RefCell<Option<gtk4::Label>>,
@@ -1421,7 +1466,7 @@ mod imp {
         // without a fresh scan that would reset the per-socket rate baseline.
         pub(crate) last_apps: RefCell<Vec<AppCardData>>,
         // Previous cumulative (bytes_in, bytes_out) per socket inode, for rates.
-        pub prev_sock: RefCell<HashMap<u32, (u64, u64)>>,
+        pub prev_sock: RefCell<HashMap<u64, (u64, u64)>>,
         pub app_spark: RefCell<HashMap<String, Vec<f64>>>,
     }
 

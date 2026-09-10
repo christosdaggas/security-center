@@ -635,9 +635,12 @@ impl PortsPage {
                 }
                 Ok(Err(e)) => {
                     page.show_toast(&format!("{}: {}", gettext("Failed to delete port"), e));
+                    // Rebuild the list so the dimmed row/button restores.
+                    page.request_refresh();
                 }
                 Err(_) => {
                     page.show_toast(&gettext("Failed to delete port"));
+                    page.request_refresh();
                 }
             }
         });
@@ -836,20 +839,32 @@ impl PortsPage {
 
         content.append(&options_group);
 
-        dialog.set_extra_child(Some(&content));
+        // Wrap in a scrolled window so 9+ zone rows never clip on small displays.
+        let scroll = gtk4::ScrolledWindow::builder()
+            .hscrollbar_policy(gtk4::PolicyType::Never)
+            .vscrollbar_policy(gtk4::PolicyType::Automatic)
+            .max_content_height(420)
+            .propagate_natural_height(true)
+            .child(&content)
+            .build();
+        dialog.set_extra_child(Some(&scroll));
         dialog.add_response("cancel", "_Cancel");
         dialog.add_response("add", "_Add");
         dialog.set_response_appearance("add", adw::ResponseAppearance::Suggested);
 
         // Validate live and gate the Add button, so a typo shows inline feedback
         // instead of closing the dialog and discarding everything the user typed.
+        // Zone selection also gates Add: previously an empty selection closed
+        // the dialog and lost all input behind a post-close toast.
         let revalidate = {
             let dialog = dialog.clone();
             let port_entry = port_entry.clone();
             let name_entry = name_entry.clone();
+            let zone_switches = zone_switches.clone();
             move || {
                 let port_ok = parse_port_spec(&port_entry.text()).is_some();
                 let name_ok = validate_port_name(&name_entry.text()).is_some();
+                let zone_ok = zone_switches.borrow().iter().any(|(_, s)| s.is_active());
                 if port_ok {
                     port_entry.remove_css_class("error");
                 } else {
@@ -860,7 +875,7 @@ impl PortsPage {
                 } else {
                     name_entry.add_css_class("error");
                 }
-                dialog.set_response_enabled("add", port_ok && name_ok);
+                dialog.set_response_enabled("add", port_ok && name_ok && zone_ok);
             }
         };
         revalidate();
@@ -871,6 +886,10 @@ impl PortsPage {
         {
             let revalidate = revalidate.clone();
             name_entry.connect_changed(move |_| revalidate());
+        }
+        for (_, switch) in zone_switches.borrow().iter() {
+            let revalidate = revalidate.clone();
+            switch.connect_active_notify(move |_| revalidate());
         }
 
         let zone_switches_clone = zone_switches.clone();
@@ -1225,7 +1244,15 @@ impl PortsPage {
 
         content.append(&options_group);
 
-        dialog.set_extra_child(Some(&content));
+        // Scrollable like the Add dialog so small windows never clip zones.
+        let scroll = gtk4::ScrolledWindow::builder()
+            .hscrollbar_policy(gtk4::PolicyType::Never)
+            .vscrollbar_policy(gtk4::PolicyType::Automatic)
+            .max_content_height(420)
+            .propagate_natural_height(true)
+            .child(&content)
+            .build();
+        dialog.set_extra_child(Some(&scroll));
         dialog.add_response("cancel", "_Cancel");
         dialog.add_response("save", "_Save");
         dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);

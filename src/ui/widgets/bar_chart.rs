@@ -210,7 +210,8 @@ mod imp {
             let bar_spacing = 8.0;
             let label_width = 80.0;
             let value_width = 50.0;
-            let bar_area_width = width - label_width - value_width - 20.0;
+            // Clamp so narrow windows cannot produce a negative bar area.
+            let bar_area_width = (width - label_width - value_width - 20.0).max(24.0);
 
             let max_bars = 5;
             let bars_to_show = entries.len().min(max_bars);
@@ -233,9 +234,10 @@ mod imp {
                 );
                 cr.set_font_size(11.0);
 
-                // Truncate label if too long
-                let label = if entry.label.len() > 12 {
-                    format!("{}…", &entry.label[..11])
+                // Truncate label if too long (char-boundary safe for flags/UTF-8).
+                let label = if entry.label.chars().count() > 12 {
+                    let truncated: String = entry.label.chars().take(11).collect();
+                    format!("{}…", truncated)
                 } else {
                     entry.label.clone()
                 };
