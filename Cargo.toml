@@ -56,7 +56,11 @@ Security Center is a modern GTK4/Libadwaita application for managing \
 system security on Linux. It provides a user-friendly interface for \
 controlling firewalld, monitoring network exposure, and managing \
 system services."""
-depends = "$auto, firewalld, polkitd | policykit-1"
+# NOTE: runtime deps are listed explicitly (not $auto) because $auto needs
+# dpkg-shlibdeps plus the target distro's libraries installed — it silently
+# expands to nothing when cross-building on Fedora, producing a deb that
+# installs on Ubuntu without libgtk/libadwaita and then fails to start.
+depends = "libgtk-4-1 (>= 4.14), libadwaita-1-0 (>= 1.5), libc6, libgcc-s1, firewalld, polkitd | policykit-1"
 section = "admin"
 priority = "optional"
 maintainer-scripts = "packaging/deb/maintainer-scripts"
