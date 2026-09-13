@@ -53,8 +53,12 @@ pub struct IpDetails {
 ///
 /// Returns an error for private/reserved addresses (never in any GeoIP dataset)
 /// and when both providers fail or are unreachable.
+///
+/// Privacy: the HTTP fallback sends the IP in cleartext. Callers must gate
+/// this behind the `enable_online_ip_lookup` preference AND explicit per-click
+/// consent in the IP details window — never call it passively.
 pub fn lookup_ip_online(ip: IpAddr) -> Result<IpDetails> {
-    if crate::admin::is_local_ip(ip) || is_reserved(ip) {
+    if crate::validation::is_non_routable_ip(&ip) || is_reserved(ip) {
         return Err(anyhow!("This is a private or reserved address"));
     }
 
@@ -171,12 +175,14 @@ fn str_field(v: &Value, key: &str) -> Option<String> {
 }
 
 /// Reserved / non-routable ranges no geolocation provider can resolve.
-///
-/// The IPv6 unique-local and link-local checks are done by hand because
-/// `Ipv6Addr::is_unique_local`/`is_unicast_link_local` are still unstable.
+/// Combines the shared non-routable check with provider-specific gaps
+/// (multicast, ULA, link-local) for defense in depth.
 fn is_reserved(addr: IpAddr) -> bool {
+    if crate::validation::is_non_routable_ip(&addr) {
+        return true;
+    }
     match addr {
-        IpAddr::V4(v4) => v4.is_private() || v4.is_link_local() || v4.is_multicast(),
+        IpAddr::V4(v4) => v4.is_multicast(),
         IpAddr::V6(v6) => {
             if v6.is_multicast() {
                 return true;

@@ -2,7 +2,7 @@
 
 A modern, GTK4/Libadwaita security management application for Linux, providing a clean interface to **firewalld**, **systemd**, and system security monitoring.
 
-![Security Center light theme dashboard](docs/screenshots/security-center-overview-light.png)
+![Security Center light theme dashboard](docs/screenshots/app.png)
 
 ## Features
 

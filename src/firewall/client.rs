@@ -16,7 +16,10 @@ use zbus::zvariant::{ObjectPath, OwnedObjectPath};
 
 use super::{interfaces, paths, zone_description, BUS_NAME};
 use crate::models::{Interface, Service, Zone};
-use crate::validation::validate_zone_name;
+use crate::validation::{
+    parse_port_spec, validate_firewalld_service, validate_protocol, validate_rich_rule,
+    validate_zone_name,
+};
 
 /// Events emitted by the firewall client.
 #[derive(Debug, Clone)]
@@ -165,6 +168,7 @@ impl FirewallClient {
         )?;
 
         info!("Set default zone to: {}", zone);
+        self.invalidate_cache();
         let _ = self.event_sender.send(FirewallEvent::StateChanged);
         Ok(())
     }
@@ -212,18 +216,21 @@ impl FirewallClient {
             zone.is_default = name == default_zone;
 
             // Get zone services
-            if let Ok(services) = self.get_zone_services(&name) {
-                zone.services = services;
+            match self.get_zone_services(&name) {
+                Ok(services) => zone.services = services,
+                Err(e) => warn!("Failed to read services for zone {}: {}", name, e),
             }
 
             // Get zone ports
-            if let Ok(ports) = self.get_zone_ports(&name) {
-                zone.ports = ports;
+            match self.get_zone_ports(&name) {
+                Ok(ports) => zone.ports = ports,
+                Err(e) => warn!("Failed to read ports for zone {}: {}", name, e),
             }
 
             // Get zone rich rules
-            if let Ok(rules) = self.get_zone_rich_rules(&name) {
-                zone.rich_rules = rules;
+            match self.get_zone_rich_rules(&name) {
+                Ok(rules) => zone.rich_rules = rules,
+                Err(e) => warn!("Failed to read rich rules for zone {}: {}", name, e),
             }
 
             // Get zone interfaces from active zones
@@ -242,6 +249,26 @@ impl FirewallClient {
         }
 
         Ok(zones)
+    }
+
+    /// Cached zone list from the last successful `get_zones` call.
+    pub fn cached_zones(&self) -> Vec<Zone> {
+        self.zones.read().map(|c| c.clone()).unwrap_or_default()
+    }
+
+    /// Cached service list from the last successful `get_services` call.
+    pub fn cached_services(&self) -> Vec<Service> {
+        self.services.read().map(|c| c.clone()).unwrap_or_default()
+    }
+
+    /// Drop cached data after a mutation so readers never see stale state.
+    fn invalidate_cache(&self) {
+        if let Ok(mut z) = self.zones.write() {
+            z.clear();
+        }
+        if let Ok(mut s) = self.services.write() {
+            s.clear();
+        }
     }
 
     /// Get services enabled in a zone.
@@ -368,9 +395,15 @@ impl FirewallClient {
         permanent: bool,
     ) -> Result<PermanentOutcome> {
         validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
+        let (start, end) =
+            parse_port_spec(port).ok_or_else(|| anyhow!("Invalid port: {}", port))?;
+        let proto = protocol.trim().to_lowercase();
+        validate_protocol(&proto).ok_or_else(|| anyhow!("Invalid protocol: {}", protocol))?;
+        // Normalize so firewalld always sees a canonical spec.
+        let port_norm = crate::validation::format_port_spec(start, end);
         info!(
             "add_port called: zone={}, port={}, protocol={}, permanent={}",
-            zone, port, protocol, permanent
+            zone, port_norm, proto, permanent
         );
 
         // Add to runtime config
@@ -378,29 +411,30 @@ impl FirewallClient {
             ObjectPath::try_from(paths::ROOT)?,
             interfaces::ZONE,
             "addPort",
-            &(zone, port, protocol, 0i32),
+            &(zone, port_norm.as_str(), proto.as_str(), 0i32),
         );
 
         match result {
             Ok(_) => info!(
                 "Added port {}/{} to zone {} (runtime)",
-                port, protocol, zone
+                port_norm, proto, zone
             ),
             Err(e) if e.to_string().contains("ALREADY_ENABLED") => {
                 info!(
                     "Port {}/{} already enabled in zone {}",
-                    port, protocol, zone
+                    port_norm, proto, zone
                 );
             }
             Err(e) => return Err(e),
         }
 
         let outcome = if permanent {
-            self.apply_permanent(zone, "addPort", &(port, protocol))
+            self.apply_permanent(zone, "addPort", &(port_norm.as_str(), proto.as_str()))
         } else {
             PermanentOutcome::NotRequested
         };
 
+        self.invalidate_cache();
         let _ = self.event_sender.send(FirewallEvent::StateChanged);
         Ok(outcome)
     }
@@ -415,29 +449,35 @@ impl FirewallClient {
         permanent: bool,
     ) -> Result<PermanentOutcome> {
         validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
+        let (start, end) =
+            parse_port_spec(port).ok_or_else(|| anyhow!("Invalid port: {}", port))?;
+        let proto = protocol.trim().to_lowercase();
+        validate_protocol(&proto).ok_or_else(|| anyhow!("Invalid protocol: {}", protocol))?;
+        let port_norm = crate::validation::format_port_spec(start, end);
         // Remove from runtime
         let result: Result<Option<String>> = self.call_interactive(
             ObjectPath::try_from(paths::ROOT)?,
             interfaces::ZONE,
             "removePort",
-            &(zone, port, protocol),
+            &(zone, port_norm.as_str(), proto.as_str()),
         );
 
         match result {
             Ok(_) => info!(
                 "Removed port {}/{} from zone {} (runtime)",
-                port, protocol, zone
+                port_norm, proto, zone
             ),
             Err(e) if e.to_string().contains("NOT_ENABLED") => {}
             Err(e) => return Err(e),
         }
 
         let outcome = if permanent {
-            self.apply_permanent(zone, "removePort", &(port, protocol))
+            self.apply_permanent(zone, "removePort", &(port_norm.as_str(), proto.as_str()))
         } else {
             PermanentOutcome::NotRequested
         };
 
+        self.invalidate_cache();
         let _ = self.event_sender.send(FirewallEvent::StateChanged);
         Ok(outcome)
     }
@@ -488,6 +528,7 @@ impl FirewallClient {
         permanent: bool,
     ) -> Result<PermanentOutcome> {
         validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
+        validate_firewalld_service(service)?;
         let result: Result<Option<String>> = self.call_interactive(
             ObjectPath::try_from(paths::ROOT)?,
             interfaces::ZONE,
@@ -507,6 +548,7 @@ impl FirewallClient {
             PermanentOutcome::NotRequested
         };
 
+        self.invalidate_cache();
         let _ = self.event_sender.send(FirewallEvent::StateChanged);
         Ok(outcome)
     }
@@ -519,6 +561,7 @@ impl FirewallClient {
         permanent: bool,
     ) -> Result<PermanentOutcome> {
         validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
+        validate_firewalld_service(service)?;
         let result: Result<Option<String>> = self.call_interactive(
             ObjectPath::try_from(paths::ROOT)?,
             interfaces::ZONE,
@@ -538,6 +581,7 @@ impl FirewallClient {
             PermanentOutcome::NotRequested
         };
 
+        self.invalidate_cache();
         let _ = self.event_sender.send(FirewallEvent::StateChanged);
         Ok(outcome)
     }
@@ -550,6 +594,7 @@ impl FirewallClient {
         permanent: bool,
     ) -> Result<PermanentOutcome> {
         validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
+        validate_rich_rule(rule)?;
         let result: Result<Option<String>> = self.call_interactive(
             ObjectPath::try_from(paths::ROOT)?,
             interfaces::ZONE,
@@ -569,6 +614,7 @@ impl FirewallClient {
             PermanentOutcome::NotRequested
         };
 
+        self.invalidate_cache();
         let _ = self.event_sender.send(FirewallEvent::StateChanged);
         Ok(outcome)
     }
@@ -581,6 +627,7 @@ impl FirewallClient {
         permanent: bool,
     ) -> Result<PermanentOutcome> {
         validate_zone_name(zone).ok_or_else(|| anyhow!("Invalid zone name: {}", zone))?;
+        validate_rich_rule(rule)?;
         let result: Result<Option<String>> = self.call_interactive(
             ObjectPath::try_from(paths::ROOT)?,
             interfaces::ZONE,
@@ -600,6 +647,7 @@ impl FirewallClient {
             PermanentOutcome::NotRequested
         };
 
+        self.invalidate_cache();
         let _ = self.event_sender.send(FirewallEvent::StateChanged);
         Ok(outcome)
     }

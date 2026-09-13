@@ -15,6 +15,7 @@ depends=(
 makedepends=(
     'cargo'
     'git'
+    'gettext'
 )
 optdepends=(
     'systemd: For service management'
@@ -46,22 +47,35 @@ package() {
     
     # Install binary
     install -Dm755 "target/release/$pkgname" "$pkgdir/usr/bin/$pkgname"
-    
+
     # Install desktop file
     install -Dm644 "data/com.chrisdaggas.security-center.desktop" \
         "$pkgdir/usr/share/applications/com.chrisdaggas.security-center.desktop"
-    
+
     # Install metainfo
     install -Dm644 "data/com.chrisdaggas.security-center.metainfo.xml" \
         "$pkgdir/usr/share/metainfo/com.chrisdaggas.security-center.metainfo.xml"
-    
-    # Install icon
+
+    # Install icons (scalable + symbolic)
     install -Dm644 "data/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg" \
         "$pkgdir/usr/share/icons/hicolor/scalable/apps/com.chrisdaggas.security-center.svg"
-    
+    install -Dm644 "data/icons/hicolor/symbolic/apps/com.chrisdaggas.security-center-symbolic.svg" \
+        "$pkgdir/usr/share/icons/hicolor/symbolic/apps/com.chrisdaggas.security-center-symbolic.svg"
+
+    # Install compiled translations (po/*.po -> locale/<lang>/LC_MESSAGES/*.mo)
+    if [[ -f po/LINGUAS ]]; then
+        while read -r lang; do
+            [[ -z "$lang" || "$lang" == \#* ]] && continue
+            if [[ -f "po/${lang}.po" ]]; then
+                install -Dm644 "/dev/null" "$pkgdir/usr/share/locale/${lang}/LC_MESSAGES/security-center.mo"
+                msgfmt "po/${lang}.po" -o "$pkgdir/usr/share/locale/${lang}/LC_MESSAGES/security-center.mo"
+            fi
+        done < po/LINGUAS
+    fi
+
     # Install license
     install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-    
+
     # Install documentation
-    install -Dm644 CONTRIBUTING.md "$pkgdir/usr/share/doc/$pkgname/CONTRIBUTING.md"
+    install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
 }

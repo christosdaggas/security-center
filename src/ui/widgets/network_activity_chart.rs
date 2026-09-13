@@ -96,6 +96,8 @@ impl NetworkActivityChart {
     }
 
     /// Start live data collection (idempotent — only one timer per widget).
+    /// The timer holds only a weak reference so destroying the widget stops
+    /// polling instead of leaking it (and its /proc reads) forever.
     pub fn start_live_collection(&self) {
         let imp = self.imp();
         if imp.collecting.get() {
@@ -103,8 +105,15 @@ impl NetworkActivityChart {
         }
         imp.collecting.set(true);
 
-        let chart = self.clone();
+        let weak = self.downgrade();
         glib::timeout_add_local(std::time::Duration::from_millis(1000), move || {
+            let Some(chart) = weak.upgrade() else {
+                return glib::ControlFlow::Break;
+            };
+            // Pause work while the widget is off-screen; resume on map.
+            if !chart.is_mapped() {
+                return glib::ControlFlow::Continue;
+            }
             let iface = chart.imp().selected_iface.borrow().clone();
             let (rx_bytes, tx_bytes) = read_network_stats(iface.as_deref());
 

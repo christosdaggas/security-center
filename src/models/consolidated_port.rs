@@ -116,14 +116,26 @@ impl ConsolidatedPort {
     }
 
     /// Get a display string for protocols (e.g., "TCP", "UDP", "TCP/UDP").
+    /// Handles arbitrary protocol sets (not just tcp/udp) without assuming
+    /// len==2 means TCP/UDP.
     pub fn protocol_display(&self) -> String {
-        if self.protocols.len() == 2 {
-            "TCP/UDP".to_string()
-        } else if let Some(proto) = self.protocols.first() {
-            proto.to_uppercase()
-        } else {
-            "?".to_string()
+        if self.protocols.is_empty() {
+            return "?".to_string();
         }
+        let mut sorted = self.protocols.clone();
+        sorted.sort();
+        sorted.dedup();
+        if sorted.len() == 2
+            && sorted.contains(&"tcp".to_string())
+            && sorted.contains(&"udp".to_string())
+        {
+            return "TCP/UDP".to_string();
+        }
+        sorted
+            .iter()
+            .map(|p| p.to_uppercase())
+            .collect::<Vec<_>>()
+            .join("/")
     }
 
     /// Get display title (name, well-known service, or port number/range).

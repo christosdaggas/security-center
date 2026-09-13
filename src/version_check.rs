@@ -101,15 +101,60 @@ pub async fn check_for_update(current_version: &str) -> Option<UpdateInfo> {
 }
 
 fn is_newer(remote: &str, local: &str) -> bool {
-    let r = match semver::Version::parse(remote) {
-        Ok(v) => v,
-        Err(_) => return false,
+    let (rv, rextra) = match parse_lenient(remote) {
+        Some(v) => v,
+        None => return false,
     };
-    let l = match semver::Version::parse(local) {
-        Ok(v) => v,
-        Err(_) => return false,
+    let (lv, lextra) = match parse_lenient(local) {
+        Some(v) => v,
+        None => return false,
     };
-    r > l
+    if rv != lv {
+        return rv > lv;
+    }
+    // Same major.minor.patch: a fourth numeric component (e.g. 1.8.0.1)
+    // counts as newer than the bare triple.
+    rextra > lextra
+}
+
+/// Lenient semver parse: accepts `v1.8`, `V2.0`, `1.8.0.1` and surrounding
+/// whitespace. Returns (version, fourth-component) so `1.8.0.1 > 1.8.0`.
+/// Strict tags still parse first.
+fn parse_lenient(s: &str) -> Option<(semver::Version, u64)> {
+    let t = s.trim().trim_start_matches(['v', 'V']).trim();
+    if let Ok(v) = semver::Version::parse(t) {
+        return Some((v, 0));
+    }
+    // Coerce leading numeric components: "1.8" -> "1.8.0", "1.8.0.1" keeps
+    // the fourth part as a tiebreaker. Pre-release/build metadata preserved.
+    let (core, suffix) = match t.find(['-', '+']) {
+        Some(i) => (&t[..i], Some(&t[i..])),
+        None => (t, None),
+    };
+    let nums: Vec<&str> = core.split('.').collect();
+    if nums.is_empty()
+        || nums.len() > 4
+        || !nums
+            .iter()
+            .all(|p| !p.is_empty() && p.chars().all(|c| c.is_ascii_digit()))
+    {
+        return None;
+    }
+    let extra = if nums.len() == 4 {
+        nums[3].parse::<u64>().ok()?
+    } else {
+        0
+    };
+    let mut parts = nums.clone();
+    while parts.len() < 3 {
+        parts.push("0");
+    }
+    parts.truncate(3);
+    let mut coerced = parts.join(".");
+    if let Some(suf) = suffix {
+        coerced.push_str(suf);
+    }
+    semver::Version::parse(&coerced).ok().map(|v| (v, extra))
 }
 
 #[cfg(test)]
@@ -123,7 +168,11 @@ mod tests {
         assert!(is_newer("1.0.1", "1.0.0"));
         assert!(!is_newer("1.0.0", "1.0.0"));
         assert!(!is_newer("0.9.0", "1.0.0"));
-        // Note: semver only supports major.minor.patch; 4-component versions are treated as invalid
+        // Lenient tags that previously read as "up to date":
+        assert!(is_newer("v1.1.0", "1.0.0"));
+        assert!(is_newer("1.1", "1.0.0"));
+        assert!(is_newer("1.8.0.1", "1.8.0"));
+        assert!(!is_newer("v1.8", "1.8.0"));
     }
 
     #[test]

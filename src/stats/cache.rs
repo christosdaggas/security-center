@@ -13,7 +13,7 @@ use tracing::warn;
 
 /// Cached statistics data.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(deny_unknown_fields)]
+#[serde(default)]
 pub struct CachedStats {
     /// Timestamp when cached.
     pub timestamp: u64,
@@ -27,7 +27,7 @@ pub struct CachedStats {
 
 /// Cached traffic ratio (serializable).
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(deny_unknown_fields)]
+#[serde(default)]
 pub struct CachedTrafficRatio {
     pub accepted: u64,
     pub blocked: u64,
@@ -35,7 +35,7 @@ pub struct CachedTrafficRatio {
 
 /// Cached connection time series (serializable).
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-#[serde(deny_unknown_fields)]
+#[serde(default)]
 pub struct CachedConnectionStats {
     pub tcp_series: Vec<f64>,
     pub udp_series: Vec<f64>,
@@ -60,9 +60,9 @@ impl StatsCache {
     /// Create a new cache manager.
     pub fn new() -> Self {
         let path = dirs::cache_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("security-center")
-            .join("stats_cache.json");
+            .or_else(dirs::home_dir)
+            .map(|b| b.join("security-center").join("stats_cache.json"))
+            .unwrap_or_else(|| std::env::temp_dir().join("security-center-stats_cache.json"));
 
         Self {
             path,
@@ -72,16 +72,21 @@ impl StatsCache {
 
     /// Load cached statistics.
     pub fn load(&self) -> Option<CachedStats> {
-        let metadata = fs::metadata(&self.path).ok()?;
-        if metadata.len() > 1_048_576 {
+        let content = fs::read_to_string(&self.path).ok()?;
+        if content.len() > 1_048_576 {
             warn!(
                 "Stats cache file too large ({} bytes), ignoring",
-                metadata.len()
+                content.len()
             );
             return None;
         }
-        let content = fs::read_to_string(&self.path).ok()?;
-        let cached: CachedStats = serde_json::from_str(&content).ok()?;
+        let cached: CachedStats = match serde_json::from_str(&content) {
+            Ok(c) => c,
+            Err(e) => {
+                warn!("Failed to parse stats cache, ignoring: {}", e);
+                return None;
+            }
+        };
 
         // Check if cache is fresh
         let now = SystemTime::now()
@@ -89,6 +94,12 @@ impl StatsCache {
             .map(|d| d.as_secs())
             .unwrap_or(0);
 
+        // Reject future timestamps (clock skew / cache poisoning) instead of
+        // treating them as forever-fresh via saturating_sub.
+        if cached.timestamp > now.saturating_add(300) {
+            warn!("Stats cache timestamp is in the future, ignoring");
+            return None;
+        }
         let age = Duration::from_secs(now.saturating_sub(cached.timestamp));
         if age > self.max_age {
             return None;
@@ -97,7 +108,7 @@ impl StatsCache {
         Some(cached)
     }
 
-    /// Save statistics to cache.
+    /// Save statistics to cache (atomic, 0600).
     pub fn save(&self, stats: &CachedStats) {
         if let Some(parent) = self.path.parent() {
             let _ = fs::create_dir_all(parent);
@@ -105,7 +116,7 @@ impl StatsCache {
 
         match serde_json::to_string_pretty(stats) {
             Ok(content) => {
-                if let Err(e) = fs::write(&self.path, content) {
+                if let Err(e) = atomic_write_0600(&self.path, content.as_bytes()) {
                     warn!("Failed to save stats cache: {}", e);
                 }
             }
@@ -114,4 +125,25 @@ impl StatsCache {
             }
         }
     }
+}
+
+fn atomic_write_0600(path: &PathBuf, content: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    #[cfg(unix)]
+    use std::os::unix::fs::OpenOptionsExt;
+    let tmp = path.with_extension("json.tmp");
+    {
+        #[cfg(unix)]
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&tmp)?;
+        #[cfg(not(unix))]
+        let mut file = fs::File::create(&tmp)?;
+        file.write_all(content)?;
+        file.sync_all()?;
+    }
+    fs::rename(&tmp, path)
 }

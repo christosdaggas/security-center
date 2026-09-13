@@ -44,8 +44,9 @@ impl TalkerBytes {
 
 /// Collect cumulative (bytes_in, bytes_out) per socket inode for established
 /// TCP sockets. Used to attribute traffic to processes via the inode→PID map.
-pub fn collect_socket_bytes() -> Result<HashMap<u32, (u64, u64)>> {
-    let mut by_inode: HashMap<u32, (u64, u64)> = HashMap::new();
+/// Inodes are u64 to match /proc parsing (u32 truncates on large systems).
+pub fn collect_socket_bytes() -> Result<HashMap<u64, (u64, u64)>> {
+    let mut by_inode: HashMap<u64, (u64, u64)> = HashMap::new();
     let mut any_ok = false;
     for family in [AF_INET, AF_INET6] {
         if let Ok(rows) = query_family_inode(family) {
@@ -107,9 +108,9 @@ pub fn collect_top_talkers() -> Result<Vec<TalkerBytes>> {
 
 /// Like `query_family`, but keys results by socket inode instead of remote
 /// address, for per-process attribution.
-fn query_family_inode(family: u8) -> Result<Vec<(u32, u64, u64)>> {
+fn query_family_inode(family: u8) -> Result<Vec<(u64, u64, u64)>> {
     query_family_with(family, |resp| {
-        let inode = resp.header.inode;
+        let inode = u64::from(resp.header.inode);
         let (mut bin, mut bout) = (0u64, 0u64);
         for nla in resp.nlas.iter() {
             if let Nla::TcpInfo(info) = nla {
@@ -173,17 +174,35 @@ fn query_family_with<T>(
     socket.send(&buf[..], 0)?;
 
     let mut rows = Vec::new();
-    let mut recv_buf = vec![0u8; 16 * 1024];
+    // 64 KiB handles large dumps without truncation; 16 KiB could silently
+    // drop sockets on busy hosts.
+    let mut recv_buf = vec![0u8; 64 * 1024];
     // Safety cap: never loop forever if the kernel misbehaves.
     let mut guard = 0usize;
 
-    'recv: while let Ok(size) = socket.recv(&mut &mut recv_buf[..], 0) {
+    'recv: loop {
         guard += 1;
         if guard > 10_000 {
             break;
         }
+        let size = match socket.recv(&mut &mut recv_buf[..], 0) {
+            Ok(s) => s,
+            // EINTR is transient — retry, don't treat partial data as complete.
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            // Any other error ends the dump; partial rows are still useful.
+            Err(e) => {
+                if rows.is_empty() {
+                    return Err(anyhow!("netlink recv failed: {}", e));
+                }
+                break;
+            }
+        };
         if size == 0 {
             break;
+        }
+        // If the datagram exactly fills the buffer it may have been truncated.
+        if size == recv_buf.len() {
+            tracing::warn!("sock_diag datagram filled buffer, results may be truncated");
         }
 
         let mut offset = 0;

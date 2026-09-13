@@ -29,7 +29,14 @@
   </description>
   
   <launchable type="desktop-id">com.chrisdaggas.security-center.desktop</launchable>
-  
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Dashboard overview with firewall status and live connections</caption>
+      <image>https://raw.githubusercontent.com/christosdaggas/security-center/main/docs/screenshots/app.png</image>
+    </screenshot>
+  </screenshots>
+
   <url type="homepage">https://github.com/christosdaggas/security-center</url>
   <url type="bugtracker">https://github.com/christosdaggas/security-center/issues</url>
   
@@ -56,6 +63,19 @@
           <li>Automatic refresh of stale offline GeoIP databases while retaining the existing database if refresh fails</li>
           <li>More accurate IPv4 connection accounting and country display</li>
           <li>Refined window sizing and compact update notifications</li>
+        </ul>
+      </description>
+    </release>
+    <release version="1.8.1" date="2026-09-10">
+      <description>
+        <p>What's New in 1.8.1:</p>
+        <ul>
+          <li>Correctness fixes — strict validation at the firewall D-Bus boundary, atomic crash-safe settings storage, portable network decoding, and accurate exposure warnings</li>
+          <li>Autostart fix — login entry works on every desktop and honours the disabled state</li>
+          <li>Dashboard honesty — checking state on startup, truthful firewall-off display, live refresh timestamp, and a Refresh button that refreshes the visible page</li>
+          <li>Resilient port dialogs — scrollable zone lists, no lost input, and failed deletes restore the list</li>
+          <li>Performance and stability — cached icons, leak-free background timers, and chart crash fixes</li>
+          <li>Packaging and translations — complete translation coverage, Arch and Flatpak locales, and AppStream screenshots</li>
         </ul>
       </description>
     </release>

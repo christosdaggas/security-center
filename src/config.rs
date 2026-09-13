@@ -15,7 +15,7 @@ const MAX_CONFIG_FILE_SIZE: u64 = 1_048_576; // 1 MB
 
 /// Application settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(default)]
 pub struct AppSettings {
     /// Window width.
     #[serde(default = "default_width")]
@@ -64,7 +64,59 @@ fn default_dashboard_max_apps() -> usize {
     6
 }
 
-/// Minimum and maximum number of dashboard connection cards the user may pick.
+/// Resolve the config base directory without ever falling back to the
+/// process working directory (a GUI app must not write cwd-relative files).
+fn config_base_dir() -> Option<PathBuf> {
+    if let Some(dir) = dirs::config_dir() {
+        return Some(dir);
+    }
+    // Headless / minimal containers may lack XDG_CONFIG_HOME: fall back to
+    // $HOME/.config before giving up.
+    dirs::home_dir().map(|h| h.join(".config"))
+}
+
+/// Atomically write `content` to `path` with 0600 permissions:
+/// create tmp file with restrictive mode, fsync, then rename.
+/// Crash mid-write can never leave a truncated target behind.
+fn atomic_write_0600(path: &PathBuf, content: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    #[cfg(unix)]
+    use std::os::unix::fs::OpenOptionsExt;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let tmp = path.with_extension("json.tmp");
+    {
+        #[cfg(unix)]
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(&tmp)?;
+        #[cfg(not(unix))]
+        let mut file = fs::File::create(&tmp)?;
+        file.write_all(content)?;
+        file.sync_all()?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = file.set_permissions(fs::Permissions::from_mode(0o600));
+        }
+    }
+    fs::rename(&tmp, path)?;
+    // Best-effort: fsync the parent dir so the rename survives a crash.
+    #[cfg(unix)]
+    {
+        if let Some(parent) = path.parent() {
+            if let Ok(dir) = fs::File::open(parent) {
+                let _ = dir.sync_all();
+            }
+        }
+    }
+    Ok(())
+}
+
 pub const DASHBOARD_MAX_APPS_MIN: usize = 1;
 pub const DASHBOARD_MAX_APPS_MAX: usize = 24;
 
@@ -104,7 +156,14 @@ impl Default for Settings {
 
 impl Settings {
     pub fn new() -> Self {
-        let config_base = dirs::config_dir().unwrap_or_else(|| PathBuf::from("."));
+        let Some(config_base) = config_base_dir() else {
+            warn!("No config directory available, using in-memory defaults");
+            return Self {
+                settings: AppSettings::default(),
+                // Temp dir keeps save() from writing cwd-relative files.
+                path: std::env::temp_dir().join("security-center-settings.json"),
+            };
+        };
 
         let new_dir = config_base.join("security-center");
         let path = new_dir.join("settings.json");
@@ -118,47 +177,43 @@ impl Settings {
         }
 
         let settings = if path.exists() {
-            let metadata = fs::metadata(&path);
-            if let Ok(m) = metadata {
-                if m.len() > MAX_CONFIG_FILE_SIZE {
-                    warn!(
-                        "Settings file too large ({} bytes), using defaults",
-                        m.len()
-                    );
-                    AppSettings::default()
-                } else {
-                    match fs::read_to_string(&path) {
-                        Ok(content) => {
-                            match serde_json::from_str::<AppSettings>(&content) {
-                                Ok(mut s) => {
-                                    // Validate fields
-                                    if validate_theme(&s.theme).is_none() {
-                                        warn!(
-                                            "Invalid theme '{}' in settings, resetting to system",
-                                            s.theme
-                                        );
-                                        s.theme = "system".to_string();
-                                    }
-                                    s.window_width = clamp_window_dimension(s.window_width);
-                                    s.window_height = clamp_window_dimension(s.window_height);
-                                    s.dashboard_max_apps =
-                                        clamp_dashboard_max_apps(s.dashboard_max_apps);
-                                    s
+            match fs::read_to_string(&path) {
+                Ok(content) => {
+                    // Check size after read (TOCTOU-safe) as well as fast-path pre-check.
+                    if content.len() as u64 > MAX_CONFIG_FILE_SIZE {
+                        warn!(
+                            "Settings file too large ({} bytes), using defaults",
+                            content.len()
+                        );
+                        AppSettings::default()
+                    } else {
+                        match serde_json::from_str::<AppSettings>(&content) {
+                            Ok(mut s) => {
+                                // Validate fields
+                                if validate_theme(&s.theme).is_none() {
+                                    warn!(
+                                        "Invalid theme '{}' in settings, resetting to system",
+                                        s.theme
+                                    );
+                                    s.theme = "system".to_string();
                                 }
-                                Err(e) => {
-                                    warn!("Failed to parse settings: {}", e);
-                                    AppSettings::default()
-                                }
+                                s.window_width = clamp_window_dimension(s.window_width);
+                                s.window_height = clamp_window_dimension(s.window_height);
+                                s.dashboard_max_apps =
+                                    clamp_dashboard_max_apps(s.dashboard_max_apps);
+                                s
                             }
-                        }
-                        Err(e) => {
-                            warn!("Failed to read settings: {}", e);
-                            AppSettings::default()
+                            Err(e) => {
+                                warn!("Failed to parse settings: {}", e);
+                                AppSettings::default()
+                            }
                         }
                     }
                 }
-            } else {
-                AppSettings::default()
+                Err(e) => {
+                    warn!("Failed to read settings: {}", e);
+                    AppSettings::default()
+                }
             }
         } else {
             AppSettings::default()
@@ -168,31 +223,12 @@ impl Settings {
     }
 
     pub fn save(&self) {
-        use std::io::Write;
-        #[cfg(unix)]
-        use std::os::unix::fs::PermissionsExt;
-
-        if let Some(parent) = self.path.parent() {
-            let _ = fs::create_dir_all(parent);
-        }
-
         match serde_json::to_string_pretty(&self.settings) {
-            Ok(content) => match fs::File::create(&self.path) {
-                Ok(mut file) => {
-                    #[cfg(unix)]
-                    {
-                        if let Err(e) = file.set_permissions(fs::Permissions::from_mode(0o600)) {
-                            warn!("Failed to set file permissions: {}", e);
-                        }
-                    }
-                    if let Err(e) = file.write_all(content.as_bytes()) {
-                        warn!("Failed to save settings: {}", e);
-                    }
+            Ok(content) => {
+                if let Err(e) = atomic_write_0600(&self.path, content.as_bytes()) {
+                    warn!("Failed to save settings: {}", e);
                 }
-                Err(e) => {
-                    warn!("Failed to create settings file: {}", e);
-                }
-            },
+            }
             Err(e) => {
                 warn!("Failed to serialize settings: {}", e);
             }
@@ -204,7 +240,7 @@ impl Settings {
     }
 
     pub fn set_window_width(&mut self, width: i32) {
-        self.settings.window_width = width;
+        self.settings.window_width = clamp_window_dimension(width);
         self.save();
     }
 
@@ -213,7 +249,7 @@ impl Settings {
     }
 
     pub fn set_window_height(&mut self, height: i32) {
-        self.settings.window_height = height;
+        self.settings.window_height = clamp_window_dimension(height);
         self.save();
     }
 
@@ -231,7 +267,9 @@ impl Settings {
     }
 
     pub fn set_theme(&mut self, theme: &str) {
-        self.settings.theme = theme.to_string();
+        // Validate before persisting so a bad value never sticks.
+        let clean = validate_theme(theme).unwrap_or("system");
+        self.settings.theme = clean.to_string();
         self.save();
     }
 

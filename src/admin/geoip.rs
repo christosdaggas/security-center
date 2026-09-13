@@ -76,6 +76,8 @@ impl GeoIp {
     fn country_details(&self, addr: IpAddr) -> Option<(String, String)> {
         let reader = self.reader.as_ref()?;
         // Private/loopback ranges are never in the DB — skip the lookup.
+        // Shared helper keeps geoip/ipinfo/network in agreement (ULA,
+        // link-local, mapped-v4-private included).
         if is_private(&addr) {
             return None;
         }
@@ -106,13 +108,9 @@ pub fn flag_emoji(iso: &str) -> String {
 }
 
 /// Reserved / non-routable ranges that never have a GeoIP entry.
+/// Delegates to the shared validator so all modules agree.
 fn is_private(addr: &IpAddr) -> bool {
-    match addr {
-        IpAddr::V4(v4) => {
-            v4.is_private() || v4.is_loopback() || v4.is_link_local() || v4.is_unspecified()
-        }
-        IpAddr::V6(v6) => v6.is_loopback() || v6.is_unspecified(),
-    }
+    crate::validation::is_non_routable_ip(addr)
 }
 
 /// Find a MaxMind-format database in known locations.
@@ -188,12 +186,18 @@ fn user_database_path() -> Option<PathBuf> {
 }
 
 fn download_database_once() -> Option<PathBuf> {
-    if DOWNLOAD_ATTEMPTED.swap(true, Ordering::AcqRel) {
+    // Only claim the one-shot flag when the download actually succeeds, so a
+    // transient failure retries on the next lookup instead of never again
+    // until restart.
+    if DOWNLOAD_ATTEMPTED.load(Ordering::Acquire) {
         return None;
     }
 
     match download_database() {
-        Ok(path) => Some(path),
+        Ok(path) => {
+            DOWNLOAD_ATTEMPTED.store(true, Ordering::Release);
+            Some(path)
+        }
         Err(e) => {
             tracing::warn!("GeoIP database download failed: {}", e);
             None
@@ -230,12 +234,19 @@ fn download_database() -> Result<PathBuf, String> {
     }
 
     let mut compressed = Vec::new();
+    // Take MAX+1 to detect truncation: a full-size read means the body was cut.
     response
-        .take(MAX_COMPRESSED_DB_SIZE)
+        .take(MAX_COMPRESSED_DB_SIZE + 1)
         .read_to_end(&mut compressed)
         .map_err(|e| format!("failed to read download: {}", e))?;
     if compressed.is_empty() {
         return Err("download was empty".to_string());
+    }
+    if compressed.len() as u64 > MAX_COMPRESSED_DB_SIZE {
+        return Err(format!(
+            "download exceeds {} MiB limit, aborting",
+            MAX_COMPRESSED_DB_SIZE / 1024 / 1024
+        ));
     }
 
     let mut decoder = flate2::read::GzDecoder::new(compressed.as_slice());

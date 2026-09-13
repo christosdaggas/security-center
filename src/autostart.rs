@@ -22,11 +22,21 @@ fn autostart_file_path() -> Option<PathBuf> {
 }
 
 /// Check if autostart is currently enabled.
+/// A file with `Hidden=true` counts as disabled (per Desktop Entry spec).
 pub fn is_autostart_enabled() -> bool {
-    if let Some(path) = autostart_file_path() {
-        path.exists()
-    } else {
-        false
+    let Some(path) = autostart_file_path() else {
+        return false;
+    };
+    if !path.exists() {
+        return false;
+    }
+    // Hidden=true means "present but disabled" — respect it.
+    match std::fs::read_to_string(&path) {
+        Ok(content) => !content.lines().any(|l| {
+            let t = l.trim();
+            t.eq_ignore_ascii_case("Hidden=true")
+        }),
+        Err(_) => false,
     }
 }
 
@@ -41,17 +51,20 @@ pub fn enable_autostart() -> Result<(), String> {
             .map_err(|e| format!("Failed to create autostart directory: {}", e))?;
     }
 
-    // Create the .desktop file content
+    // Create the .desktop file content. No custom flags: the app takes no
+    // CLI options today, so `Exec=security-center --minimized` would fail on
+    // every login. (A `--minimized` handler is added in application.rs for
+    // backward compatibility with entries written by older releases.)
     let desktop_content = format!(
         r#"[Desktop Entry]
 Name={}
 Comment=Manage system security and firewall
-Exec=security-center --minimized
+Exec=security-center
 Icon={}
 Terminal=false
 Type=Application
 Categories=System;Security;Settings;
-NoDisplay=false
+X-GNOME-Autostart-enabled=true
 "#,
         APP_NAME, APP_ID
     );

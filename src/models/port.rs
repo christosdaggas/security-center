@@ -4,7 +4,7 @@
 
 //! Firewall port model.
 
-use crate::validation::{format_port_spec, parse_port_spec};
+use crate::validation::{format_port_spec, parse_port_spec, validate_protocol};
 
 /// A firewall port rule covering a single port or an inclusive range.
 #[derive(Debug, Clone, Default)]
@@ -101,10 +101,16 @@ impl Port {
     }
 
     /// Parse a port string like "8080/tcp" or "10-20/tcp".
+    /// Strict: rejects extra slashes, unknown protocols and bad casing.
     pub fn parse(s: &str) -> Option<Self> {
-        let (port_part, proto) = s.split_once('/')?;
+        let (port_part, proto_raw) = s.split_once('/')?;
+        if proto_raw.contains('/') || port_part.contains('/') {
+            return None;
+        }
+        let proto = proto_raw.trim().to_lowercase();
+        validate_protocol(&proto)?;
         let (start, end) = parse_port_spec(port_part)?;
-        let mut port = Self::new(start, proto);
+        let mut port = Self::new(start, &proto);
         if end > start {
             port.end_number = Some(end);
         }
@@ -114,20 +120,43 @@ impl Port {
     /// Parse a port string with zone like "8080/tcp" or "10-20/tcp"
     /// from zone "public". Ranges are preserved as ranges.
     pub fn parse_with_zone(s: &str, zone: &str) -> Option<Self> {
-        let (port_part, proto) = s.split_once('/')?;
+        let (port_part, proto_raw) = s.split_once('/')?;
+        if proto_raw.contains('/') || port_part.contains('/') {
+            return None;
+        }
+        let proto = proto_raw.trim().to_lowercase();
+        validate_protocol(&proto)?;
         let (start, end) = parse_port_spec(port_part)?;
-        Some(Self::range_with_zone(start, end, proto, zone))
+        Some(Self::range_with_zone(start, end, &proto, zone))
     }
 
     /// Parse a blocked port from a rich rule string.
     /// Example: `rule family="ipv4" port port="80" protocol="tcp" reject`
     /// Port ranges like port="10-20" are also supported.
     /// Returns Some(Port) if this is a port reject/drop rule, None otherwise.
+    /// The trailing action verb is matched exactly so a log prefix containing
+    /// "drop"/"reject" cannot misclassify an accept rule.
     pub fn parse_from_rich_rule(rule: &str, zone: &str) -> Option<Self> {
         // Check if this is a port reject or drop rule
-        if !rule.contains("port port=") || (!rule.contains("reject") && !rule.contains("drop")) {
+        if !rule.contains("port port=") {
             return None;
         }
+        let trimmed = rule.trim();
+        // Match the real trailing verb, not a substring inside a log prefix.
+        let action = if trimmed.ends_with(" reject")
+            || trimmed.ends_with("\"reject\"")
+            || trimmed.ends_with("reject\"")
+        {
+            "reject"
+        } else if trimmed.ends_with(" drop") || trimmed.ends_with("drop\"") {
+            "drop"
+        } else if trimmed.ends_with("reject") {
+            "reject"
+        } else if trimmed.ends_with("drop") {
+            "drop"
+        } else {
+            return None;
+        };
 
         // Extract port spec: port="80" or port="10-20"
         let port_start = rule.find("port port=\"")?;
@@ -142,14 +171,8 @@ impl Port {
         let proto_value_start = proto_start + 10; // length of 'protocol="'
         let remaining = &rule[proto_value_start..];
         let proto_end = remaining.find('"')?;
-        let protocol = &remaining[..proto_end];
-
-        // Determine the action (reject or drop)
-        let action = if rule.contains("reject") {
-            "reject"
-        } else {
-            "drop"
-        };
+        let protocol = remaining[..proto_end].trim().to_lowercase();
+        validate_protocol(&protocol)?;
 
         Some(Self {
             number: range_start,
