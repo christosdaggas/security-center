@@ -41,8 +41,9 @@ already installed, the app downloads the free
 
 - `~/.local/share/security-center/GeoIP/dbip-country-lite.mmdb`
 
-After that initial database download, IP-to-country lookups are fully local. The
-app never sends individual remote IPs to an online geolocation API.
+The app refreshes its user database when it is more than 32 days old. If a
+refresh fails, the existing database remains in use. IP-to-country lookups are
+fully local; the app never sends individual remote IPs to a geolocation API.
 
 Advanced users can override the database with `$SECURITY_CENTER_GEOIP_DB` or
 install `dbip-country-lite.mmdb`, `GeoLite2-Country.mmdb`, or `country.mmdb` under

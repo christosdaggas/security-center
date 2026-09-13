@@ -8,7 +8,8 @@
 //! No network calls are ever made — a security app must not leak the hosts a
 //! user connects to by querying an online IP-geolocation service. If no local
 //! database is present, the app downloads the free DB-IP Lite Country database
-//! once into the user's data directory, then all IP lookups stay offline.
+//! into the user's data directory and refreshes it periodically. Individual IP
+//! lookups always stay offline.
 //!
 //! Database search order:
 //!   1. `$SECURITY_CENTER_GEOIP_DB`
@@ -21,12 +22,13 @@ use std::io::{Read, Write};
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use maxminddb::{geoip2, Reader};
 
 const DB_NAME: &str = "dbip-country-lite.mmdb";
 const MAX_COMPRESSED_DB_SIZE: u64 = 64 * 1024 * 1024;
+const DB_REFRESH_AGE: Duration = Duration::from_secs(32 * 24 * 60 * 60);
 static DOWNLOAD_ATTEMPTED: AtomicBool = AtomicBool::new(false);
 
 /// A loaded GeoIP database (or a no-op when none is available).
@@ -124,6 +126,16 @@ fn find_database() -> Option<PathBuf> {
 
     if let Some(candidate) = user_database_path() {
         if candidate.is_file() {
+            if user_database_is_stale(&candidate) {
+                tracing::info!(
+                    "GeoIP database is older than {} days; checking for an update",
+                    DB_REFRESH_AGE.as_secs() / 86_400
+                );
+                if let Some(updated) = download_database_once() {
+                    return Some(updated);
+                }
+                tracing::warn!("GeoIP update failed; continuing with the existing database");
+            }
             return Some(candidate);
         }
     }
@@ -149,6 +161,26 @@ fn find_database() -> Option<PathBuf> {
         }
     }
     download_database_once()
+}
+
+fn user_database_is_stale(path: &Path) -> bool {
+    let modified = match fs::metadata(path).and_then(|metadata| metadata.modified()) {
+        Ok(modified) => modified,
+        Err(error) => {
+            tracing::warn!(
+                "Could not read GeoIP database age for {}: {}",
+                path.display(),
+                error
+            );
+            return false;
+        }
+    };
+
+    database_age_exceeds(modified, SystemTime::now(), DB_REFRESH_AGE)
+}
+
+fn database_age_exceeds(modified: SystemTime, now: SystemTime, max_age: Duration) -> bool {
+    now.duration_since(modified).is_ok_and(|age| age > max_age)
 }
 
 fn user_database_path() -> Option<PathBuf> {
@@ -288,5 +320,17 @@ mod tests {
         assert!(label
             .as_deref()
             .is_some_and(|l| l.contains("United States")));
+    }
+
+    #[test]
+    fn test_geoip_database_refresh_age() {
+        let now = SystemTime::UNIX_EPOCH + Duration::from_secs(100 * 86_400);
+        let recent = now - Duration::from_secs(10 * 86_400);
+        let stale = now - Duration::from_secs(33 * 86_400);
+        let future = now + Duration::from_secs(1);
+
+        assert!(!database_age_exceeds(recent, now, DB_REFRESH_AGE));
+        assert!(database_age_exceeds(stale, now, DB_REFRESH_AGE));
+        assert!(!database_age_exceeds(future, now, DB_REFRESH_AGE));
     }
 }

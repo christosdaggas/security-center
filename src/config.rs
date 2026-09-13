@@ -38,7 +38,8 @@ pub struct AppSettings {
     /// Show the live firewall connections overview on the dashboard.
     #[serde(default = "default_true")]
     pub show_connections_overview: bool,
-    /// How many application connection cards to show on the dashboard.
+    /// Legacy dashboard row preference retained for existing settings files.
+    /// The overview now determines its row count from the window height.
     #[serde(default = "default_dashboard_max_apps")]
     pub dashboard_max_apps: usize,
     /// Allow on-demand online IP lookups (country/city/ISP/ASN) from the IP
@@ -51,7 +52,7 @@ fn default_width() -> i32 {
     1386
 }
 fn default_height() -> i32 {
-    924
+    880
 }
 fn default_theme() -> String {
     "system".to_string()

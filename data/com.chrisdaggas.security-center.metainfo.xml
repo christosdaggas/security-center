@@ -47,6 +47,18 @@
   <content_rating type="oars-1.1" />
   
   <releases>
+    <release version="1.8.2" date="2026-09-14">
+      <description>
+        <p>What's New in 1.8.2:</p>
+        <ul>
+          <li>Redesigned overview with an offline world map, listening-port status, and responsive live connection cards</li>
+          <li>Reliable multi-zone port changes with accurate partial-failure reporting</li>
+          <li>Automatic refresh of stale offline GeoIP databases while retaining the existing database if refresh fails</li>
+          <li>More accurate IPv4 connection accounting and country display</li>
+          <li>Refined window sizing and compact update notifications</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.8.0" date="2026-07-12">
       <description>
         <p>What's New in 1.8.0:</p>

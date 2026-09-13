@@ -9,6 +9,12 @@
 }
 
 .sidebar-box {
+    background-color: transparent;
+}
+
+/* Right content area carries the tint the sidebar used to have —
+ * the two backgrounds are intentionally swapped. */
+.content-box {
     background-color: alpha(@window_fg_color, 0.03);
 }
 
@@ -34,6 +40,14 @@
     color: #e74c3c;
     padding: 0;
     min-height: 0;
+}
+
+.sidebar-collapsed .update-banner {
+    padding: 4px 2px;
+}
+
+.sidebar-collapsed .update-banner .update-link {
+    font-size: 0.75em;
 }
 
 .update-banner-label {
@@ -231,12 +245,44 @@ popover.menu contents {
     font-weight: 700;
 }
 
-/* Per-application connection tile */
-.conn-tile {
-    background: alpha(@window_fg_color, 0.06);
-    border: 1px solid alpha(@window_fg_color, 0.14);
+/* Seamless top bars: transparent background so the sidebar / page colour
+ * shows straight through, and no bottom border or shadow line. */
+.seamless-bar,
+.seamless-bar:backdrop {
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    box-shadow: none;
+}
+
+/* Firewalla-style subtle cards: slightly elevated surfaces, no heavy borders. */
+.card {
+    border: none;
     border-radius: 12px;
-    padding: 11px 13px;
+    box-shadow: 0 1px 3px alpha(black, 0.25);
+}
+.numeric {
+    font-variant-numeric: tabular-nums;
+}
+.zone-pill {
+    background: alpha(@window_fg_color, 0.08);
+    border-radius: 20px;
+    padding: 3px 11px;
+    font-weight: 700;
+}
+
+/* Per-application connection tile — bright card, not a grey well */
+.conn-tile {
+    background: @card_bg_color;
+    border: 1px solid alpha(@window_fg_color, 0.1);
+    border-radius: 12px;
+    padding: 10px 13px;
+}
+.conn-tile-live {
+    border-left: 3px solid alpha(@success_color, 0.7);
+}
+.conn-tile-live:hover {
+    border-color: alpha(@accent_color, 0.35);
 }
 
 /* App icon tile inside a connection card.
@@ -257,7 +303,7 @@ popover.menu contents {
 
 .conn-status {
     color: @success_color;
-    font-weight: 800;
+    font-weight: 600;
 }
 
 /* Monospace address */
@@ -274,3 +320,6 @@ popover.menu contents {
 .sw-success { background: @success_color; }
 .sw-error   { background: @error_color; }
 .sw-idle    { background: alpha(@window_fg_color, 0.42); }
+.sw-accent  { background: @accent_color; }
+.sw-purple  { background: #9141ac; }
+.sw-warn    { background: @warning_color; }

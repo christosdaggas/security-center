@@ -2,9 +2,8 @@
 // Copyright (C) 2026 Christos Daggas
 // SPDX-License-Identifier: MIT
 
-//! Overview dashboard page: firewall status, live per-application connections,
-//! and a real-time analytics row (connection breakdown, network activity,
-//! protocols, and remote countries).
+//! Overview dashboard page: slim status hero, 4 KPIs, regional and traffic
+//! insights, and a responsive live-connections table.
 
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
@@ -15,7 +14,9 @@ use gtk4::prelude::*;
 use gtk4::subclass::prelude::*;
 
 use super::app_icons::{display_process_name, icon_for_process, protocol_of};
-use super::widgets::{list_interfaces, DonutChart, MeterBar, NetworkActivityChart, Sparkline};
+use super::widgets::{
+    country_name, list_interfaces, MeterBar, NetworkActivityChart, Sparkline, WorldMap,
+};
 use crate::admin::is_local_ip;
 use crate::i18n::gettext;
 use crate::models::Zone;
@@ -23,6 +24,20 @@ use crate::models::Zone;
 /// How often the live connection dashboard refreshes.
 const REFRESH_SECS: u32 = 5;
 const INTERVAL_SECS: f64 = REFRESH_SECS as f64;
+const DEFAULT_CONNECTION_CARDS: usize = 4;
+const DEFAULT_WINDOW_HEIGHT: i32 = 880;
+const CONNECTION_CARD_ROW_HEIGHT: i32 = 98;
+const CONNECTION_CARDS_PER_ROW: usize = 2;
+
+fn connection_card_limit(maximized: bool, window_height: i32) -> usize {
+    if !maximized {
+        return DEFAULT_CONNECTION_CARDS;
+    }
+
+    let extra_height = window_height.saturating_sub(DEFAULT_WINDOW_HEIGHT);
+    DEFAULT_CONNECTION_CARDS
+        + (extra_height / CONNECTION_CARD_ROW_HEIGHT).max(0) as usize * CONNECTION_CARDS_PER_ROW
+}
 
 /// Represents the overall firewall state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -167,10 +182,7 @@ impl OverviewPage {
         // Make Flatpak-exported application icons resolvable by name.
         super::app_icons::register_flatpak_icon_paths();
 
-        // Honour the saved "dashboard cards to show" preference.
-        self.imp()
-            .max_apps
-            .set(crate::config::Settings::new().dashboard_max_apps());
+        self.imp().connection_cards.set(DEFAULT_CONNECTION_CARDS);
 
         let scrolled = gtk4::ScrolledWindow::builder()
             .hscrollbar_policy(gtk4::PolicyType::Never)
@@ -181,20 +193,18 @@ impl OverviewPage {
 
         let content = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
-            .spacing(18)
-            .margin_top(20)
-            .margin_bottom(20)
+            .spacing(16)
+            .margin_top(16)
+            .margin_bottom(24)
             .margin_start(20)
             .margin_end(20)
             .hexpand(true)
             .build();
 
-        // Top controls and cards come first; the live connections overview
-        // belongs at the bottom of the dashboard.
+        // Hero first, then KPIs, then the 2:1 main grid (connections + insights).
         content.append(&self.build_status_card());
         content.append(&self.build_stat_cards());
-        content.append(&self.build_analytics());
-        content.append(&self.build_connections_hub());
+        content.append(&self.build_main_grid());
 
         // Honour the saved "show connections overview" preference.
         self.set_connections_visible(crate::config::Settings::new().show_connections_overview());
@@ -214,7 +224,7 @@ impl OverviewPage {
         });
     }
 
-    /// Build the firewall status card (icon + title + zone/restart/traffic toggle).
+    /// Slim hero status bar (icon + title + zone pill + restart + traffic).
     fn build_status_card(&self) -> gtk4::Frame {
         let imp = self.imp();
 
@@ -223,23 +233,23 @@ impl OverviewPage {
 
         let status_box = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Horizontal)
-            .spacing(16)
-            .margin_top(18)
-            .margin_bottom(18)
-            .margin_start(22)
-            .margin_end(22)
+            .spacing(12)
+            .margin_top(12)
+            .margin_bottom(12)
+            .margin_start(16)
+            .margin_end(16)
             .build();
 
         let status_icon = gtk4::Image::builder()
             .icon_name("security-high-symbolic")
-            .pixel_size(48)
+            .pixel_size(36)
             .css_classes(vec!["success".to_string()])
             .build();
         imp.status_icon.replace(Some(status_icon.clone()));
 
         let status_text = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
-            .spacing(4)
+            .spacing(2)
             .valign(gtk4::Align::Center)
             .hexpand(true)
             .build();
@@ -263,10 +273,10 @@ impl OverviewPage {
         status_box.append(&status_icon);
         status_box.append(&status_text);
 
-        // Right-hand controls: zone · restart · traffic switch.
+        // Right-hand controls: zone pill · restart icon · traffic switch.
         let toggle_box = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Horizontal)
-            .spacing(16)
+            .spacing(12)
             .valign(gtk4::Align::Center)
             .halign(gtk4::Align::End)
             .build();
@@ -281,14 +291,9 @@ impl OverviewPage {
             .css_classes(vec!["dim-label".to_string()])
             .build();
         zone_info_box.append(&zone_icon);
-        let zone_label = gtk4::Label::builder()
-            .label(gettext("Default Zone:"))
-            .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
-            .build();
-        zone_info_box.append(&zone_label);
         let zone_name_label = gtk4::Label::builder()
             .label("public")
-            .css_classes(vec!["caption".to_string()])
+            .css_classes(vec!["caption".to_string(), "zone-pill".to_string()])
             .build();
         imp.default_zone_label
             .replace(Some(zone_name_label.clone()));
@@ -297,22 +302,17 @@ impl OverviewPage {
 
         toggle_box.append(&gtk4::Separator::new(gtk4::Orientation::Vertical));
 
-        // Restart firewall button.
+        // Restart firewall button (icon-only to save vertical space).
         let restart_box = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
-            .spacing(4)
+            .spacing(2)
             .valign(gtk4::Align::Center)
             .build();
         let restart_button = gtk4::Button::builder()
             .icon_name("view-refresh-symbolic")
-            .tooltip_text(gettext("Restart Firewall"))
-            .css_classes(vec!["circular".to_string()])
+            .tooltip_text(gettext("Reload firewall rules"))
+            .css_classes(vec!["circular".to_string(), "flat".to_string()])
             .valign(gtk4::Align::Center)
-            .halign(gtk4::Align::Center)
-            .build();
-        let restart_label = gtk4::Label::builder()
-            .label(gettext("Restart"))
-            .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
             .halign(gtk4::Align::Center)
             .build();
         restart_button.connect_clicked(move |button| {
@@ -356,7 +356,6 @@ impl OverviewPage {
             });
         });
         restart_box.append(&restart_button);
-        restart_box.append(&restart_label);
         toggle_box.append(&restart_box);
 
         toggle_box.append(&gtk4::Separator::new(gtk4::Orientation::Vertical));
@@ -388,7 +387,9 @@ impl OverviewPage {
         status_frame
     }
 
-    /// Build the four summary stat cards.
+    /// Three KPI cards in one row, Firewalla style: small label on top,
+    /// big number below. Homogeneous is safe here — all children are
+    /// small, equally-sized cards with no wide separators involved.
     fn build_stat_cards(&self) -> gtk4::Box {
         let imp = self.imp();
 
@@ -396,15 +397,29 @@ impl OverviewPage {
             .orientation(gtk4::Orientation::Horizontal)
             .spacing(12)
             .homogeneous(true)
+            .hexpand(true)
             .build();
 
         let (active_card, active_val) = stat_card(
             "network-transmit-receive-symbolic",
             "accent",
-            &gettext("Active Connections"),
+            &gettext("Active Sessions"),
         );
         imp.metric_active.replace(Some(active_val));
         row.append(&active_card);
+
+        let (apps_card, apps_val) =
+            stat_card("view-app-grid-symbolic", "purple", &gettext("Apps Online"));
+        imp.metric_apps.replace(Some(apps_val));
+        row.append(&apps_card);
+
+        let (listen_card, listen_val) = stat_card(
+            "network-server-symbolic",
+            "success",
+            &gettext("Listening Ports"),
+        );
+        imp.metric_listening.replace(Some(listen_val));
+        row.append(&listen_card);
 
         let (blocked_card, blocked_val) = stat_card(
             "action-unavailable-symbolic",
@@ -414,41 +429,167 @@ impl OverviewPage {
         imp.metric_blocked.replace(Some(blocked_val));
         row.append(&blocked_card);
 
-        let (apps_card, apps_val) =
-            stat_card("view-app-grid-symbolic", "purple", &gettext("Applications"));
-        imp.metric_apps.replace(Some(apps_val));
-        row.append(&apps_card);
-
-        // System Status card carries a coloured pill instead of a number.
-        let (status_card, status_val) = stat_card(
-            "security-high-symbolic",
-            "success",
-            &gettext("System Status"),
-        );
-        status_val.remove_css_class("stat-value");
-        status_val.add_css_class("pill-ok");
-        status_val.set_label(&gettext("Protected"));
-        status_val.set_halign(gtk4::Align::Start);
-        imp.stat_status.replace(Some(status_val));
-        row.append(&status_card);
-
         row
     }
 
-    /// Build the "Firewall Connections Overview" hub containing the per-app grid.
+    /// Dashboard column: chart + side stack, connections table, top-app tables.
+    /// Strictly vertical — nothing here can push siblings off-screen.
+    fn build_main_grid(&self) -> gtk4::Box {
+        let col = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Vertical)
+            .spacing(16)
+            .hexpand(true)
+            .build();
+
+        // Row: regions map (expands, left) + right stack (fixed narrow):
+        // Network Activity on top, Exposure and Top Protocols below it.
+        let mid = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Horizontal)
+            .spacing(12)
+            .hexpand(true)
+            .build();
+        let regions = self.build_regions_card();
+        regions.set_hexpand(true);
+        regions.set_halign(gtk4::Align::Fill);
+        mid.append(&regions);
+        let right = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Vertical)
+            .spacing(12)
+            .width_request(320)
+            .build();
+        right.append(&self.create_network_activity_card());
+        right.append(&self.build_protocols_panel());
+        mid.append(&right);
+        col.append(&mid);
+
+        // Live Connections last, full-width at the very bottom.
+        col.append(&self.build_connections_hub());
+
+        col
+    }
+
+    /// Regions card: live world map plus a top-countries table, Firewalla style.
+    fn build_regions_card(&self) -> gtk4::Frame {
+        let imp = self.imp();
+
+        let frame = gtk4::Frame::new(None);
+        frame.add_css_class("card");
+        frame.set_hexpand(true);
+        frame.set_halign(gtk4::Align::Fill);
+
+        // Slim top/bottom padding so this card never outgrows the right
+        // column — the row height is driven by Network + Protocols, and
+        // the map simply stretches to match it.
+        let outer = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Vertical)
+            .spacing(4)
+            .margin_top(8)
+            .margin_bottom(8)
+            .margin_start(18)
+            .margin_end(18)
+            .hexpand(true)
+            .build();
+
+        // No header: the reclaimed height goes to the map itself. The card
+        // still matches the right-column height via the shared row stretch.
+        let row = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Horizontal)
+            .spacing(16)
+            .hexpand(true)
+            .build();
+        let map = WorldMap::new();
+        imp.world_map.replace(Some(map.clone()));
+        // Right column: title on top, table below it, all top-aligned.
+        let side = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Vertical)
+            .spacing(8)
+            .width_request(220)
+            .valign(gtk4::Align::Start)
+            .build();
+        side.append(
+            &gtk4::Label::builder()
+                .label(gettext("Top Regions by Sessions"))
+                .css_classes(vec!["heading".to_string()])
+                .halign(gtk4::Align::Start)
+                .ellipsize(gtk4::pango::EllipsizeMode::End)
+                .build(),
+        );
+        let grid = gtk4::Grid::builder()
+            .column_spacing(12)
+            .row_spacing(10)
+            .build();
+        imp.region_grid.replace(Some(grid.clone()));
+        side.append(&grid);
+        // Title + table on the left, map on the right.
+        row.append(&side);
+        row.append(&gtk4::Separator::new(gtk4::Orientation::Vertical));
+        row.append(&map);
+        outer.append(&row);
+
+        imp.regions_card.replace(Some(frame.clone()));
+        frame.set_child(Some(&outer));
+        frame
+    }
+
+    /// Rebuild the regions table + map colours from the ISO tally.
+    fn render_regions(&self, iso_counts: &HashMap<String, usize>) {
+        let imp = self.imp();
+        if let Some(map) = imp.world_map.borrow().as_ref() {
+            map.set_country_counts(iso_counts);
+        }
+        let grid_ref = imp.region_grid.borrow();
+        let grid = match grid_ref.as_ref() {
+            Some(g) => g,
+            None => return,
+        };
+        while let Some(child) = grid.first_child() {
+            grid.remove(&child);
+        }
+        if iso_counts.is_empty() {
+            grid.attach(
+                &gtk4::Label::builder()
+                    .label(gettext("No remote connections"))
+                    .css_classes(vec!["dim-label".to_string()])
+                    .halign(gtk4::Align::Start)
+                    .build(),
+                0,
+                0,
+                2,
+                1,
+            );
+            return;
+        }
+        let mut rows: Vec<(String, usize)> =
+            iso_counts.iter().map(|(k, v)| (k.clone(), *v)).collect();
+        rows.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+        rows.truncate(6);
+        th(grid, 0, &gettext("Region"), false);
+        th(grid, 1, &gettext("Sessions"), true);
+        for (i, (iso, count)) in rows.iter().enumerate() {
+            let r = i as i32 + 1;
+            let name = country_name(iso).unwrap_or_else(|| iso.clone());
+            let label = format!("{} {}", crate::admin::flag_emoji(iso), name);
+            td(grid, 0, r, &label, false, 22);
+            td(grid, 1, r, &count.to_string(), true, 8);
+        }
+    }
+
+    /// Firewall connections overview with a responsive two-column app grid.
     fn build_connections_hub(&self) -> gtk4::Frame {
         let imp = self.imp();
 
         let frame = gtk4::Frame::new(None);
         frame.add_css_class("card");
         frame.add_css_class("dashboard-card");
+        frame.set_hexpand(true);
+        frame.set_halign(gtk4::Align::Fill);
 
         let outer = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Vertical)
             .spacing(0)
             .build();
 
-        // Header: title + subtitle on the left, chips on the right.
+        // Header: title and subtitle on the left, live status chips on the right.
         let header = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Horizontal)
             .spacing(12)
@@ -458,27 +599,15 @@ impl OverviewPage {
             .margin_end(17)
             .build();
 
-        let titles = gtk4::Box::builder()
-            .orientation(gtk4::Orientation::Vertical)
-            .spacing(2)
-            .hexpand(true)
-            .valign(gtk4::Align::Center)
-            .build();
-        titles.append(
+        header.append(
             &gtk4::Label::builder()
                 .label(gettext("Firewall Connections Overview"))
                 .css_classes(vec!["heading".to_string()])
                 .halign(gtk4::Align::Start)
+                .hexpand(true)
+                .valign(gtk4::Align::Center)
                 .build(),
         );
-        titles.append(
-            &gtk4::Label::builder()
-                .label(gettext("Outbound sessions permitted by the active ruleset"))
-                .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
-                .halign(gtk4::Align::Start)
-                .build(),
-        );
-        header.append(&titles);
 
         let conn_chip_box = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Horizontal)
@@ -507,18 +636,16 @@ impl OverviewPage {
                 .valign(gtk4::Align::Center)
                 .build(),
         );
-
         outer.append(&header);
-        outer.append(&gtk4::Separator::new(gtk4::Orientation::Horizontal));
 
-        // Two-column responsive grid of app connection tiles.
         let app_flow = gtk4::FlowBox::builder()
             .orientation(gtk4::Orientation::Horizontal)
             .column_spacing(10)
             .row_spacing(10)
             .homogeneous(true)
-            .min_children_per_line(1)
+            .min_children_per_line(2)
             .max_children_per_line(2)
+            .hexpand(true)
             .selection_mode(gtk4::SelectionMode::None)
             .margin_top(14)
             .margin_bottom(14)
@@ -530,81 +657,6 @@ impl OverviewPage {
 
         imp.connections_hub.replace(Some(frame.clone()));
         frame.set_child(Some(&outer));
-        frame
-    }
-
-    /// Build the analytics row: network activity, protocols, countries, connection state.
-    fn build_analytics(&self) -> gtk4::FlowBox {
-        let flow = gtk4::FlowBox::builder()
-            .orientation(gtk4::Orientation::Horizontal)
-            .column_spacing(14)
-            .row_spacing(14)
-            .homogeneous(true)
-            .min_children_per_line(1)
-            .max_children_per_line(4)
-            .selection_mode(gtk4::SelectionMode::None)
-            .build();
-
-        flow.append(&self.create_network_activity_card());
-        flow.append(&self.build_protocols_panel());
-        flow.append(&self.build_countries_panel());
-        flow.append(&self.build_donut_panel());
-
-        flow
-    }
-
-    /// Panel: connection-state donut with a legend.
-    fn build_donut_panel(&self) -> gtk4::Frame {
-        let imp = self.imp();
-        let (frame, content) = panel_card(
-            &gettext("Connection Overview"),
-            &gettext("By current state"),
-        );
-
-        let donut = DonutChart::new();
-        donut.set_halign(gtk4::Align::Center);
-        imp.donut.replace(Some(donut.clone()));
-
-        let overlay = gtk4::Overlay::new();
-        overlay.set_halign(gtk4::Align::Center);
-        overlay.set_child(Some(&donut));
-
-        let center = gtk4::Box::builder()
-            .orientation(gtk4::Orientation::Vertical)
-            .spacing(0)
-            .halign(gtk4::Align::Center)
-            .valign(gtk4::Align::Center)
-            .can_target(false)
-            .build();
-        let total = gtk4::Label::builder()
-            .label("0")
-            .css_classes(vec!["title-1".to_string()])
-            .build();
-        imp.donut_total.replace(Some(total.clone()));
-        center.append(&total);
-        center.append(
-            &gtk4::Label::builder()
-                .label(gettext("Total"))
-                .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
-                .build(),
-        );
-        overlay.add_overlay(&center);
-        content.append(&overlay);
-
-        // Legend.
-        let legend = gtk4::Box::builder()
-            .orientation(gtk4::Orientation::Vertical)
-            .spacing(8)
-            .margin_top(14)
-            .build();
-        let active_val = legend_row(&legend, "sw-success", &gettext("Active"));
-        let blocked_val = legend_row(&legend, "sw-error", &gettext("Blocked"));
-        let idle_val = legend_row(&legend, "sw-idle", &gettext("Idle"));
-        imp.donut_active_val.replace(Some(active_val));
-        imp.donut_blocked_val.replace(Some(blocked_val));
-        imp.donut_idle_val.replace(Some(idle_val));
-        content.append(&legend);
-
         frame
     }
 
@@ -627,37 +679,49 @@ impl OverviewPage {
         frame
     }
 
-    /// Panel: remote endpoints grouped by country.
-    fn build_countries_panel(&self) -> gtk4::Frame {
-        let imp = self.imp();
-        let (frame, content) = panel_card(
-            &gettext("Connection Status"),
-            &gettext("Remote endpoints by country"),
-        );
-
-        let list = gtk4::Box::builder()
-            .orientation(gtk4::Orientation::Vertical)
-            .spacing(11)
-            .build();
-        placeholder(&list, &gettext("Scanning…"));
-        imp.country_box.replace(Some(list.clone()));
-        content.append(&list);
-
-        frame
-    }
-
     /// Create the live network-activity card (real /proc/net/dev bandwidth).
+    /// Compact: title + interface dropdown share one line; short chart.
     fn create_network_activity_card(&self) -> gtk4::Frame {
         let imp = self.imp();
-        let (frame, content) =
-            panel_card(&gettext("Network Activity"), &gettext("Throughput · live"));
+        let frame = gtk4::Frame::new(None);
+        frame.add_css_class("card");
 
-        // Interface selector.
+        let content = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Vertical)
+            .spacing(0)
+            .margin_top(15)
+            .margin_bottom(15)
+            .margin_start(16)
+            .margin_end(16)
+            .build();
+
+        // Title block left, interface dropdown top-right on the same line.
         let header = gtk4::Box::builder()
             .orientation(gtk4::Orientation::Horizontal)
             .spacing(8)
+            .margin_bottom(8)
             .build();
-        header.append(&gtk4::Label::builder().hexpand(true).build());
+        let titles = gtk4::Box::builder()
+            .orientation(gtk4::Orientation::Vertical)
+            .spacing(0)
+            .hexpand(true)
+            .valign(gtk4::Align::Center)
+            .build();
+        titles.append(
+            &gtk4::Label::builder()
+                .label(gettext("Network Activity"))
+                .css_classes(vec!["heading".to_string()])
+                .halign(gtk4::Align::Start)
+                .build(),
+        );
+        titles.append(
+            &gtk4::Label::builder()
+                .label(gettext("Throughput · live"))
+                .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
+                .halign(gtk4::Align::Start)
+                .build(),
+        );
+        header.append(&titles);
         let mut iface_items = vec![gettext("All")];
         let interfaces = list_interfaces();
         iface_items.extend(interfaces.iter().cloned());
@@ -665,18 +729,23 @@ impl OverviewPage {
         let iface_dropdown = gtk4::DropDown::from_strings(&iface_refs);
         iface_dropdown.set_tooltip_text(Some(&gettext("Choose which interface to graph")));
         iface_dropdown.add_css_class("flat");
+        iface_dropdown.set_valign(gtk4::Align::Start);
         header.append(&iface_dropdown);
         content.append(&header);
 
         let chart = NetworkActivityChart::new();
         chart.set_hexpand(true);
-        chart.set_size_request(-1, 120);
+        chart.set_size_request(-1, 100);
         chart.set_margin_top(4);
         content.append(&chart);
 
         let rate_label = gtk4::Label::builder()
             .label("↓ 0.0 KB/s   ↑ 0.0 KB/s")
-            .css_classes(vec!["dim-label".to_string(), "caption".to_string()])
+            .css_classes(vec![
+                "dim-label".to_string(),
+                "caption".to_string(),
+                "numeric".to_string(),
+            ])
             .halign(gtk4::Align::Start)
             .margin_top(6)
             .build();
@@ -702,6 +771,7 @@ impl OverviewPage {
 
         imp.network_chart.replace(Some(chart));
         imp.rate_label.replace(Some(rate_label));
+        frame.set_child(Some(&content));
         frame
     }
 
@@ -712,19 +782,29 @@ impl OverviewPage {
             let data = gtk4::gio::spawn_blocking(|| {
                 let mut scanner = crate::admin::NetworkExposure::new();
                 let connections = scanner.scan_connections().unwrap_or_default();
-                let listening = scanner.scan().map(|v| v.len()).unwrap_or(0);
+                let listening = scanner.scan().unwrap_or_default();
                 let socket_bytes = crate::admin::collect_socket_bytes().unwrap_or_default();
                 let geo = crate::admin::GeoIp::load();
                 let labels: HashMap<IpAddr, String> = connections
                     .iter()
                     .filter_map(|c| geo.country_label(c.remote_addr).map(|l| (c.remote_addr, l)))
                     .collect();
-                (connections, listening, socket_bytes, labels)
+                let iso_labels: HashMap<IpAddr, String> = connections
+                    .iter()
+                    .filter_map(|c| geo.country_iso(c.remote_addr).map(|l| (c.remote_addr, l)))
+                    .collect();
+                (connections, listening, socket_bytes, labels, iso_labels)
             })
             .await;
 
-            if let Ok((connections, listening, socket_bytes, geo_labels)) = data {
-                page.render_app_dashboard(connections, listening, socket_bytes, geo_labels);
+            if let Ok((connections, listening, socket_bytes, geo_labels, iso_labels)) = data {
+                page.render_app_dashboard(
+                    connections,
+                    listening,
+                    socket_bytes,
+                    geo_labels,
+                    iso_labels,
+                );
             }
         });
     }
@@ -733,9 +813,10 @@ impl OverviewPage {
     fn render_app_dashboard(
         &self,
         connections: Vec<crate::admin::ActiveConnection>,
-        listening: usize,
+        listening: Vec<crate::admin::ListeningEndpoint>,
         socket_bytes: HashMap<u32, (u64, u64)>,
         geo_labels: HashMap<IpAddr, String>,
+        iso_labels: HashMap<IpAddr, String>,
     ) {
         let imp = self.imp();
 
@@ -746,7 +827,6 @@ impl OverviewPage {
         struct AppAgg {
             process: String,
             conn_count: usize,
-            bytes_total: u64,
             interval_in: u64,
             interval_out: u64,
             hosts: HashMap<(IpAddr, u16), u64>,
@@ -755,7 +835,8 @@ impl OverviewPage {
 
         // Protocol + country tallies (for the analytics panels).
         let mut proto_counts: HashMap<&'static str, usize> = HashMap::new();
-        let mut dest_counts: HashMap<String, usize> = HashMap::new();
+        // ISO tally drives the world map (stable keys across languages).
+        let mut iso_counts: HashMap<String, usize> = HashMap::new();
 
         // Per-socket byte deltas give a stable rate even as a process's many
         // short-lived sockets churn between samples.
@@ -782,13 +863,11 @@ impl OverviewPage {
             let entry = apps.entry(proc.clone()).or_insert_with(|| AppAgg {
                 process: proc.clone(),
                 conn_count: 0,
-                bytes_total: 0,
                 interval_in: 0,
                 interval_out: 0,
                 hosts: HashMap::new(),
             });
             entry.conn_count += 1;
-            entry.bytes_total = entry.bytes_total.saturating_add(bin).saturating_add(bout);
             entry.interval_in = entry.interval_in.saturating_add(din);
             entry.interval_out = entry.interval_out.saturating_add(dout);
             *entry
@@ -799,19 +878,18 @@ impl OverviewPage {
             *proto_counts
                 .entry(protocol_of(conn.remote_port))
                 .or_insert(0) += 1;
-            let key = endpoint_label(conn.remote_addr, &geo_labels);
-            *dest_counts.entry(key).or_insert(0) += 1;
+            if let Some(iso) = iso_labels.get(&conn.remote_addr) {
+                *iso_counts.entry(iso.to_uppercase()).or_insert(0) += 1;
+            }
         }
 
         // Roll the per-socket snapshot forward for the next interval.
         *prev_sock = cur_sock;
         drop(prev_sock);
 
-        // --- Stat cards ---
+        // --- KPI cards + connections hub status ---
         set_label(&imp.metric_active, &remote_count.to_string());
         set_label(&imp.metric_apps, &apps.len().to_string());
-
-        // --- Connections hub chip ---
         if let Some(chip) = imp.conn_chip.borrow().as_ref() {
             if apps.is_empty() {
                 chip.set_label("0 connected");
@@ -819,57 +897,42 @@ impl OverviewPage {
                 chip.set_label(&format!("{} {}", apps.len(), gettext("connected")));
             }
         }
+        set_label(&imp.metric_listening, &listening.len().to_string());
 
-        // --- Donut: active (remote) vs blocked vs idle/listening ---
-        let blocked = imp.blocked_count.get();
-        if let Some(donut) = imp.donut.borrow().as_ref() {
-            donut.set_segments(&[
-                (remote_count as f64, color_success()),
-                (blocked as f64, color_error()),
-                (listening as f64, color_idle()),
-            ]);
-        }
-        set_label(
-            &imp.donut_total,
-            &(remote_count + blocked + listening).to_string(),
-        );
-        set_label(&imp.donut_active_val, &remote_count.to_string());
-        set_label(&imp.donut_blocked_val, &blocked.to_string());
-        set_label(&imp.donut_idle_val, &listening.to_string());
-
-        // --- Protocols + countries panels ---
+        // --- Protocols panel + regions map ---
         self.render_protocols(&proto_counts, remote_count);
-        self.render_countries(&dest_counts);
+        self.render_regions(&iso_counts);
 
-        // --- Per-app cards ---
+        // --- Per-app cards, stable alphabetical order ---
+        // Deliberately NOT sorted by live traffic: rates fluctuate every
+        // refresh and would reshuffle the list constantly. New apps simply
+        // appear at their alphabetical slot; per-app rates still update live.
+        // (The Top Apps by Download/Upload tables keep rate-based ranking.)
         let mut app_list: Vec<AppAgg> = apps.into_values().collect();
         app_list.sort_by(|a, b| {
-            (b.interval_in + b.interval_out)
-                .cmp(&(a.interval_in + a.interval_out))
-                .then(b.bytes_total.cmp(&a.bytes_total))
+            display_process_name(&a.process)
+                .cmp(&display_process_name(&b.process))
                 .then(a.process.cmp(&b.process))
         });
 
-        // Build render data for at most the largest count the user can pick, so
-        // changing the dashboard limit later re-renders from this cache without a
-        // fresh scan (which would reset the per-socket rate baseline).
+        // Build enough cached render data for maximized layouts without a new
+        // scan (which would reset the per-socket rate baseline).
         let mut spark = imp.app_spark.borrow_mut();
         let mut seen: HashSet<String> = HashSet::new();
         let mut cards: Vec<AppCardData> = Vec::new();
         for app in app_list.iter().take(crate::config::DASHBOARD_MAX_APPS_MAX) {
             seen.insert(app.process.clone());
-
             let down_kbs = (app.interval_in as f64 / INTERVAL_SECS) / 1024.0;
             let up_kbs = (app.interval_out as f64 / INTERVAL_SECS) / 1024.0;
 
-            let hist = spark.entry(app.process.clone()).or_default();
-            hist.push(down_kbs + up_kbs);
-            while hist.len() > 24 {
-                hist.remove(0);
+            let history = spark.entry(app.process.clone()).or_default();
+            history.push(down_kbs + up_kbs);
+            while history.len() > 24 {
+                history.remove(0);
             }
 
             // The busiest (addr, port) pair — a real socket group — carries the
-            // IP, port and country shown on the card, so they always agree.
+            // IP, port and country shown in the row, so they always agree.
             let (primary_addr, primary_port) = app
                 .hosts
                 .iter()
@@ -885,24 +948,22 @@ impl OverviewPage {
                 primary_addr,
                 port: primary_port,
                 country: geo_labels.get(&primary_addr).cloned(),
-                history: hist.clone(),
+                history: history.clone(),
             });
         }
-        spark.retain(|k, _| seen.contains(k));
+        spark.retain(|process, _| seen.contains(process));
         drop(spark);
 
         imp.last_apps.replace(cards);
         self.render_cards();
     }
 
-    /// Rebuild the app-card grid from cached render data using the current limit.
-    /// Called both after a scan and when the user changes the card count, so the
-    /// count change never forces an off-cadence rescan.
+    /// Rebuild the application-card grid from cached connection data.
     fn render_cards(&self) {
         let imp = self.imp();
         let flow_ref = imp.app_flow.borrow();
         let flow = match flow_ref.as_ref() {
-            Some(f) => f,
+            Some(flow) => flow,
             None => return,
         };
         while let Some(child) = flow.first_child() {
@@ -922,8 +983,7 @@ impl OverviewPage {
             return;
         }
 
-        let max_apps = imp.max_apps.get().max(1);
-        for card in cards.iter().take(max_apps) {
+        for card in cards.iter().take(imp.connection_cards.get()) {
             flow.append(&build_app_card(card.clone()));
         }
     }
@@ -963,6 +1023,8 @@ impl OverviewPage {
                     .css_classes(vec!["caption".to_string()])
                     .halign(gtk4::Align::Start)
                     .hexpand(true)
+                    .ellipsize(gtk4::pango::EllipsizeMode::End)
+                    .max_width_chars(16)
                     .build(),
             );
             top.append(
@@ -982,65 +1044,6 @@ impl OverviewPage {
         }
     }
 
-    /// Rebuild the countries panel from the current tally.
-    fn render_countries(&self, counts: &HashMap<String, usize>) {
-        let imp = self.imp();
-        let list_ref = imp.country_box.borrow();
-        let list = match list_ref.as_ref() {
-            Some(l) => l,
-            None => return,
-        };
-        while let Some(child) = list.first_child() {
-            list.remove(&child);
-        }
-        if counts.is_empty() {
-            placeholder(list, &gettext("No remote connections"));
-            return;
-        }
-
-        let mut rows: Vec<(String, usize)> = counts.iter().map(|(k, v)| (k.clone(), *v)).collect();
-        rows.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
-        rows.truncate(5);
-        let max = rows.first().map(|(_, c)| *c).unwrap_or(1).max(1);
-
-        for (name, count) in rows {
-            let row = gtk4::Box::builder()
-                .orientation(gtk4::Orientation::Vertical)
-                .spacing(5)
-                .build();
-            let top = gtk4::Box::builder()
-                .orientation(gtk4::Orientation::Horizontal)
-                .build();
-            top.append(
-                &gtk4::Label::builder()
-                    .label(&name)
-                    .css_classes(vec!["caption".to_string(), "conn-meta".to_string()])
-                    .halign(gtk4::Align::Start)
-                    .hexpand(true)
-                    .ellipsize(gtk4::pango::EllipsizeMode::End)
-                    .build(),
-            );
-            top.append(
-                &gtk4::Label::builder()
-                    .label(count.to_string())
-                    .css_classes(vec![
-                        "caption".to_string(),
-                        "conn-meta".to_string(),
-                        "numeric".to_string(),
-                    ])
-                    .halign(gtk4::Align::End)
-                    .build(),
-            );
-            row.append(&top);
-            let bar = MeterBar::new();
-            let (r, g, b) = color_accent();
-            bar.set_color(r, g, b);
-            bar.set_fraction(count as f64 / max as f64);
-            row.append(&bar);
-            list.append(&row);
-        }
-    }
-
     /// Update the page with zone data (keeps the status card's default zone).
     pub fn set_zones(&self, zones: &[Zone]) {
         let imp = self.imp();
@@ -1051,7 +1054,7 @@ impl OverviewPage {
         }
     }
 
-    /// Update the blocked-ports count (stat card + donut on next refresh).
+    /// Update the blocked-ports count (KPI stat card).
     pub fn set_blocked_ports(&self, blocked_ports: &[crate::models::Port]) {
         let imp = self.imp();
         imp.blocked_count.set(blocked_ports.len());
@@ -1065,12 +1068,13 @@ impl OverviewPage {
         }
     }
 
-    /// Change how many application cards the dashboard shows, then re-render.
-    /// Re-renders from cached data (no rescan) so the live rate baseline stays
-    /// aligned to the 5-second timer cadence.
-    pub fn set_max_apps(&self, count: usize) {
-        self.imp().max_apps.set(count.max(1));
-        self.render_cards();
+    /// Keep four cards in a normal window and use only complete two-card rows
+    /// that fit in the extra maximized height.
+    pub fn set_window_layout(&self, maximized: bool, window_height: i32) {
+        let cards = connection_card_limit(maximized, window_height);
+        if self.imp().connection_cards.replace(cards) != cards {
+            self.render_cards();
+        }
     }
 }
 
@@ -1093,28 +1097,25 @@ pub(crate) struct AppCardData {
     history: Vec<f64>,
 }
 
-/// Build one GNOME-style application connection tile (horizontal layout).
-fn build_app_card(d: AppCardData) -> gtk4::Box {
-    // Internal spacing comes from CSS padding on `.conn-tile`; inter-tile gaps
-    // come from the FlowBox row/column spacing.
+/// Build one application connection card in the restored dashboard style.
+fn build_app_card(data: AppCardData) -> gtk4::Box {
     let tile = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Horizontal)
         .spacing(12)
-        .css_classes(vec!["conn-tile".to_string()])
+        .css_classes(vec!["conn-tile".to_string(), "conn-tile-live".to_string()])
         .height_request(88)
+        .hexpand(true)
         .build();
 
-    // App icon in a neutral rounded tile. Symmetric CSS padding around the
-    // natural-size icon keeps it centred inside the tile.
-    let icon_tile = gtk4::Image::builder()
-        .icon_name(icon_for_process(&d.process, d.port).as_str())
-        .pixel_size(24)
-        .valign(gtk4::Align::Center)
-        .css_classes(vec!["app-icon-tile".to_string()])
-        .build();
-    tile.append(&icon_tile);
+    tile.append(
+        &gtk4::Image::builder()
+            .icon_name(icon_for_process(&data.process, data.port).as_str())
+            .pixel_size(24)
+            .valign(gtk4::Align::Center)
+            .css_classes(vec!["app-icon-tile".to_string()])
+            .build(),
+    );
 
-    // Main column.
     let main = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
         .spacing(1)
@@ -1128,7 +1129,7 @@ fn build_app_card(d: AppCardData) -> gtk4::Box {
         .build();
     name_row.append(
         &gtk4::Label::builder()
-            .label(display_process_name(&d.process))
+            .label(display_process_name(&data.process))
             .css_classes(vec!["heading".to_string()])
             .halign(gtk4::Align::Start)
             .hexpand(true)
@@ -1155,17 +1156,16 @@ fn build_app_card(d: AppCardData) -> gtk4::Box {
     name_row.append(&status);
     main.append(&name_row);
 
-    // Address line: IP:port · country · N conns.
-    let mut addr_parts = vec![format!("{}:{}", d.primary_addr, d.port)];
-    if let Some(country) = &d.country {
-        addr_parts.push(country.clone());
+    let mut address = vec![format!("{}:{}", data.primary_addr, data.port)];
+    if let Some(country) = &data.country {
+        address.push(country.clone());
     }
-    if d.conn_count > 1 {
-        addr_parts.push(format!("{} {}", d.conn_count, gettext("conns")));
+    if data.conn_count > 1 {
+        address.push(format!("{} {}", data.conn_count, gettext("conns")));
     }
     main.append(
         &gtk4::Label::builder()
-            .label(addr_parts.join("  ·  "))
+            .label(address.join("  ·  "))
             .css_classes(vec![
                 "caption".to_string(),
                 "conn-meta".to_string(),
@@ -1176,31 +1176,34 @@ fn build_app_card(d: AppCardData) -> gtk4::Box {
             .build(),
     );
 
-    let spark = Sparkline::new();
-    spark.set_values(&d.history);
-    spark.set_hexpand(true);
-    spark.set_size_request(-1, 22);
-    spark.set_margin_top(5);
-    main.append(&spark);
+    let sparkline = Sparkline::new();
+    sparkline.set_values(&data.history);
+    sparkline.set_hexpand(true);
+    sparkline.set_size_request(-1, 22);
+    sparkline.set_margin_top(5);
+    main.append(&sparkline);
     tile.append(&main);
 
-    // Rate column.
-    let rate_col = gtk4::Box::builder()
+    let rates = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
         .spacing(2)
         .valign(gtk4::Align::Center)
         .halign(gtk4::Align::End)
         .build();
-    rate_col.append(
+    rates.append(
         &gtk4::Label::builder()
-            .label(format!("{:.0} KB/s", d.down_kbs + d.up_kbs))
+            .label(fmt_rate(data.down_kbs + data.up_kbs))
             .css_classes(vec!["heading".to_string(), "numeric".to_string()])
             .halign(gtk4::Align::End)
             .build(),
     );
-    rate_col.append(
+    rates.append(
         &gtk4::Label::builder()
-            .label(format!("↓{:.0} ↑{:.0}", d.down_kbs, d.up_kbs))
+            .label(format!(
+                "↓{} ↑{}",
+                fmt_rate(data.down_kbs),
+                fmt_rate(data.up_kbs)
+            ))
             .css_classes(vec![
                 "caption".to_string(),
                 "conn-meta".to_string(),
@@ -1209,60 +1212,114 @@ fn build_app_card(d: AppCardData) -> gtk4::Box {
             .halign(gtk4::Align::End)
             .build(),
     );
-    tile.append(&rate_col);
+    tile.append(&rates);
 
     tile
 }
 
-/// Create a summary stat card, returning the card and its value label.
+/// Firewalla-style KPI card: tinted icon on the left, small dim label
+/// on top and big number below on the right. Returns card + value label.
 fn stat_card(icon: &str, tile_class: &str, caption: &str) -> (gtk4::Frame, gtk4::Label) {
     let frame = gtk4::Frame::new(None);
     frame.add_css_class("card");
 
-    let content = gtk4::Box::builder()
-        .orientation(gtk4::Orientation::Vertical)
-        .spacing(9)
+    let row = gtk4::Box::builder()
+        .orientation(gtk4::Orientation::Horizontal)
+        .spacing(14)
         .margin_top(14)
         .margin_bottom(14)
-        .margin_start(15)
-        .margin_end(15)
+        .margin_start(18)
+        .margin_end(18)
         .build();
 
-    // Symmetric CSS padding around the natural-size icon centres it inside the
-    // tinted tile (the tile grows uniformly around the glyph).
-    let icon_tile = gtk4::Image::builder()
-        .icon_name(icon)
-        .pixel_size(18)
-        .halign(gtk4::Align::Start)
-        .css_classes(vec!["icon-tile".to_string(), tile_class.to_string()])
-        .build();
-    content.append(&icon_tile);
+    row.append(
+        &gtk4::Image::builder()
+            .icon_name(icon)
+            .pixel_size(22)
+            .valign(gtk4::Align::Center)
+            .css_classes(vec!["icon-tile".to_string(), tile_class.to_string()])
+            .build(),
+    );
 
-    let value = gtk4::Label::builder()
-        .label("0")
-        .css_classes(vec!["stat-value".to_string()])
-        .halign(gtk4::Align::Start)
+    let text = gtk4::Box::builder()
+        .orientation(gtk4::Orientation::Vertical)
+        .spacing(2)
+        .valign(gtk4::Align::Center)
+        .hexpand(true)
         .build();
-    content.append(&value);
-
-    content.append(
+    text.append(
         &gtk4::Label::builder()
             .label(caption)
             .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
             .halign(gtk4::Align::Start)
+            .ellipsize(gtk4::pango::EllipsizeMode::End)
             .build(),
     );
+    let value = gtk4::Label::builder()
+        .label("0")
+        .css_classes(vec!["stat-value".to_string(), "numeric".to_string()])
+        .halign(gtk4::Align::Start)
+        .build();
+    text.append(&value);
+    row.append(&text);
 
-    frame.set_child(Some(&content));
+    frame.set_child(Some(&row));
     (frame, value)
 }
 
-/// Create an analytics panel card with a title + hint, returning the card and
-/// the inner content box to append into.
+/// Header cell for table grids.
+fn th(grid: &gtk4::Grid, col: i32, text: &str, right: bool) {
+    let label = gtk4::Label::builder()
+        .label(text)
+        .css_classes(vec!["caption".to_string(), "dim-label".to_string()])
+        .halign(if right {
+            gtk4::Align::End
+        } else {
+            gtk4::Align::Start
+        })
+        .build();
+    if !right {
+        label.set_hexpand(true);
+    }
+    grid.attach(&label, col, 0, 1, 1);
+}
+
+/// Body cell. `bound` caps the label width so long addresses/hostnames can
+/// never inflate the table past the viewport (anti-overflow insurance).
+fn td(grid: &gtk4::Grid, col: i32, row: i32, text: &str, right: bool, bound: i32) -> gtk4::Label {
+    let label = gtk4::Label::builder()
+        .label(text)
+        .css_classes(vec!["body".to_string(), "numeric".to_string()])
+        .halign(if right {
+            gtk4::Align::End
+        } else {
+            gtk4::Align::Start
+        })
+        .ellipsize(gtk4::pango::EllipsizeMode::End)
+        .max_width_chars(bound)
+        .build();
+    grid.attach(&label, col, row, 1, 1);
+    label
+}
+
+/// Compact `1.2 MB/s` / `850 B/s` rate formatting for table cells.
+fn fmt_rate(kbs: f64) -> String {
+    if kbs >= 1024.0 {
+        format!("{:.1} MB/s", kbs / 1024.0)
+    } else if kbs >= 1.0 {
+        format!("{:.0} KB/s", kbs)
+    } else if kbs > 0.0 {
+        format!("{:.0} B/s", kbs * 1024.0)
+    } else {
+        "0 B/s".to_string()
+    }
+}
+
+/// Side-stack section card: title + hint + content in a subtle card.
+/// Returns the frame and the inner content box to append into.
 fn panel_card(title: &str, hint: &str) -> (gtk4::Frame, gtk4::Box) {
     let frame = gtk4::Frame::new(None);
     frame.add_css_class("card");
-    frame.add_css_class("dashboard-card");
 
     let content = gtk4::Box::builder()
         .orientation(gtk4::Orientation::Vertical)
@@ -1293,36 +1350,6 @@ fn panel_card(title: &str, hint: &str) -> (gtk4::Frame, gtk4::Box) {
     (frame, content)
 }
 
-/// Append a donut legend row (swatch + label + value), returning the value label.
-fn legend_row(parent: &gtk4::Box, swatch_class: &str, label: &str) -> gtk4::Label {
-    let row = gtk4::Box::builder()
-        .orientation(gtk4::Orientation::Horizontal)
-        .spacing(9)
-        .build();
-    row.append(
-        &gtk4::Box::builder()
-            .css_classes(vec!["swatch".to_string(), swatch_class.to_string()])
-            .valign(gtk4::Align::Center)
-            .build(),
-    );
-    row.append(
-        &gtk4::Label::builder()
-            .label(label)
-            .css_classes(vec!["caption".to_string()])
-            .halign(gtk4::Align::Start)
-            .hexpand(true)
-            .build(),
-    );
-    let value = gtk4::Label::builder()
-        .label("0")
-        .css_classes(vec!["caption".to_string(), "numeric".to_string()])
-        .halign(gtk4::Align::End)
-        .build();
-    row.append(&value);
-    parent.append(&row);
-    value
-}
-
 /// Replace a box's contents with a single dim placeholder label.
 fn placeholder(list: &gtk4::Box, text: &str) {
     while let Some(child) = list.first_child() {
@@ -1346,15 +1373,6 @@ fn set_label(cell: &RefCell<Option<gtk4::Label>>, text: &str) {
     }
 }
 
-/// Display a remote endpoint while keeping the IP visible. Offline GeoIP adds
-/// `flag + country`; unresolved hosts fall back to the raw IP.
-fn endpoint_label(addr: IpAddr, geo_labels: &HashMap<IpAddr, String>) -> String {
-    match geo_labels.get(&addr) {
-        Some(country) => format!("{} · {}", country, addr),
-        None => addr.to_string(),
-    }
-}
-
 /// Colour (linear RGB) for a protocol bar.
 fn protocol_color(name: &str) -> (f64, f64, f64) {
     match name {
@@ -1372,9 +1390,6 @@ fn color_accent() -> (f64, f64, f64) {
 }
 fn color_success() -> (f64, f64, f64) {
     (0.18, 0.76, 0.49)
-}
-fn color_error() -> (f64, f64, f64) {
-    (0.88, 0.11, 0.14)
 }
 fn color_idle() -> (f64, f64, f64) {
     (0.55, 0.55, 0.58)
@@ -1396,33 +1411,30 @@ mod imp {
         pub metric_active: RefCell<Option<gtk4::Label>>,
         pub metric_blocked: RefCell<Option<gtk4::Label>>,
         pub metric_apps: RefCell<Option<gtk4::Label>>,
+        pub metric_listening: RefCell<Option<gtk4::Label>>,
         pub stat_status: RefCell<Option<gtk4::Label>>,
-        // Connections hub
+        // Regions map card
+        pub regions_card: RefCell<Option<gtk4::Frame>>,
+        pub world_map: RefCell<Option<WorldMap>>,
+        pub region_grid: RefCell<Option<gtk4::Grid>>,
+        // Responsive application connection cards
         pub connections_hub: RefCell<Option<gtk4::Frame>>,
         pub app_flow: RefCell<Option<gtk4::FlowBox>>,
         pub conn_chip: RefCell<Option<gtk4::Label>>,
-        // Analytics: donut
-        pub donut: RefCell<Option<DonutChart>>,
-        pub donut_total: RefCell<Option<gtk4::Label>>,
-        pub donut_active_val: RefCell<Option<gtk4::Label>>,
-        pub donut_blocked_val: RefCell<Option<gtk4::Label>>,
-        pub donut_idle_val: RefCell<Option<gtk4::Label>>,
-        // Analytics: protocols + countries
+        // Analytics: protocols
         pub proto_box: RefCell<Option<gtk4::Box>>,
-        pub country_box: RefCell<Option<gtk4::Box>>,
         // Analytics: network activity chart
         pub network_chart: RefCell<Option<NetworkActivityChart>>,
         pub rate_label: RefCell<Option<gtk4::Label>>,
         // Live state
         pub blocked_count: Cell<usize>,
-        // How many application cards to render (user-configurable).
-        pub max_apps: Cell<usize>,
-        // Cached render data for the app cards, so changing the count re-renders
-        // without a fresh scan that would reset the per-socket rate baseline.
+        // Responsive card limit and per-application sparkline history.
+        pub connection_cards: Cell<usize>,
+        pub app_spark: RefCell<HashMap<String, Vec<f64>>>,
+        // Cached data lets maximize/restore re-render without a fresh scan.
         pub(crate) last_apps: RefCell<Vec<AppCardData>>,
         // Previous cumulative (bytes_in, bytes_out) per socket inode, for rates.
         pub prev_sock: RefCell<HashMap<u32, (u64, u64)>>,
-        pub app_spark: RefCell<HashMap<String, Vec<f64>>>,
     }
 
     #[glib::object_subclass]
@@ -1435,4 +1447,23 @@ mod imp {
     impl ObjectImpl for OverviewPage {}
     impl WidgetImpl for OverviewPage {}
     impl BoxImpl for OverviewPage {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normal_window_always_shows_four_connection_cards() {
+        assert_eq!(connection_card_limit(false, 880), 4);
+        assert_eq!(connection_card_limit(false, 1200), 4);
+    }
+
+    #[test]
+    fn maximized_connection_cards_use_only_complete_extra_rows() {
+        assert_eq!(connection_card_limit(true, 880), 4);
+        assert_eq!(connection_card_limit(true, 977), 4);
+        assert_eq!(connection_card_limit(true, 978), 6);
+        assert_eq!(connection_card_limit(true, 1032), 6);
+    }
 }

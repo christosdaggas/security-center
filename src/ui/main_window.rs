@@ -26,6 +26,14 @@ glib::wrapper! {
         @implements gio::ActionGroup, gio::ActionMap;
 }
 
+fn update_banner_text(version: &str, collapsed: bool) -> String {
+    if collapsed {
+        format!("v{}", version)
+    } else {
+        format!("v{} available", version)
+    }
+}
+
 impl MainWindow {
     /// Create a new main window.
     pub fn new(app: &impl IsA<gtk4::Application>) -> Self {
@@ -33,10 +41,12 @@ impl MainWindow {
         let window: Self = glib::Object::builder()
             .property("application", app)
             .property("title", gettext("Security Center").as_str())
-            .property("default-width", settings.window_width())
-            .property("default-height", settings.window_height())
+            .property("default-width", 1386)
+            .property("default-height", 880)
             .property("icon-name", "com.chrisdaggas.security-center")
             .build();
+
+        window.set_size_request(-1, 860);
 
         if settings.is_maximized() {
             window.maximize();
@@ -73,13 +83,6 @@ impl MainWindow {
         }
     }
 
-    /// Update how many application cards the dashboard shows.
-    pub fn set_dashboard_max_apps(&self, count: usize) {
-        if let Some(page) = self.imp().overview_page.borrow().as_ref() {
-            page.set_max_apps(count);
-        }
-    }
-
     /// Setup the main UI.
     fn setup_ui(&self) {
         let imp = self.imp();
@@ -105,6 +108,23 @@ impl MainWindow {
         let network_exposure_page = NetworkExposurePage::new();
         let quick_actions_page = QuickActionsPage::new();
         let help_page = HelpPage::new();
+
+        // The overview shows four connection cards in a normal window and uses
+        // only complete extra rows made available by maximization.
+        let overview_for_resize = overview_page.clone();
+        self.connect_notify_local(Some("maximized"), move |window, _| {
+            let window = window.clone();
+            let overview = overview_for_resize.clone();
+            glib::timeout_add_local_once(std::time::Duration::from_millis(100), move || {
+                overview.set_window_layout(window.is_maximized(), window.height());
+            });
+        });
+
+        let window = self.clone();
+        let overview = overview_page.clone();
+        glib::timeout_add_local_once(std::time::Duration::from_millis(100), move || {
+            overview.set_window_layout(window.is_maximized(), window.height());
+        });
 
         // Wire up clients to pages
         zones_page.set_client(imp.client.clone());
@@ -174,8 +194,9 @@ impl MainWindow {
             .build();
         sidebar_box.add_css_class("sidebar-box");
 
-        // Sidebar header with app title
+        // Sidebar header with app title (seamless: blends into the sidebar)
         let sidebar_header = adw::HeaderBar::new();
+        sidebar_header.add_css_class("seamless-bar");
         sidebar_header.set_show_end_title_buttons(false);
         sidebar_header.set_show_start_title_buttons(false);
 
@@ -201,11 +222,7 @@ impl MainWindow {
 
         let items = [
             ("overview", "Overview", "view-grid-symbolic"),
-            (
-                "connections",
-                "Connections",
-                "network-transmit-symbolic",
-            ),
+            ("connections", "Connections", "network-transmit-symbolic"),
             ("zones", "Zones", "network-server-symbolic"),
             ("services", "Services", "application-x-addon-symbolic"),
             ("ports", "Ports", "network-transmit-receive-symbolic"),
@@ -358,14 +375,16 @@ impl MainWindow {
 
         self.check_for_updates();
 
-        // Separator between sidebar and content
-        let separator = gtk4::Separator::new(gtk4::Orientation::Vertical);
+        // NOTE: no vertical separator between sidebar and content —
+        // the two areas sit edge to edge with no dividing line.
 
         // === CONTENT AREA ===
         let content_box = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         content_box.set_hexpand(true);
+        content_box.add_css_class("content-box");
 
         let header = adw::HeaderBar::new();
+        header.add_css_class("seamless-bar");
         let content_title = adw::WindowTitle::new(&gettext("Overview"), "");
         header.set_title_widget(Some(&content_title));
         imp.content_title.replace(Some(content_title));
@@ -387,19 +406,10 @@ impl MainWindow {
         header.pack_end(&refresh_button);
 
         content_box.append(&header);
-
-        let scrolled = gtk4::ScrolledWindow::builder()
-            .hscrollbar_policy(gtk4::PolicyType::Never)
-            .vscrollbar_policy(gtk4::PolicyType::Automatic)
-            .vexpand(true)
-            .hexpand(true)
-            .child(&stack)
-            .build();
-        content_box.append(&scrolled);
+        content_box.append(&stack);
 
         // Assemble main layout
         main_box.append(&sidebar_box);
-        main_box.append(&separator);
         main_box.append(&content_box);
 
         toast_overlay.set_child(Some(&main_box));
@@ -688,6 +698,8 @@ impl MainWindow {
             info_box.set_visible(!new_collapsed);
         }
 
+        self.set_update_banner_collapsed(new_collapsed);
+
         // Update toggle button tooltip and icon
         if let Some(btn) = imp.sidebar_toggle_btn.borrow().as_ref() {
             if new_collapsed {
@@ -697,6 +709,36 @@ impl MainWindow {
                 btn.set_tooltip_text(Some(gettext("Collapse sidebar").as_str()));
                 btn.set_icon_name("sidebar-show-symbolic");
             }
+        }
+    }
+
+    /// Keep the collapsed update indicator narrow while preserving the full
+    /// release message in the expanded sidebar.
+    fn set_update_banner_collapsed(&self, collapsed: bool) {
+        let imp = self.imp();
+        if let Some(banner) = imp.update_banner.borrow().as_ref() {
+            banner.set_orientation(if collapsed {
+                gtk4::Orientation::Vertical
+            } else {
+                gtk4::Orientation::Horizontal
+            });
+            banner.set_spacing(if collapsed { 2 } else { 6 });
+            banner.set_halign(if collapsed {
+                gtk4::Align::Center
+            } else {
+                gtk4::Align::Start
+            });
+            let margin = if collapsed { 3 } else { 12 };
+            banner.set_margin_start(margin);
+            banner.set_margin_end(margin);
+        }
+
+        if let (Some(link), Some(version)) = (
+            imp.update_link.borrow().as_ref(),
+            imp.update_version.borrow().as_ref(),
+        ) {
+            let label = update_banner_text(version, collapsed);
+            link.set_label(&label);
         }
     }
 
@@ -1074,13 +1116,17 @@ impl MainWindow {
             icon.add_css_class("update-icon");
             banner.append(&icon);
 
-            let label_text = format!("v{} available", info.latest_version);
+            let label_text = update_banner_text(&info.latest_version, imp.sidebar_collapsed.get());
             let link = gtk4::LinkButton::with_label(&info.download_url, &label_text);
             link.add_css_class("update-link");
             banner.append(&link);
+            imp.update_link.replace(Some(link));
+            imp.update_version
+                .replace(Some(info.latest_version.clone()));
 
             banner.set_visible(true);
         }
+        self.set_update_banner_collapsed(imp.sidebar_collapsed.get());
     }
 }
 
@@ -1103,6 +1149,8 @@ mod imp {
         pub network_exposure_page: RefCell<Option<NetworkExposurePage>>,
         pub quick_actions_page: RefCell<Option<QuickActionsPage>>,
         pub update_banner: RefCell<Option<gtk4::Box>>,
+        pub update_link: RefCell<Option<gtk4::LinkButton>>,
+        pub update_version: RefCell<Option<String>>,
         // Collapsible sidebar fields
         pub sidebar_collapsed: Cell<bool>,
         pub sidebar_box: RefCell<Option<gtk4::Box>>,
@@ -1129,4 +1177,15 @@ mod imp {
     impl WindowImpl for MainWindow {}
     impl ApplicationWindowImpl for MainWindow {}
     impl AdwApplicationWindowImpl for MainWindow {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::update_banner_text;
+
+    #[test]
+    fn update_banner_is_compact_only_when_sidebar_is_collapsed() {
+        assert_eq!(update_banner_text("1.8.1", true), "v1.8.1");
+        assert_eq!(update_banner_text("1.8.1", false), "v1.8.1 available");
+    }
 }

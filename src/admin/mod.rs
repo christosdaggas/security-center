@@ -27,6 +27,7 @@ mod sock_diag;
 pub use actions::{
     ActionCategory, AdminAction, AdminActionResult, QuickActionsManager, QUICK_ACTIONS,
 };
+pub use geoip::flag_emoji;
 pub use geoip::GeoIp;
 pub use ipinfo::{lookup_ip_online, IpDetails};
 pub use network::{

@@ -11,8 +11,11 @@ yanked = "warn"
 
 # Transitive through netlink-packet-utils. The advisory is unmaintained-only,
 # has no safe upgrade, and the dependency is needed for sock_diag support.
+# bincode is transitive through world-data 0.4.1. Its advisory is likewise
+# unmaintained-only with no patched version; it only decodes bundled map data.
 ignore = [
     "RUSTSEC-2024-0436",
+    "RUSTSEC-2025-0141",
 ]
 
 [licenses]

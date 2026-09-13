@@ -54,6 +54,104 @@ fn block_rule_variants(port_spec: &str, proto: &str) -> Vec<String> {
     rules
 }
 
+#[derive(Debug, Default)]
+struct PortRuleBatchResult {
+    applied: Vec<(String, String)>,
+    permanent_failed: Vec<(String, String)>,
+    failed: Vec<(String, String, String)>,
+}
+
+fn port_rule_targets(zones: &[String], protocols: &[String]) -> Vec<(String, String)> {
+    zones
+        .iter()
+        .flat_map(|zone| {
+            protocols
+                .iter()
+                .map(move |protocol| (zone.clone(), protocol.clone()))
+        })
+        .collect()
+}
+
+fn port_rule_batch_message(port: &str, action: u32, batch: &PortRuleBatchResult) -> String {
+    let applied = batch.applied.len();
+    let total = applied + batch.failed.len();
+    let verb = if action == 0 { "opened" } else { "blocked" };
+
+    if !batch.failed.is_empty() {
+        let failed_targets = batch
+            .failed
+            .iter()
+            .map(|(zone, protocol, error)| format!("{}/{} ({})", zone, protocol, error))
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!(
+            "Port {} {} for {}/{} targets; failed: {}",
+            port, verb, applied, total, failed_targets
+        )
+    } else if !batch.permanent_failed.is_empty() {
+        format!(
+            "Port {} {} for all {} targets; {} permanent save(s) failed",
+            port,
+            verb,
+            total,
+            batch.permanent_failed.len()
+        )
+    } else {
+        format!(
+            "Port {} {} for all {} zone/protocol targets",
+            port, verb, total
+        )
+    }
+}
+
+fn apply_port_rule_targets(
+    client: &FirewallClient,
+    targets: &[(String, String)],
+    port: &str,
+    action: u32,
+    permanent: bool,
+) -> PortRuleBatchResult {
+    let mut result = PortRuleBatchResult::default();
+
+    for (zone, protocol) in targets {
+        let Some(valid_protocol) = validate_protocol(protocol) else {
+            result.failed.push((
+                zone.clone(),
+                protocol.clone(),
+                format!("Invalid protocol: {}", protocol),
+            ));
+            continue;
+        };
+
+        let outcome = if action == 0 {
+            client.add_port(zone, port, valid_protocol, permanent)
+        } else {
+            let rule = format!(
+                "rule port port=\"{}\" protocol=\"{}\" reject",
+                port, valid_protocol
+            );
+            client.add_rich_rule(zone, &rule, permanent)
+        };
+
+        match outcome {
+            Ok(outcome) => {
+                let target = (zone.clone(), valid_protocol.to_string());
+                if outcome.failed() {
+                    result.permanent_failed.push(target.clone());
+                }
+                result.applied.push(target);
+            }
+            Err(error) => {
+                result
+                    .failed
+                    .push((zone.clone(), valid_protocol.to_string(), error.to_string()))
+            }
+        }
+    }
+
+    result
+}
+
 impl PortsPage {
     /// Create a new ports page.
     pub fn new() -> Self {
@@ -919,25 +1017,14 @@ impl PortsPage {
                             _ => vec!["tcp", "udp"],
                         };
 
-                        // Add rules for each selected zone and protocol
-                        let zone_count = selected_zones.len();
-                        for zone in &selected_zones {
-                            for protocol in &protocols {
-                                page.add_port_rule(
-                                    zone,
-                                    &port_spec,
-                                    protocol,
-                                    action,
-                                    permanent,
-                                    name.clone()
-                                );
-                            }
-                        }
-
-                        // Show summary toast
-                        if zone_count > 1 {
-                            page.show_toast(&format!("Adding port {} to {} zones...", port_spec, zone_count));
-                        }
+                        page.add_port_rules(
+                            &selected_zones,
+                            &port_spec,
+                            &protocols,
+                            action,
+                            permanent,
+                            name,
+                        );
                     }
                     None => {
                         page.show_toast(&gettext("Invalid port. Use a number 1-65535 or a range like 10-20."));
@@ -955,95 +1042,73 @@ impl PortsPage {
         }
     }
 
-    /// Add a port rule (Allow or Block incoming traffic).
-    fn add_port_rule(
+    /// Add a port rule to every selected zone/protocol target as one batch.
+    fn add_port_rules(
         &self,
-        zone: &str,
+        zones: &[String],
         port: &str,
-        protocol: &str,
+        protocols: &[&str],
         action: u32,
         permanent: bool,
         name: Option<String>,
     ) {
-        let zone = zone.to_string();
+        let protocols: Vec<String> = protocols
+            .iter()
+            .map(|protocol| protocol.to_string())
+            .collect();
+        let targets = port_rule_targets(zones, &protocols);
         let port = port.to_string();
-        let protocol = protocol.to_string();
         let page = self.clone();
 
         glib::spawn_future_local(async move {
-            let zone_clone = zone.clone();
             let port_clone = port.clone();
-            let protocol_clone = protocol.clone();
 
             let result = gtk4::gio::spawn_blocking(move || {
                 let mut client = crate::firewall::FirewallClient::new();
-                if let Err(e) = client.connect() {
-                    return Err(anyhow::anyhow!("Not connected to firewalld: {}", e));
-                }
+                client
+                    .connect()
+                    .map_err(|e| anyhow::anyhow!("Not connected to firewalld: {}", e))?;
 
-                // action: 0=Allow (open port), 1=Block (reject connections)
-                let outcome = if action == 0 {
-                    // Allow = add port to zone (opens the port)
-                    client.add_port(&zone_clone, &port_clone, &protocol_clone, permanent)?
-                } else {
-                    // Block = add rich rule to reject connections.
-                    // No family attribute: the rule must cover IPv4 AND IPv6,
-                    // otherwise the port stays reachable over IPv6.
-                    if let Some(valid_proto) = validate_protocol(&protocol_clone) {
-                        let rule = format!(
-                            "rule port port=\"{}\" protocol=\"{}\" reject",
-                            port_clone, valid_proto
-                        );
-                        client.add_rich_rule(&zone_clone, &rule, permanent)?
-                    } else {
-                        return Err(anyhow::anyhow!("Invalid protocol: {}", protocol_clone));
-                    }
-                };
-
-                // Don't reload - the port is already added to runtime config
-                // Reloading would wipe runtime if permanent save failed
-
-                let msg = if action == 0 {
-                    gettext("Port opened (allowed)")
-                } else {
-                    gettext("Port blocked (rejected)")
-                };
-                Ok((msg, outcome))
+                Ok::<_, anyhow::Error>(apply_port_rule_targets(
+                    &client,
+                    &targets,
+                    &port_clone,
+                    action,
+                    permanent,
+                ))
             })
             .await;
 
             match result {
-                Ok(Ok((msg, outcome))) => {
-                    if outcome.failed() {
-                        page.show_toast(&format!(
-                            "Port {}/{}: {} for this session only — saving permanently failed",
-                            port, protocol, msg
-                        ));
-                    } else {
-                        page.show_toast(&format!("Port {}/{}: {}", port, protocol, msg));
+                Ok(Ok(batch)) => {
+                    if let Some((start, end)) = parse_port_spec(&port) {
+                        let mut storage = page.imp().storage.borrow_mut();
+                        for (zone, protocol) in &batch.applied {
+                            let key = PortStorage::make_key(
+                                &format_port_spec(start, end),
+                                protocol,
+                                zone,
+                            );
+                            let mut metadata = PortMetadata::new(name.as_deref().unwrap_or(""));
+                            metadata.port = start;
+                            metadata.end_port = if end > start { end } else { 0 };
+                            metadata.protocol = protocol.clone();
+                            metadata.zone = zone.clone();
+                            metadata.incoming_action = if action == 0 {
+                                "allow".to_string()
+                            } else {
+                                "block".to_string()
+                            };
+                            metadata.description = if action == 0 {
+                                "Incoming: Allowed".to_string()
+                            } else {
+                                "Incoming: Blocked".to_string()
+                            };
+                            storage.set(key, metadata);
+                        }
                     }
 
-                    // Save rule metadata
-                    if let Some((start, end)) = parse_port_spec(&port) {
-                        let key =
-                            PortStorage::make_key(&format_port_spec(start, end), &protocol, &zone);
-                        let mut metadata = PortMetadata::new(name.as_deref().unwrap_or(""));
-                        metadata.port = start;
-                        metadata.end_port = if end > start { end } else { 0 };
-                        metadata.protocol = protocol.clone();
-                        metadata.zone = zone.clone();
-                        metadata.incoming_action = if action == 0 {
-                            "allow".to_string()
-                        } else {
-                            "block".to_string()
-                        };
-                        metadata.description = if action == 0 {
-                            "Incoming: Allowed".to_string()
-                        } else {
-                            "Incoming: Blocked".to_string()
-                        };
-                        page.imp().storage.borrow_mut().set(key, metadata);
-                    }
+                    page.show_toast(&port_rule_batch_message(&port, action, &batch));
 
                     page.request_refresh();
                 }
@@ -1055,22 +1120,6 @@ impl PortsPage {
                 }
             }
         });
-    }
-
-    /// Add a port to the firewall (legacy method).
-    #[allow(dead_code)]
-    fn add_port(
-        &self,
-        zone: &str,
-        port: &str,
-        protocol: &str,
-        _direction: &str,
-        permanent: bool,
-        name: Option<String>,
-    ) {
-        // Convert to new method - only supports incoming now
-        let action = 0; // Allow
-        self.add_port_rule(zone, port, protocol, action, permanent, name);
     }
 
     /// Show the edit port dialog.
@@ -1314,9 +1363,6 @@ impl PortsPage {
 
         // Clone for use after spawn_blocking moves the originals
         let original_after = original.clone();
-        let new_zones_after = new_zones.clone();
-        let new_protocols_after = new_protocols.clone();
-
         let raw_rules = original.raw_rules.clone();
 
         glib::spawn_future_local(async move {
@@ -1352,45 +1398,18 @@ impl PortsPage {
                     }
                 }
 
-                // 2. Add NEW rules
-                let mut permanent_failed = false;
-                for zone in &new_zones {
-                    for protocol in &new_protocols {
-                        if let Some(valid_proto) = validate_protocol(protocol) {
-                            let outcome = if action == 0 {
-                                client.add_port(zone, &port_str, valid_proto, permanent)?
-                            } else {
-                                // Family-less rule: covers IPv4 and IPv6
-                                let rule = format!(
-                                    "rule port port=\"{}\" protocol=\"{}\" reject",
-                                    port_str, valid_proto
-                                );
-                                client.add_rich_rule(zone, &rule, permanent)?
-                            };
-                            if outcome.failed() {
-                                permanent_failed = true;
-                            }
-                        } else {
-                            return Err(anyhow::anyhow!("Invalid protocol: {}", protocol));
-                        }
-                    }
-                }
-
-                Ok(permanent_failed)
+                // 2. Add every new target and retain exact partial-failure data.
+                let targets = port_rule_targets(&new_zones, &new_protocols);
+                Ok(apply_port_rule_targets(
+                    &client, &targets, &port_str, action, permanent,
+                ))
             })
             .await;
 
             match result {
-                Ok(Ok(permanent_failed)) => {
+                Ok(Ok(batch)) => {
                     let port_spec = original_after.port_spec();
-                    if permanent_failed {
-                        page.show_toast(&format!(
-                            "Updated port {} for this session only — saving permanently failed",
-                            port_spec
-                        ));
-                    } else {
-                        page.show_toast(&format!("Updated port {}", port_spec));
-                    }
+                    page.show_toast(&port_rule_batch_message(&port_spec, action, &batch));
 
                     // Update storage: remove old keys, add new keys
                     let mut storage = page.imp().storage.borrow_mut();
@@ -1404,26 +1423,24 @@ impl PortsPage {
                     }
 
                     // Add new keys
-                    for zone in &new_zones_after {
-                        for protocol in &new_protocols_after {
-                            let key = PortStorage::make_key(&port_spec, protocol, zone);
-                            let mut metadata = PortMetadata::new(name.as_deref().unwrap_or(""));
-                            metadata.port = port_num;
-                            metadata.end_port = port_end.filter(|&e| e > port_num).unwrap_or(0);
-                            metadata.protocol = protocol.clone();
-                            metadata.zone = zone.clone();
-                            metadata.incoming_action = if action == 0 {
-                                "allow".to_string()
-                            } else {
-                                "block".to_string()
-                            };
-                            metadata.description = if action == 0 {
-                                "Incoming: Allowed".to_string()
-                            } else {
-                                "Incoming: Blocked".to_string()
-                            };
-                            storage.set(key, metadata);
-                        }
+                    for (zone, protocol) in &batch.applied {
+                        let key = PortStorage::make_key(&port_spec, protocol, zone);
+                        let mut metadata = PortMetadata::new(name.as_deref().unwrap_or(""));
+                        metadata.port = port_num;
+                        metadata.end_port = port_end.filter(|&e| e > port_num).unwrap_or(0);
+                        metadata.protocol = protocol.clone();
+                        metadata.zone = zone.clone();
+                        metadata.incoming_action = if action == 0 {
+                            "allow".to_string()
+                        } else {
+                            "block".to_string()
+                        };
+                        metadata.description = if action == 0 {
+                            "Incoming: Allowed".to_string()
+                        } else {
+                            "Incoming: Blocked".to_string()
+                        };
+                        storage.set(key, metadata);
                     }
                     drop(storage);
 
@@ -1505,4 +1522,46 @@ mod imp {
     }
     impl WidgetImpl for PortsPage {}
     impl BoxImpl for PortsPage {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn multi_zone_port_targets_every_zone_and_protocol() {
+        let zones = vec!["FedoraWorkstation".to_string(), "home".to_string()];
+        let protocols = vec!["tcp".to_string(), "udp".to_string()];
+
+        let targets = port_rule_targets(&zones, &protocols);
+
+        assert_eq!(
+            targets,
+            vec![
+                ("FedoraWorkstation".to_string(), "tcp".to_string()),
+                ("FedoraWorkstation".to_string(), "udp".to_string()),
+                ("home".to_string(), "tcp".to_string()),
+                ("home".to_string(), "udp".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn multi_zone_port_partial_failure_is_reported() {
+        let batch = PortRuleBatchResult {
+            applied: vec![("FedoraWorkstation".to_string(), "tcp".to_string())],
+            permanent_failed: Vec::new(),
+            failed: vec![(
+                "home".to_string(),
+                "tcp".to_string(),
+                "authorization denied".to_string(),
+            )],
+        };
+
+        let message = port_rule_batch_message("65432", 0, &batch);
+
+        assert!(message.contains("1/2 targets"));
+        assert!(message.contains("home/tcp"));
+        assert!(message.contains("authorization denied"));
+    }
 }

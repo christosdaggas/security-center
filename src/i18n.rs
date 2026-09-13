@@ -13,7 +13,10 @@ use std::path::Path;
 /// Initialize the gettext text domain and bind the locale directory.
 pub fn init(domain: &str) {
     // Adopt the user's locale from the environment.
-    gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, "");
+    // SAFETY: main calls this once before GTK initialization or any worker threads.
+    unsafe {
+        gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, "");
+    }
 
     // Allow overriding the catalog location for uninstalled/dev runs.
     let locale_dir = std::env::var("TEXTDOMAINDIR")

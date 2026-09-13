@@ -9,7 +9,7 @@ on:
       tag:
         description: "Release tag to publish assets to"
         required: true
-        default: "v1.7.0"
+        default: "v1.8.2"
 
 permissions:
   contents: read

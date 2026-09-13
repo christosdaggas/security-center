@@ -144,36 +144,6 @@ impl Application {
         });
         behavior_group.add(&connections_row);
 
-        // How many application cards the dashboard's connections overview shows.
-        let current_max = self.imp().settings.borrow().dashboard_max_apps();
-        let apps_row = adw::SpinRow::builder()
-            .title(gettext("Dashboard connection cards"))
-            .subtitle(gettext(
-                "How many application cards the dashboard connections overview shows",
-            ))
-            .adjustment(&gtk4::Adjustment::new(
-                current_max as f64,
-                crate::config::DASHBOARD_MAX_APPS_MIN as f64,
-                crate::config::DASHBOARD_MAX_APPS_MAX as f64,
-                1.0,
-                1.0,
-                0.0,
-            ))
-            .build();
-
-        let app = self.clone();
-        apps_row.connect_value_notify(move |row| {
-            let count = row.value().round() as usize;
-            app.imp()
-                .settings
-                .borrow_mut()
-                .set_dashboard_max_apps(count);
-            if let Some(window) = app.imp().window.get() {
-                window.set_dashboard_max_apps(count);
-            }
-        });
-        behavior_group.add(&apps_row);
-
         // Allow the IP details window to fetch rich data from a free online service.
         let online_enabled = self.imp().settings.borrow().enable_online_ip_lookup();
         let online_row = adw::SwitchRow::builder()
@@ -253,7 +223,13 @@ impl Application {
             .copyright("© 2024-2026 Christos A. Daggas")
             .developers(vec!["Christos A. Daggas".to_string()])
             .comments(gettext("Manage your system security, firewall and services"))
-            .release_notes("<p>Version 1.8.0 - July 2026</p><ul>\
+            .release_notes("<p>Version 1.8.2 - September 2026</p><ul>\
+                <li>Redesigned Overview - Offline world map, listening-port status, and responsive live connection cards</li>\
+                <li>Reliable Multi-Zone Port Changes - Accurate partial-failure reporting for firewalld updates</li>\
+                <li>Automatic GeoIP Refresh - Stale offline databases refresh safely without losing the existing data</li>\
+                <li>Connection Accuracy - Improved IPv4 accounting and country display</li>\
+                <li>Interface Polish - Refined window sizing and compact update notifications</li>\
+            </ul><p>Version 1.8.0 - July 2026</p><ul>\
                 <li>New Connections page - Full searchable and sortable list of every active outbound connection, grouped by destination with live byte totals and country flags</li>\
                 <li>IP Details Window - Click any connection to see country, city, region, ISP, organisation, ASN and reverse DNS, with quick links to AbuseIPDB, Shodan, ipinfo.io and ARIN</li>\
                 <li>On-Demand Online IP Lookup - Richer geolocation is fetched only when you click, keeping the app offline by default (ipwho.is over HTTPS, with an ip-api.com fallback)</li>\

@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: security-center
-Upstream-Contact: Christos Daggas <chrisdaggas@example.com>
+Upstream-Contact: Christos Daggas <info@chrisdaggas.com>
 Source: https://github.com/christosdaggas/security-center
 
 Files: *

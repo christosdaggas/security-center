@@ -1,7 +1,7 @@
 Source: security-center
 Section: admin
 Priority: optional
-Maintainer: Christos Daggas <chrisdaggas@example.com>
+Maintainer: Christos Daggas <info@chrisdaggas.com>
 Build-Depends: debhelper (>= 12),
                cargo (>= 1.70),
                rustc (>= 1.70),

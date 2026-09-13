@@ -110,7 +110,10 @@ pub fn present_ip_details(parent: &impl IsA<gtk4::Widget>, ctx: IpDetailsContext
         &gettext("Data received"),
         &format_bytes(ctx.bytes_in),
     ));
-    conn_group.add(&static_row(&gettext("Data sent"), &format_bytes(ctx.bytes_out)));
+    conn_group.add(&static_row(
+        &gettext("Data sent"),
+        &format_bytes(ctx.bytes_out),
+    ));
     page.add(&conn_group);
 
     // --- Location (offline country now; rest filled online) ---
@@ -259,7 +262,10 @@ pub fn present_ip_details(parent: &impl IsA<gtk4::Widget>, ctx: IpDetailsContext
     let ip_str = ctx.ip.to_string();
     for (name, url) in [
         ("ipinfo.io", format!("https://ipinfo.io/{ip_str}")),
-        ("AbuseIPDB", format!("https://www.abuseipdb.com/check/{ip_str}")),
+        (
+            "AbuseIPDB",
+            format!("https://www.abuseipdb.com/check/{ip_str}"),
+        ),
         ("Shodan", format!("https://www.shodan.io/host/{ip_str}")),
         (
             "Whois (ARIN)",

@@ -99,9 +99,7 @@ fn lookup_ipwhois(client: &reqwest::blocking::Client, ip: IpAddr) -> Result<IpDe
         city: str_field(&json, "city"),
         latitude: json.get("latitude").and_then(Value::as_f64),
         longitude: json.get("longitude").and_then(Value::as_f64),
-        timezone: json
-            .get("timezone")
-            .and_then(|t| str_field(t, "id")),
+        timezone: json.get("timezone").and_then(|t| str_field(t, "id")),
         isp: connection.and_then(|c| str_field(c, "isp")),
         org: connection.and_then(|c| str_field(c, "org")),
         asn,
@@ -217,7 +215,9 @@ mod tests {
             Some("Google LLC")
         );
         assert_eq!(
-            json.get("flag").and_then(|f| str_field(f, "emoji")).as_deref(),
+            json.get("flag")
+                .and_then(|f| str_field(f, "emoji"))
+                .as_deref(),
             Some("🇺🇸")
         );
     }

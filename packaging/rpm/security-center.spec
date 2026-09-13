@@ -1,5 +1,5 @@
 Name:           security-center
-Version:        1.8.0
+Version:        1.8.2
 Release:        1%{?dist}
 Summary:        A modern GTK4 security center for Linux
 
@@ -69,26 +69,32 @@ update-desktop-database -q %{_datadir}/applications || :
 appstreamcli refresh-cache || :
 
 %changelog
-* Sun Jul 12 2026 Christos Daggas <chrisdaggas@example.com> - 1.8.0-1
+* Mon Sep 14 2026 Christos Daggas <info@chrisdaggas.com> - 1.8.2-1
+- Redesigned overview with an offline world map and responsive connection cards
+- Multi-zone firewalld port updates with precise partial-failure reporting
+- Automatic refresh for stale offline GeoIP databases
+- Improved window sizing, connection accounting, and update notifications
+
+* Sun Jul 12 2026 Christos Daggas <info@chrisdaggas.com> - 1.8.0-1
 - New Connections page: full searchable/sortable list of all outbound connections, grouped by destination
 - IP details window with on-demand online geolocation (ipwho.is over HTTPS, ip-api.com fallback) and external lookup links
 - Configurable number of dashboard connection cards; toggle for online IP lookups
 - Refreshed application icon
 - Accuracy fixes for the dashboard endpoint/country pairing
 
-* Tue Jul 07 2026 Christos Daggas <chrisdaggas@example.com> - 1.7.0-1
+* Tue Jul 07 2026 Christos Daggas <info@chrisdaggas.com> - 1.7.0-1
 - Redesigned overview dashboard: live per-application firewall connection monitor
 - Per-app connection cards with real application icons, throughput sparklines, and remote endpoints
 - Real-time analytics: connection-state donut, network activity, top protocols, and remote countries
 - Per-socket byte accounting via netlink; offline GeoIP country labelling
 - Firewall port-range support
 
-* Thu Apr 24 2026 Christos Daggas <chrisdaggas@example.com> - 1.6.0-1
+* Thu Apr 24 2026 Christos Daggas <info@chrisdaggas.com> - 1.6.0-1
 - Security hardening release: dependency updates, input validation, pkexec parameter allowlisting,
   config file sanitization, semver parsing, CI/CD pipeline, test expansion, accessibility improvements,
   logging safety, and unused dependency cleanup.
 
-* Thu Apr 10 2026 Christos Daggas <chrisdaggas@example.com> - 1.5.0-1
+* Thu Apr 10 2026 Christos Daggas <info@chrisdaggas.com> - 1.5.0-1
 - Cross-distro support for Fedora, Ubuntu, Debian and all desktop environments
 - Fixed Debian/Ubuntu package dependencies (polkit package naming)
 - KDE Plasma compatibility for accent color detection
@@ -99,14 +105,14 @@ appstreamcli refresh-cache || :
 - Architecture-independent AppImage build
 - Clear error message when PolicyKit is not installed
 
-* Sun Feb 08 2026 Christos Daggas <chrisdaggas@example.com> - 1.4.0-1
+* Sun Feb 08 2026 Christos Daggas <info@chrisdaggas.com> - 1.4.0-1
 - Consolidated port view — same-port entries grouped into single rows
 - Improved firewall state display (Active, Panic Mode, Inactive)
 - Traffic switch disabled when firewall is stopped
 - Dashboard status syncs after Quick Actions changes
 - Fixed restart button stretching and signal feedback loops
 
-* Tue Jan 07 2026 Christos Daggas <chrisdaggas@example.com> - 1.0.0-1
+* Tue Jan 07 2026 Christos Daggas <info@chrisdaggas.com> - 1.0.0-1
 - Initial release
 - Firewall management with firewalld integration
 - Network exposure monitoring

@@ -1,8 +1,8 @@
 [package]
 name = "security-center"
-version = "1.8.0"
+version = "1.8.2"
 edition = "2021"
-authors = ["Christos Daggas <chrisdaggas@example.com>"]
+authors = ["Christos Daggas <info@chrisdaggas.com>"]
 license = "MIT"
 description = "A modern GTK4 security center for Linux"
 repository = "https://github.com/christosdaggas/security-center"
@@ -22,6 +22,8 @@ netlink-sys = "0.8"
 netlink-packet-core = "0.7"
 netlink-packet-sock-diag = { version = "0.4", features = ["rich_nlas"] }
 maxminddb = "0.27"
+# Offline country polygons (Natural Earth) for the dashboard world map
+world-data = "0.4"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -33,7 +35,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "5"
-gettext-rs = { version = "0.7", features = ["gettext-system"] }
+gettext-rs = { version = "0.8", features = ["gettext-system"] }
 flate2 = "1"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "blocking"] }
 semver = "1"
@@ -48,7 +50,7 @@ panic = "abort"
 debug = true
 
 [package.metadata.deb]
-maintainer = "Christos Daggas <chrisdaggas@example.com>"
+maintainer = "Christos Daggas <info@chrisdaggas.com>"
 copyright = "2026, Christos Daggas"
 license-file = ["LICENSE", "0"]
 extended-description = """\

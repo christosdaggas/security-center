@@ -555,8 +555,8 @@ fn parse_ipv4_hex(hex: &str) -> Option<Ipv4Addr> {
         return None;
     }
 
-    let bytes = u32::from_str_radix(hex, 16).ok()?;
-    Some(Ipv4Addr::from(bytes.to_be()))
+    let value = u32::from_str_radix(hex, 16).ok()?;
+    Some(Ipv4Addr::from(value.to_le_bytes()))
 }
 
 /// Parse an IPv6 address from hex format.
